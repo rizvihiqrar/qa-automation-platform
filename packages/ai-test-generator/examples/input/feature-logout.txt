@@ -1,0 +1,10 @@
+Feature: Logout
+
+As a logged-in customer,
+I want to log out,
+So that nobody else can use my session.
+
+Acceptance Criteria:
+- Opening the menu and clicking Logout returns to the login page
+- After logging out, the login button is visible again
+- After logging out, going directly to /inventory.html shows an error containing "You can only access '/inventory.html' when you are logged in"

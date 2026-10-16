@@ -1,0 +1,13 @@
+Feature: Checkout Information
+
+As a customer with an item in my cart,
+I want to enter my shipping details at checkout,
+So that my order can be delivered.
+
+Acceptance Criteria:
+- From the cart, clicking Checkout opens the "Checkout: Your Information" step
+- Continuing with no first name shows "Error: First Name is required"
+- Continuing with a first name but no last name shows "Error: Last Name is required"
+- Continuing with first and last name but no postal code shows "Error: Postal Code is required"
+- Continuing with all three fields filled opens the "Checkout: Overview" step
+- Clicking Cancel returns to the cart page

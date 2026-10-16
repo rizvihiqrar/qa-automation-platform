@@ -1,0 +1,10 @@
+Feature: Cart Persistence
+
+As a customer,
+I want my cart to keep its items while I browse,
+So that I don't lose my selections.
+
+Acceptance Criteria:
+- An item added to the cart is still in the cart after opening another product's details page
+- An item added to the cart is still counted in the badge after reloading the products page
+- Items in the cart page match the items that were added

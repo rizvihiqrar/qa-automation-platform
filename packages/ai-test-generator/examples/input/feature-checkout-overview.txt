@@ -1,0 +1,12 @@
+Feature: Checkout Overview
+
+As a customer reviewing my order,
+I want to see the items and the price breakdown before I finish,
+So that I know what I will pay.
+
+Acceptance Criteria:
+- With only "Sauce Labs Backpack" in the cart, the overview lists that item
+- The item total reads "Item total: $29.99"
+- The tax reads "Tax: $2.40"
+- The total reads "Total: $32.39"
+- Clicking Cancel on the overview returns to the products page

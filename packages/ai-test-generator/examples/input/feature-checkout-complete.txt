@@ -1,0 +1,11 @@
+Feature: Checkout Complete
+
+As a customer,
+I want to place my order,
+So that I get a confirmation and an empty cart.
+
+Acceptance Criteria:
+- Clicking Finish on the overview shows the "Checkout: Complete!" page
+- The page shows the heading "Thank you for your order!"
+- After finishing, the cart badge is no longer shown
+- Clicking "Back Home" returns to the products page
