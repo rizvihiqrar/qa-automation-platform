@@ -1,0 +1,12 @@
+{
+  "name": "qa-automation-platform",
+  "private": true,
+  "description": "Root tooling for the monorepo (type-checking). Each package keeps its own dependencies.",
+  "scripts": {
+    "typecheck": "node scripts/typecheck.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
