@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "Reads Playwright JSON reports across runs and reports flaky, failing, and stable tests",
   "type": "module",
-  "bin": { "flaky-test-analyzer": "src/cli.js" },
+  "bin": { "flaky-test-analyzer": "src/cli.ts" },
   "scripts": {
     "test": "node --test",
-    "analyze": "node src/cli.js"
+    "analyze": "node src/cli.ts"
   },
-  "engines": { "node": ">=18" },
+  "engines": { "node": ">=24" },
   "license": "MIT"
 }

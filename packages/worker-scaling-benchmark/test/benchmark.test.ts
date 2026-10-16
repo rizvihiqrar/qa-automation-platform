@@ -1,7 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { median, summarize, toMarkdown } from '../src/summarize.js';
-import { parseArgs, parseCounts } from '../src/parse.js';
+import { median, summarize, toMarkdown, type SummaryRow } from '../src/summarize.ts';
+import { parseArgs, parseCounts } from '../src/parse.ts';
+
+// Picks a row by worker count; fails the test if it's missing.
+const row = (rows: SummaryRow[], workers: number): SummaryRow => {
+  const r = rows.find((x) => x.workers === workers);
+  assert.ok(r, `no row for ${workers} workers`);
+  return r;
+};
 
 test('median handles odd and even counts without mutating input', () => {
   const input = [5, 1, 3];
@@ -10,15 +17,19 @@ test('median handles odd and even counts without mutating input', () => {
   assert.deepEqual(input, [5, 1, 3]);
 });
 
+test('median of nothing is an error, not NaN', () => {
+  assert.throws(() => median([]), /empty/);
+});
+
 test('summarize uses the lowest worker count as the baseline', () => {
   const rows = summarize([
     { workers: 2, seconds: 50, passed: 16, failed: 0 },
     { workers: 1, seconds: 100, passed: 16, failed: 0 },
   ]);
-  assert.equal(rows[0].workers, 1);
-  assert.equal(rows[0].speedup, 1);
-  assert.equal(rows[1].speedup, 2);
-  assert.equal(rows[1].efficiency, 1);
+  assert.equal(rows[0]?.workers, 1);
+  assert.equal(row(rows, 1).speedup, 1);
+  assert.equal(row(rows, 2).speedup, 2);
+  assert.equal(row(rows, 2).efficiency, 1);
 });
 
 test('efficiency falls when extra workers do not help', () => {
@@ -26,8 +37,8 @@ test('efficiency falls when extra workers do not help', () => {
     { workers: 1, seconds: 100, passed: 16, failed: 0 },
     { workers: 4, seconds: 80, passed: 16, failed: 0 },
   ]);
-  assert.equal(rows[1].speedup, 1.25);
-  assert.equal(rows[1].efficiency, 1.25 / 4);
+  assert.equal(row(rows, 4).speedup, 1.25);
+  assert.equal(row(rows, 4).efficiency, 1.25 / 4);
 });
 
 test('summarize takes the median across repeated runs', () => {
@@ -36,8 +47,12 @@ test('summarize takes the median across repeated runs', () => {
     { workers: 1, seconds: 110, passed: 16, failed: 0 },
     { workers: 1, seconds: 100, passed: 16, failed: 0 },
   ]);
-  assert.equal(rows[0].medianSeconds, 100);
-  assert.equal(rows[0].runs, 3);
+  assert.equal(row(rows, 1).medianSeconds, 100);
+  assert.equal(row(rows, 1).runs, 3);
+});
+
+test('summarize of no runs is an empty list', () => {
+  assert.deepEqual(summarize([]), []);
 });
 
 test('toMarkdown renders one row per worker count', () => {
@@ -47,8 +62,7 @@ test('toMarkdown renders one row per worker count', () => {
 });
 
 test('parseCounts reports flaky tests separately from clean passes', () => {
-  const output = '  10 passed\n  4 flaky\n  2 failed';
-  assert.deepEqual(parseCounts(output), { passed: 10, flaky: 4, failed: 2 });
+  assert.deepEqual(parseCounts('  10 passed\n  4 flaky\n  2 failed'), { passed: 10, flaky: 4, failed: 2 });
 });
 
 test('parseCounts reads the last pass and fail totals and ignores ANSI colour codes', () => {

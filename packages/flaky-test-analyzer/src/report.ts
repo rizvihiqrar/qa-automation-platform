@@ -1,6 +1,7 @@
 // Formats analyze() output as a Markdown table for PR comments or a README.
+import type { AnalyzedRow } from './analyze.ts';
 
-export function toMarkdown(rows) {
+export function toMarkdown(rows: readonly AnalyzedRow[]): string {
   const header = '| Test | Runs | Passed | Needed retry | Failed | Flake rate | Status |';
   const divider = '|---|---:|---:|---:|---:|---:|---|';
   const lines = rows.map((r) =>
