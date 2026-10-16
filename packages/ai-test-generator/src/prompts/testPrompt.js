@@ -8,6 +8,7 @@ RULES:
 - Tag the single most critical test with @smoke, all others with @regression
 - Use async/await throughout — no callbacks
 - Never use fixed waits (page.waitForTimeout); rely on Playwright's auto-waiting assertions
+- After any navigation, wait for an element that exists only on the new page before asserting on selectors that also exist on the previous page (the URL can change before the content does)
 - Each test must be independent (no shared state between tests)
 - Use beforeEach only if every test in the describe needs the same setup
 - Every test must contain at least one expect() assertion

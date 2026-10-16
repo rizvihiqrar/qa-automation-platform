@@ -1,0 +1,1849 @@
+{
+  "config": {
+    "argv": [
+      "<local-path>",
+      "<local-path>",
+      "test",
+      "--config",
+      "eval/playwright.eval.config.js"
+    ],
+    "configFile": "<local-path>",
+    "rootDir": "<local-path>",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "<local-path>",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "",
+        "name": "",
+        "testDir": "<local-path>",
+        "testIgnore": [],
+        "testMatch": [
+          "*.spec.js"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "<local-path>",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "name": "",
+        "testDir": "<local-path>",
+        "snapshotDir": "<local-path>",
+        "testIgnore": [],
+        "testMatch": "*.spec.js",
+        "timeout": 30000,
+        "use": {
+          "headless": true,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          }
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 2,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "feature-cart-persistence.spec.js",
+      "file": "feature-cart-persistence.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Cart Persistence",
+          "file": "feature-cart-persistence.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "item stays in the cart after opening another product @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3182,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:19.652Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "947621cd5a5dbe277c57-ab612a3e40c8de867114",
+              "file": "feature-cart-persistence.spec.js",
+              "line": 14,
+              "column": 3
+            },
+            {
+              "title": "badge still counts the item after reloading @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 752,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:22.989Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "947621cd5a5dbe277c57-bee22197e24c2928f126",
+              "file": "feature-cart-persistence.spec.js",
+              "line": 21,
+              "column": 3
+            },
+            {
+              "title": "cart page matches the items that were added @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 733,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:23.769Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "947621cd5a5dbe277c57-8a9865cd62f057fc2838",
+              "file": "feature-cart-persistence.spec.js",
+              "line": 27,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-cart.spec.js",
+      "file": "feature-cart.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Shopping Cart",
+          "file": "feature-cart.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "adding a product sets the cart badge to 1 @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 2990,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:19.657Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25193683fa3b41494d3a-987c5c4d8e3e860222a6",
+              "file": "feature-cart.spec.js",
+              "line": 13,
+              "column": 3
+            },
+            {
+              "title": "adding two different products shows a badge of 2 @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 681,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:22.808Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25193683fa3b41494d3a-7569c2fc248d528afc39",
+              "file": "feature-cart.spec.js",
+              "line": 19,
+              "column": 3
+            },
+            {
+              "title": "removing a product decrements the badge @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 831,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:23.513Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25193683fa3b41494d3a-17b81ef35c5845e6d9cf",
+              "file": "feature-cart.spec.js",
+              "line": 26,
+              "column": 3
+            },
+            {
+              "title": "removing the last item hides the badge @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 682,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:24.366Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25193683fa3b41494d3a-142628c0e2c5e17f0826",
+              "file": "feature-cart.spec.js",
+              "line": 34,
+              "column": 3
+            },
+            {
+              "title": "cart page lists the items that were added @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 746,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:25.069Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25193683fa3b41494d3a-0914efd417c38a3965d5",
+              "file": "feature-cart.spec.js",
+              "line": 41,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-checkout-complete.spec.js",
+      "file": "feature-checkout-complete.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Checkout Complete",
+          "file": "feature-checkout-complete.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "finishing shows the Checkout: Complete! page @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 928,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:24.533Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ff0a84f70313521bda15-1566d875f832101b965f",
+              "file": "feature-checkout-complete.spec.js",
+              "line": 21,
+              "column": 3
+            },
+            {
+              "title": "thank-you heading is shown @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 864,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:25.486Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ff0a84f70313521bda15-58cc7aa00e3713079358",
+              "file": "feature-checkout-complete.spec.js",
+              "line": 25,
+              "column": 3
+            },
+            {
+              "title": "cart badge is cleared after finishing @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 778,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:26.374Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ff0a84f70313521bda15-ced7e1cbb17ad5550ff2",
+              "file": "feature-checkout-complete.spec.js",
+              "line": 29,
+              "column": 3
+            },
+            {
+              "title": "back home returns to the products page @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 754,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:27.168Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ff0a84f70313521bda15-c19d6723d6614178d71b",
+              "file": "feature-checkout-complete.spec.js",
+              "line": 33,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-checkout-info.spec.js",
+      "file": "feature-checkout-info.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Checkout Information",
+          "file": "feature-checkout-info.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "checkout opens the Your Information step @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 713,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:25.862Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "43a5359e6cdbaab0ea0a-f7c14eedfb272afac498",
+              "file": "feature-checkout-info.spec.js",
+              "line": 16,
+              "column": 3
+            },
+            {
+              "title": "missing first name shows an error @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 662,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:26.598Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "43a5359e6cdbaab0ea0a-37a98113c0f5bca24187",
+              "file": "feature-checkout-info.spec.js",
+              "line": 20,
+              "column": 3
+            },
+            {
+              "title": "missing last name shows an error @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 669,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:27.280Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "43a5359e6cdbaab0ea0a-26ca0fc9d9fa2bae9656",
+              "file": "feature-checkout-info.spec.js",
+              "line": 26,
+              "column": 3
+            },
+            {
+              "title": "missing postal code shows an error @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 713,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:27.967Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "43a5359e6cdbaab0ea0a-767ecb04b801f9b83049",
+              "file": "feature-checkout-info.spec.js",
+              "line": 33,
+              "column": 3
+            },
+            {
+              "title": "all fields filled continues to the overview @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 718,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:28.696Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "43a5359e6cdbaab0ea0a-2d1a471dc048da1837d3",
+              "file": "feature-checkout-info.spec.js",
+              "line": 41,
+              "column": 3
+            },
+            {
+              "title": "cancel returns to the cart @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 640,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:29.430Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "43a5359e6cdbaab0ea0a-61c408c73cf99bff8fda",
+              "file": "feature-checkout-info.spec.js",
+              "line": 50,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-checkout-overview.spec.js",
+      "file": "feature-checkout-overview.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Checkout Overview",
+          "file": "feature-checkout-overview.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "overview lists the backpack @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 743,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:27.963Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "681234db185c9e449116-b3a7cfd9c84d55c5716c",
+              "file": "feature-checkout-overview.spec.js",
+              "line": 20,
+              "column": 3
+            },
+            {
+              "title": "item total is $29.99 @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 697,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:28.722Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "681234db185c9e449116-148950fa4971e3cc975a",
+              "file": "feature-checkout-overview.spec.js",
+              "line": 24,
+              "column": 3
+            },
+            {
+              "title": "tax is $2.40 @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 693,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:29.438Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "681234db185c9e449116-ce6a859103c47709760d",
+              "file": "feature-checkout-overview.spec.js",
+              "line": 28,
+              "column": 3
+            },
+            {
+              "title": "total is $32.39 @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 668,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:30.147Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "681234db185c9e449116-57175ad6f3b923681472",
+              "file": "feature-checkout-overview.spec.js",
+              "line": 32,
+              "column": 3
+            },
+            {
+              "title": "cancel returns to the products page @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 733,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:30.829Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "681234db185c9e449116-b61138ba003f0c2fb8d9",
+              "file": "feature-checkout-overview.spec.js",
+              "line": 36,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-inventory-sort.spec.js",
+      "file": "feature-inventory-sort.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Inventory Sorting",
+          "file": "feature-inventory-sort.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "default sort is name A to Z with Sauce Labs Backpack first @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 461,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:30.105Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5478103a2e5b5640186f-8a8b246d7e8c1ec7b62e",
+              "file": "feature-inventory-sort.spec.js",
+              "line": 13,
+              "column": 3
+            },
+            {
+              "title": "name Z to A shows the red T-shirt first @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 389,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:30.579Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5478103a2e5b5640186f-33baa4afd0111737ee15",
+              "file": "feature-inventory-sort.spec.js",
+              "line": 18,
+              "column": 3
+            },
+            {
+              "title": "price low to high shows the Onesie first at $7.99 @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 465,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:30.981Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5478103a2e5b5640186f-4bc7453ff4bd188b263f",
+              "file": "feature-inventory-sort.spec.js",
+              "line": 24,
+              "column": 3
+            },
+            {
+              "title": "price high to low shows the Fleece Jacket first at $49.99 @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 425,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:31.458Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5478103a2e5b5640186f-0da7fd860816479d678d",
+              "file": "feature-inventory-sort.spec.js",
+              "line": 31,
+              "column": 3
+            },
+            {
+              "title": "six products are shown after sorting @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 424,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:31.896Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5478103a2e5b5640186f-58d106b8b87feabeb1fc",
+              "file": "feature-inventory-sort.spec.js",
+              "line": 38,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-login.spec.js",
+      "file": "feature-login.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "User Login",
+          "file": "feature-login.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "valid credentials redirect to the products page @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 358,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:31.587Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7aa8a9c5532cfc118fe7-891f5d82c9ecc782f908",
+              "file": "feature-login.spec.js",
+              "line": 10,
+              "column": 3
+            },
+            {
+              "title": "incorrect password shows a credential mismatch error @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 379,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:31.959Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7aa8a9c5532cfc118fe7-e2db1743865025386dc0",
+              "file": "feature-login.spec.js",
+              "line": 18,
+              "column": 3
+            },
+            {
+              "title": "locked-out user sees a locked-out message @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 340,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:32.354Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7aa8a9c5532cfc118fe7-4714f8f75516cf8fe893",
+              "file": "feature-login.spec.js",
+              "line": 26,
+              "column": 3
+            },
+            {
+              "title": "submitting an empty form shows username required @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 272,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:32.708Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7aa8a9c5532cfc118fe7-8eb5c83418200203068b",
+              "file": "feature-login.spec.js",
+              "line": 34,
+              "column": 3
+            },
+            {
+              "title": "products page displays at least one product after login @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 408,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:32.995Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7aa8a9c5532cfc118fe7-2c22b33e9994fe6b3bff",
+              "file": "feature-login.spec.js",
+              "line": 40,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-logout.spec.js",
+      "file": "feature-logout.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Logout",
+          "file": "feature-logout.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "logout returns to the login page @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1333,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:32.355Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "18be8617408b1b4cc0e8-7441c98b6fff85787a04",
+              "file": "feature-logout.spec.js",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "login button is visible again after logout @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1345,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:33.702Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "18be8617408b1b4cc0e8-b19bc6fd23e924be1ee9",
+              "file": "feature-logout.spec.js",
+              "line": 19,
+              "column": 3
+            },
+            {
+              "title": "inventory is blocked after logout @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1577,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:35.067Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "18be8617408b1b4cc0e8-e1ea3f47ffce8d31629c",
+              "file": "feature-logout.spec.js",
+              "line": 23,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-product-details.spec.js",
+      "file": "feature-product-details.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Product Details",
+          "file": "feature-product-details.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "clicking a product name opens its details page @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 421,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:33.434Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "33720cba945b17dad466-b75c171f38c3aa5af8d7",
+              "file": "feature-product-details.spec.js",
+              "line": 13,
+              "column": 3
+            },
+            {
+              "title": "details page shows the same name and price as the list @regression",
+              "ok": false,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 478,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-test=\"inventory-item-name\"]')\nExpected: \u001b[32m\"Sauce Labs Backpack\"\u001b[39m\nError: strict mode violation: locator('[data-test=\"inventory-item-name\"]') resolved to 6 elements:\n    1) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Backpack</div> aka locator('[data-test=\"item-4-title-link\"]')\n    2) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Bike Light</div> aka locator('[data-test=\"item-0-title-link\"]')\n    3) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Bolt T-Shirt</div> aka locator('[data-test=\"item-1-title-link\"]')\n    4) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Fleece Jacket</div> aka locator('[data-test=\"item-5-title-link\"]')\n    5) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Onesie</div> aka locator('[data-test=\"item-2-title-link\"]')\n    6) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Test.allTheThings() T-Shirt (Red)</div> aka locator('[data-test=\"item-3-title-link\"]')\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" locator('[data-test=\"inventory-item-name\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-test=\"inventory-item-name\"]')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-test=\"inventory-item-name\"]')\nExpected: \u001b[32m\"Sauce Labs Backpack\"\u001b[39m\nError: strict mode violation: locator('[data-test=\"inventory-item-name\"]') resolved to 6 elements:\n    1) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Backpack</div> aka locator('[data-test=\"item-4-title-link\"]')\n    2) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Bike Light</div> aka locator('[data-test=\"item-0-title-link\"]')\n    3) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Bolt T-Shirt</div> aka locator('[data-test=\"item-1-title-link\"]')\n    4) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Fleece Jacket</div> aka locator('[data-test=\"item-5-title-link\"]')\n    5) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Onesie</div> aka locator('[data-test=\"item-2-title-link\"]')\n    6) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Test.allTheThings() T-Shirt (Red)</div> aka locator('[data-test=\"item-3-title-link\"]')\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" locator('[data-test=\"inventory-item-name\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-test=\"inventory-item-name\"]')\u001b[22m\n\n    at <local-path>",
+                        "location": {
+                          "file": "<local-path>",
+                          "column": 69,
+                          "line": 25
+                        },
+                        "snippet": "  23 |     await page.locator('[data-test=\"inventory-item-name\"]').first().click();\n  24 |\n> 25 |     await expect(page.locator('[data-test=\"inventory-item-name\"]')).toHaveText(listName);\n     |                                                                     ^\n  26 |     await expect(page.locator('[data-test=\"inventory-item-price\"]')).toHaveText(listPrice);\n  27 |   });\n  28 |"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "<local-path>",
+                            "column": 69,
+                            "line": 25
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-test=\"inventory-item-name\"]')\nExpected: \u001b[32m\"Sauce Labs Backpack\"\u001b[39m\nError: strict mode violation: locator('[data-test=\"inventory-item-name\"]') resolved to 6 elements:\n    1) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Backpack</div> aka locator('[data-test=\"item-4-title-link\"]')\n    2) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Bike Light</div> aka locator('[data-test=\"item-0-title-link\"]')\n    3) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Bolt T-Shirt</div> aka locator('[data-test=\"item-1-title-link\"]')\n    4) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Fleece Jacket</div> aka locator('[data-test=\"item-5-title-link\"]')\n    5) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Sauce Labs Onesie</div> aka locator('[data-test=\"item-2-title-link\"]')\n    6) <div class=\"inventory_item_name \" data-test=\"inventory-item-name\">Test.allTheThings() T-Shirt (Red)</div> aka locator('[data-test=\"item-3-title-link\"]')\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" locator('[data-test=\"inventory-item-name\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-test=\"inventory-item-name\"]')\u001b[22m\n\n\n  23 |     await page.locator('[data-test=\"inventory-item-name\"]').first().click();\n  24 |\n> 25 |     await expect(page.locator('[data-test=\"inventory-item-name\"]')).toHaveText(listName);\n     |                                                                     ^\n  26 |     await expect(page.locator('[data-test=\"inventory-item-price\"]')).toHaveText(listPrice);\n  27 |   });\n  28 |\n    at <local-path>"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:33.865Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "<local-path>"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "<local-path>",
+                        "column": 69,
+                        "line": 25
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "33720cba945b17dad466-0d25b35498d06eb8a7fb",
+              "file": "feature-product-details.spec.js",
+              "line": 19,
+              "column": 3
+            },
+            {
+              "title": "adding from the details page sets the cart badge to 1 @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 693,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:34.865Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "33720cba945b17dad466-02586c065e24a4fd1cb9",
+              "file": "feature-product-details.spec.js",
+              "line": 29,
+              "column": 3
+            },
+            {
+              "title": "back to products returns to the products page @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 493,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:35.672Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "33720cba945b17dad466-5fd598f7430d0af43515",
+              "file": "feature-product-details.spec.js",
+              "line": 36,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "feature-reset-app-state.spec.js",
+      "file": "feature-reset-app-state.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Reset App State",
+          "file": "feature-reset-app-state.spec.js",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "reset removes the cart badge @smoke",
+              "ok": true,
+              "tags": [
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1434,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:36.202Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25221d4d93aee521bc47-7eb883404573125fad25",
+              "file": "feature-reset-app-state.spec.js",
+              "line": 17,
+              "column": 3
+            },
+            {
+              "title": "cart page is empty after reset @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1454,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:37.650Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25221d4d93aee521bc47-e0b7db1fac8ddd1fe6ab",
+              "file": "feature-reset-app-state.spec.js",
+              "line": 21,
+              "column": 3
+            },
+            {
+              "title": "user stays logged in on the products page after reset @regression",
+              "ok": true,
+              "tags": [
+                "regression"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1450,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T19:41:39.124Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "25221d4d93aee521bc47-730478caf6df0b0bf049",
+              "file": "feature-reset-app-state.spec.js",
+              "line": 27,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T19:41:18.661Z",
+    "duration": 22008.839,
+    "expected": 42,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

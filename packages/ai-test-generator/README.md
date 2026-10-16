@@ -69,6 +69,18 @@ Runs are saved in `eval/runs/<label>/`: the raw generated specs, `REPORT.md`, `r
 
 **From GitHub:** add the repository secret `ANTHROPIC_API_KEY`, then run the **AI generator eval** workflow from the Actions tab. It never runs automatically. The report appears in the job summary and the run folder is uploaded as an artifact.
 
+### First run: claude-code-2026-10-16
+
+Generated in a Claude Code session (not the paid API pipeline), in one pass, and scored as written. Details and the known bias are in the [run folder](eval/runs/claude-code-2026-10-16).
+
+| Measure | Result |
+|---|---|
+| Specs that passed review | 10 of 10 (100%) |
+| Generated tests that passed on the first run | 42 of 43 (98%) |
+| Specs usable as-is | 9 of 10 (90%) |
+
+The one failure was a navigation race: the test clicked a product, then checked a product-name selector that also matches the 6 names still on the list page. Waiting for the new URL wasn't enough, because the site changes the URL before it swaps the content; waiting for an element unique to the details page fixed it (passed 3 of 3 runs). That lesson is now a rule in the generator prompt. Full write-up in [FIXES.md](eval/runs/claude-code-2026-10-16/FIXES.md).
+
 ### Why the review step matters
 
 While building the eval, a deliberately bad spec included a test with no assertion that clicked `.submit-button`. That class happens to exist on the login button, so the test **passed** its Playwright run while checking nothing. Only the review step flagged it. A pass/fail count alone would have scored it as a good test.
@@ -81,7 +93,7 @@ The feature descriptions only state behaviour verified on the live site (sort or
 
 | Command | What runs | Count |
 |---|---|---:|
-| `npm test` | Unit tests for the prompt, the API call (with a fake client, no network), output cleanup, argument parsing, every review rule, and the eval scoring | 26 |
+| `npm test` | Unit tests for the prompt, the API call (with a fake client, no network), output cleanup, argument parsing, every review rule, and the eval scoring | 28 |
 | `npm run test:e2e` | The reviewed example spec, `examples/output/login.spec.js`, against the live Sauce Demo site | 4 |
 
 The example spec was generated, then reviewed: the reviewer flagged a CSS class selector, which was changed to `[data-test="inventory-item"]`. The note is in the file header.

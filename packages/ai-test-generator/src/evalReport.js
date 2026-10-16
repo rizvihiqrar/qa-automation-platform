@@ -3,6 +3,16 @@
 
 import path from 'path';
 
+// Removes absolute file paths (which carry the local username) from a parsed
+// report before it is saved, so committed runs don't leak machine details.
+const LOCAL_PATH = /[A-Za-z]:[\\/][^\s"'`<>|]*|\/(?:home|Users|runner)\/[^\s"'`<>|]*/g;
+export function stripLocalPaths(value) {
+  if (typeof value === 'string') return value.replace(LOCAL_PATH, '<local-path>');
+  if (Array.isArray(value)) return value.map(stripLocalPaths);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripLocalPaths(v)]));
+  return value;
+}
+
 // Playwright test status -> bucket. A flaky test passed only after a retry.
 const BUCKET = { expected: 'passed', unexpected: 'failed', flaky: 'flaky', skipped: 'skipped' };
 

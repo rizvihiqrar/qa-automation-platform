@@ -1,0 +1,6 @@
+{
+  "model": "claude-opus-5-5 (Claude Code session, not the API pipeline)",
+  "generatedAt": "2026-10-16",
+  "generator": "Claude in a Claude Code session, following the rules in src/prompts/testPrompt.js",
+  "notes": "Specs were written in one pass from the feature descriptions and scored as written. No API calls."
+}
