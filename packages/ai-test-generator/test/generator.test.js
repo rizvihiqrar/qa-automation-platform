@@ -28,6 +28,10 @@ test('buildPrompt embeds the feature text and the selector rules', () => {
   assert.match(prompt, /waitForTimeout/);
 });
 
+test('buildPrompt carries the navigation lesson from eval run claude-code-2026-10-16', () => {
+  assert.match(buildPrompt('x'), /exists only on the new page/);
+});
+
 test('cleanOutput strips one outer markdown fence', () => {
   assert.equal(cleanOutput('```js\nconst a = 1;\n```'), 'const a = 1;\n');
   assert.equal(cleanOutput('```\nconst a = 1;\n```'), 'const a = 1;\n');
