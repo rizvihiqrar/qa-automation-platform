@@ -1,0 +1,18 @@
+{
+  "name": "graphql-test-suite",
+  "version": "1.0.0",
+  "description": "Playwright API tests for a GraphQL endpoint — queries, variables, filtering, pagination, errors, and introspection",
+  "type": "module",
+  "scripts": {
+    "server": "node server/index.js",
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  },
+  "dependencies": {
+    "graphql": "^16.10.0",
+    "graphql-yoga": "^5.11.0"
+  }
+}
