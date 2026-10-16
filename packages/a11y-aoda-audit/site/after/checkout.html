@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout | Maple Outfitters</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #222; background: #fff; }
+    form { display: grid; gap: 12px; max-width: 360px; }
+    label { font-weight: bold; }
+    input { padding: 8px; border: 1px solid #888; }
+    .hint { color: #595959; font-size: 13px; }
+    button { padding: 10px; background: #1a5fb4; color: #fff; border: 0; }
+    :focus-visible { outline: 3px solid #1a5fb4; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Checkout</h1>
+    <form>
+      <label for="name">Full name</label>
+      <input id="name" type="text" autocomplete="name">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email" aria-describedby="email-hint">
+      <p class="hint" id="email-hint">We only use your email for order updates.</p>
+      <label for="postal">Postal code</label>
+      <input id="postal" type="text" autocomplete="postal-code">
+      <button type="submit">Place order</button>
+    </form>
+  </main>
+</body>
+</html>
