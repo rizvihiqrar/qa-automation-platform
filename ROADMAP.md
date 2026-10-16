@@ -25,7 +25,7 @@ Status: ✅ done · 🔶 in progress · ⬜ planned
 | 8 | **Log signature grouper**: group error logs by normalized signature | Log analysis, root cause | ✅ plain and JSON logs, stack traces kept together, new/grown/gone vs a baseline; 15 tests |
 | 9 | **OpenAPI drift checker** against qa-practice-api | API testing, contract thinking | ✅ found and fixed 2 real API bugs (text price stored as null, negative stock); live check 20/20; 16 tests |
 | 10 | **Exploratory session tracker**: charters, time boxes, findings report | Exploratory testing, QA documentation | ✅ charters, timeboxes, tagged notes, team debrief, session scaffolding; 10 tests |
-| 11 | **k6 performance suite** with thresholds against qa-practice-api | Performance testing (re-add to resume only once this exists) | ⬜ |
+| 11 | **k6 performance suite** with thresholds against qa-practice-api | Performance testing (re-add to resume only once this exists) | ✅ found event-loop blocking in password hashing; browsing p95 67 ms → 1 ms after the fix; thresholds now set from measurements |
 | 12 | **Release gate**: block a deploy on smoke results; post a summary | CI/CD, production deployments | ⬜ |
 | 13 | **Accessibility** against a local UI, framed around AODA, with a findings report | Accessibility | ⬜ |
 | 14 | **Results dashboard** wired to CI: pass rate, runtime, flake rate over time | Impact metrics | ⬜ |
