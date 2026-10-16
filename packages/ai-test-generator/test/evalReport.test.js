@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { collectRunResults, summarize, toMarkdown, fixesTemplate } from '../src/evalReport.js';
+import { collectRunResults, summarize, toMarkdown, fixesTemplate, stripLocalPaths } from '../src/evalReport.js';
 import { parseEvalArgs } from '../src/eval.js';
 
 const review = (passed, findings = []) => ({ tests: 3, passed, findings });
@@ -80,6 +80,18 @@ test('fixesTemplate lists only specs that need work, with the reason', () => {
 test('fixesTemplate says so when every spec was usable', () => {
   const md = fixesTemplate(summarize([{ feature: 'login', review: review(true), run: counts(4) }]), { label: 'L1' });
   assert.match(md, /Every spec was usable as generated/);
+});
+
+test('stripLocalPaths removes Windows, macOS and Linux paths anywhere in a report', () => {
+  const report = {
+    config: { rootDir: 'C:\\Users\\someone\\repo', configFile: 'D:/work/repo/eval/playwright.eval.config.js' },
+    suites: [{ file: 'feature-login.spec.js', specs: [{ tests: [{ results: [{ error: { stack: 'at /home/runner/work/x.js:3\n at /Users/me/y.js:9' } }] }] }] }],
+    count: 3,
+  };
+  const clean = JSON.stringify(stripLocalPaths(report));
+  assert.ok(!/Users|someone|D:\/work|home\/runner/.test(clean), clean);
+  assert.match(clean, /feature-login\.spec\.js/); // relative names are kept
+  assert.equal(stripLocalPaths(report).count, 3);
 });
 
 test('parseEvalArgs needs exactly one mode and defaults the label to today', () => {

@@ -19,7 +19,7 @@ import { spawnSync } from 'child_process';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { generateTests, DEFAULT_MODEL } from './generator.js';
 import { reviewSpec } from './review.js';
-import { collectRunResults, summarize, toMarkdown, fixesTemplate } from './evalReport.js';
+import { collectRunResults, summarize, toMarkdown, fixesTemplate, stripLocalPaths } from './evalReport.js';
 
 const PACKAGE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -64,7 +64,9 @@ function runPlaywright(runDir) {
     env: { ...process.env, EVAL_RUN_DIR: path.resolve(runDir), PLAYWRIGHT_JSON_OUTPUT_NAME: path.resolve(reportFile) },
   });
   if (!fs.existsSync(reportFile)) throw new Error(`Playwright produced no report:\n${res.stderr || res.stdout}`);
-  return JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+  const report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+  fs.writeFileSync(reportFile, JSON.stringify(stripLocalPaths(report), null, 2));
+  return report;
 }
 
 export function scoreRun(runDir, label) {
