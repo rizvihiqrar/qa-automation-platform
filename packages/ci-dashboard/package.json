@@ -1,0 +1,1 @@
+{ "name": "ci-dashboard", "version": "1.0.0", "type": "module", "description": "CI dashboard: pass rate, run time and flaky jobs per package from the GitHub Actions API, published to GitHub Pages", "scripts": { "test": "node --test", "build": "node src/build.js --out site" }, "engines": { "node": ">=20" }, "license": "MIT" }
