@@ -19,7 +19,7 @@ Status: ✅ done · 🔶 in progress · ⬜ planned
 | Day | Module | Backs this resume line | Status |
 |---:|---|---|---|
 | 4 | **AI generator eval**: generate tests for 10 feature files; record the % that pass review, the % that pass a real run, and what a human had to fix | AI-assisted test generation, reviewing AI output | 🔶 harness, 10 verified feature files and scoring built; first paid run needs `ANTHROPIC_API_KEY` |
-| 5 | **SQL data-integrity kit** on SQLite: orphan rows, duplicates, totals that don't reconcile | SQL, data integrity checks | ⬜ |
+| 5 | **SQL data-integrity kit** on SQLite: orphan rows, duplicates, totals that don't reconcile | SQL, data integrity checks | ✅ 15 checks, 33 tests, each check proven by an injected defect |
 | 6 | **Defect report linter**: required fields, repro steps, expected vs actual, severity | Defect reports, bug lifecycle | ⬜ |
 | 7 | **Webhook harness**: signature checks, retries, idempotency | Webhooks, REST APIs | ⬜ |
 | 8 | **Log signature grouper**: group error logs by normalized signature | Log analysis, root cause | ⬜ |

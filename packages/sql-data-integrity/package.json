@@ -1,0 +1,17 @@
+{
+  "name": "sql-data-integrity",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SQL data-integrity checks for an orders database: orphans, duplicates, totals, payments and date rules",
+  "scripts": {
+    "test": "node --test",
+    "check": "node src/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "sql.js": "^1.15.0"
+  }
+}
