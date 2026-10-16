@@ -1,0 +1,1 @@
+{ "name": "exploratory-session-tracker", "version": "1.0.0", "type": "module", "description": "Session-based exploratory testing: charters, timeboxes, tagged notes and a team debrief", "scripts": { "test": "node --test", "debrief": "node src/cli.js debrief sessions/" }, "engines": { "node": ">=20" }, "license": "MIT" }
