@@ -6,6 +6,7 @@
   "scripts": {
     "generate": "node src/generate.js",
     "review": "node src/reviewCli.js examples/output/login.spec.js",
+    "eval": "node src/eval.js",
     "test": "node --test",
     "test:e2e": "playwright test"
   },
