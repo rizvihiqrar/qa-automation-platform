@@ -8,7 +8,7 @@ Built with Node.js, Express, and SQLite. No external services required. Spins up
 
 - **Runtime:** Node.js 20 + Express
 - **Database:** SQLite via `better-sqlite3` (in-memory for tests, file-based for dev)
-- **Auth:** JWT (`jsonwebtoken`) + bcrypt password hashing
+- **Auth:** JWT (`jsonwebtoken`) + scrypt password hashing (Node's built-in `crypto.scrypt`, which runs off the event loop; see [k6-performance](../k6-performance) for why it replaced bcryptjs)
 - **Tests:** Playwright API mode (no browser)
 - **CI:** GitHub Actions — smoke gates regression
 

@@ -10,3 +10,4 @@ reports/
 !packages/log-signature-grouper/examples/*.log
 .env
 .DS_Store
+packages/k6-performance/results/
