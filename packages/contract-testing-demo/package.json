@@ -1,0 +1,19 @@
+{
+  "name": "contract-testing-demo",
+  "version": "1.0.0",
+  "description": "Consumer-driven contract testing with Pact.js — defines API contracts between a frontend consumer and a REST API provider",
+  "scripts": {
+    "test:consumer": "jest consumer/",
+    "test:provider": "jest provider/",
+    "test":          "npm run test:consumer && npm run test:provider"
+  },
+  "devDependencies": {
+    "@pact-foundation/pact": "^12.0.0",
+    "jest":                  "^29.0.0",
+    "node-fetch":            "^2.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout":     30000
+  }
+}
