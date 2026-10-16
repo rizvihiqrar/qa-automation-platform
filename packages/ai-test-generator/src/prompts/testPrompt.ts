@@ -1,4 +1,4 @@
-export function buildPrompt(featureDescription) {
+export function buildPrompt(featureDescription: string): string {
   return `You are a senior QA automation engineer. Generate a complete, production-ready Playwright test file from the feature description below.
 
 RULES:

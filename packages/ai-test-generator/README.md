@@ -39,7 +39,7 @@ npm run generate -- --input examples/input/feature-login.txt
 
 # Review any spec file (no API call)
 npm run review
-node src/reviewCli.js path/to/spec.js
+node src/reviewCli.ts path/to/spec.js
 ```
 
 `AI_MODEL` overrides the model (default `claude-opus-5-5`). The request asks for `high` effort and enables server-side refusal fallbacks. A refusal or a response cut off at `max_tokens` is reported as an error, not written to disk.
@@ -104,13 +104,13 @@ The example spec was generated, then reviewed: the reviewer flagged a CSS class 
 
 ```
 ├── src/
-│   ├── generate.js         # CLI: generate, write, then review
-│   ├── generator.js        # API call with an injectable client
-│   ├── review.js           # Review rules for generated specs
-│   ├── reviewCli.js        # CLI: review existing spec files
-│   ├── eval.js             # CLI: generate and score an eval run
-│   ├── evalReport.js       # Scoring, report, and fixes checklist
-│   └── prompts/testPrompt.js
+│   ├── generate.ts         # CLI: generate, write, then review
+│   ├── generator.ts        # API call with an injectable client
+│   ├── review.ts           # Review rules for generated specs
+│   ├── reviewCli.ts        # CLI: review existing spec files
+│   ├── eval.ts             # CLI: generate and score an eval run
+│   ├── evalReport.ts       # Scoring, report, and fixes checklist
+│   └── prompts/testPrompt.ts
 ├── eval/
 │   ├── playwright.eval.config.js   # One run, no retries
 │   └── runs/<label>/               # Saved eval runs
@@ -119,6 +119,8 @@ The example spec was generated, then reviewed: the reviewer flagged a CSS class 
 │   └── output/login.spec.js
 └── test/                   # Unit tests (node:test)
 ```
+
+The tool is strict TypeScript, run directly by Node 24 with no build step. The generated specs stay JavaScript, because that is what the model is asked to write. The API client is typed through a small `MessagesClient` interface in `generator.ts`, so the tests' fake client is checked against the same shape the real SDK call uses.
 
 ---
 

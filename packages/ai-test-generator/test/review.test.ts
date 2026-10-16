@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { reviewSpec, findTests } from '../src/review.js';
+import { reviewSpec, findTests } from '../src/review.ts';
 
-const rules = (src) => reviewSpec(src).findings.map((f) => f.rule);
+const rules = (src: string) => reviewSpec(src).findings.map((f) => f.rule);
 
 const good = `
 import { test, expect } from '@playwright/test';
@@ -28,8 +28,10 @@ test('a clean spec passes with no findings', () => {
 test('findTests reports titles, lines and bodies', () => {
   const tests = findTests(good);
   assert.deepEqual(tests.map((t) => t.title), ['valid login @smoke', 'bad password @regression']);
-  assert.equal(tests[0].line, 4);
-  assert.match(tests[0].body, /toHaveURL/);
+  const [first] = tests;
+  assert.ok(first);
+  assert.equal(first.line, 4);
+  assert.match(first.body, /toHaveURL/);
 });
 
 test('a test without expect() is an error', () => {

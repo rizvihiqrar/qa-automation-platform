@@ -86,7 +86,7 @@ npm ci
 npm run typecheck   # the list of packages is in scripts/typecheck.mjs
 ```
 
-Packages moving to TypeScript run directly on Node 24, which strips types at load time, so there's still no build step. They use `tsconfig.ts.json`: strict mode, unchecked index access, and only syntax Node can strip (no enums or namespaces). Converted so far: test-data-factory, flaky-test-analyzer, worker-scaling-benchmark.
+Packages moving to TypeScript run directly on Node 24, which strips types at load time, so there's still no build step. They use `tsconfig.ts.json`: strict mode, unchecked index access, and only syntax Node can strip (no enums or namespaces). Converted so far: test-data-factory, flaky-test-analyzer, worker-scaling-benchmark, ai-test-generator.
 
 What it does and doesn't catch: it catches wrong use of anything typed, such as Node's APIs (`fs.readFilSync` fails with "Did you mean readFileSync?") and functions with JSDoc types. In plain JavaScript, TypeScript treats every parameter as optional, so a call missing an argument to an untyped function passes. That gap is why the roadmap moves packages to TypeScript next, one per day.
 

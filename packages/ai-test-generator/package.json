@@ -4,11 +4,14 @@
   "type": "module",
   "description": "Generate Playwright test files from plain-English feature descriptions using the Claude API",
   "scripts": {
-    "generate": "node src/generate.js",
-    "review": "node src/reviewCli.js examples/output/login.spec.js",
-    "eval": "node src/eval.js",
+    "generate": "node src/generate.ts",
+    "review": "node src/reviewCli.ts examples/output/login.spec.js",
+    "eval": "node src/eval.ts",
     "test": "node --test",
     "test:e2e": "playwright test"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0"
