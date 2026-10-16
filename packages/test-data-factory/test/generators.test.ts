@@ -1,10 +1,10 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { faker } from '@faker-js/faker';
-import { generateUsers } from '../src/generators/userGenerator.js';
-import { generateOrders, generateOrder, STATUSES } from '../src/generators/orderGenerator.js';
-import { generateProducts } from '../src/generators/productGenerator.js';
-import { applySeed } from '../src/index.js';
+import { generateUsers } from '../src/generators/userGenerator.ts';
+import { generateOrders, generateOrder, STATUSES } from '../src/generators/orderGenerator.ts';
+import { generateProducts } from '../src/generators/productGenerator.ts';
+import { applySeed } from '../src/index.ts';
 
 beforeEach(() => applySeed(1234));
 
@@ -48,6 +48,7 @@ test('only shipped or delivered orders have a ship date', () => {
 
 test('an order is never shipped before it was placed', () => {
   for (const o of generateOrders(200, { status: 'delivered' })) {
+    assert.ok(o.shippedAt, 'a delivered order needs a ship date');
     assert.ok(Date.parse(o.shippedAt) >= Date.parse(o.orderedAt), `${o.shippedAt} < ${o.orderedAt}`);
   }
 });
@@ -66,6 +67,7 @@ test('products have stock within range and a positive price', () => {
 
 test('overrides replace generated fields', () => {
   const [u] = generateUsers(1, { email: 'qa@example.com' });
+  assert.ok(u);
   assert.equal(u.email, 'qa@example.com');
 });
 
@@ -79,6 +81,7 @@ test('the same seed produces the same data, dates included', () => {
 
 test('seeded orders are never shipped after the reference date', () => {
   for (const o of generateOrders(100, { status: 'shipped' })) {
+    assert.ok(o.shippedAt, 'a shipped order needs a ship date');
     assert.ok(Date.parse(o.shippedAt) <= faker.defaultRefDate().getTime());
   }
 });

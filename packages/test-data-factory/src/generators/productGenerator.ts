@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
+import type { Product } from '../types.ts';
 
-export function generateProduct(overrides = {}) {
+export function generateProduct(overrides: Partial<Product> = {}): Product {
   return {
     id:          faker.string.uuid(),
     sku:         faker.string.alphanumeric(8).toUpperCase(),
@@ -15,6 +16,6 @@ export function generateProduct(overrides = {}) {
   };
 }
 
-export function generateProducts(count = 10, overrides = {}) {
+export function generateProducts(count = 10, overrides: Partial<Product> = {}): Product[] {
   return Array.from({ length: count }, () => generateProduct(overrides));
 }

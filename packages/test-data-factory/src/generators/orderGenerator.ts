@@ -1,9 +1,10 @@
 import { faker } from '@faker-js/faker';
+import { ORDER_STATUSES, type Order, type OrderStatus } from '../types.ts';
 
-export const STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
-const SHIPPED_STATUSES = new Set(['shipped', 'delivered']);
+export const STATUSES = ORDER_STATUSES;
+const SHIPPED_STATUSES = new Set<OrderStatus>(['shipped', 'delivered']);
 
-export function generateOrder(overrides = {}) {
+export function generateOrder(overrides: Partial<Order> = {}): Order {
   const qty       = faker.number.int({ min: 1, max: 5 });
   const price     = parseFloat(faker.commerce.price({ min: 5, max: 500 }));
   const status    = overrides.status ?? faker.helpers.arrayElement(STATUSES);
@@ -27,6 +28,6 @@ export function generateOrder(overrides = {}) {
   };
 }
 
-export function generateOrders(count = 10, overrides = {}) {
+export function generateOrders(count = 10, overrides: Partial<Order> = {}): Order[] {
   return Array.from({ length: count }, () => generateOrder(overrides));
 }

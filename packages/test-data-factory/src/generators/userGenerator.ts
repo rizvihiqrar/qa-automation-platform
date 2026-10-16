@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
+import type { User } from '../types.ts';
 
-export function generateUser(overrides = {}) {
+export function generateUser(overrides: Partial<User> = {}): User {
   const firstName = faker.person.firstName();
   const lastName  = faker.person.lastName();
   return {
@@ -22,6 +23,6 @@ export function generateUser(overrides = {}) {
   };
 }
 
-export function generateUsers(count = 10, overrides = {}) {
+export function generateUsers(count = 10, overrides: Partial<User> = {}): User[] {
   return Array.from({ length: count }, () => generateUser(overrides));
 }
