@@ -1,0 +1,1 @@
+{ "name": "api-drift-checker", "version": "1.0.0", "type": "module", "description": "Checks live API responses against an OpenAPI contract and reports drift", "scripts": { "test": "node --test", "check:live": "node src/live.js" }, "engines": { "node": ">=20" }, "license": "MIT" }
