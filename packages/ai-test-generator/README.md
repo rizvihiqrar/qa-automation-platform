@@ -46,11 +46,42 @@ node src/reviewCli.js path/to/spec.js
 
 ---
 
+## Eval: how good are the generated tests?
+
+The eval generates tests for the 10 feature descriptions in `examples/input/` and measures three things:
+
+| Measure | Meaning |
+|---|---|
+| Review pass rate | Share of generated specs with no review errors |
+| First-run pass rate | Share of generated tests that pass on the live site with **no retries** |
+| Usable as-is | Share of specs with a clean review (no errors or warnings) where every test passed |
+
+Each run also writes `FIXES.md`: one entry per spec that needed work, for a person to record the cause and the change. That file is the answer to "what did a human have to fix?"
+
+```bash
+npm run eval -- --generate --label run-1   # 10 paid API calls, then scoring
+npm run eval -- --score eval/runs/run-1    # re-score saved specs, no API calls
+```
+
+Runs are saved in `eval/runs/<label>/`: the raw generated specs, `REPORT.md`, `results.json`, `FIXES.md`, and the Playwright JSON report.
+
+**Cost:** one Claude API call per feature file, 10 per run. Most of the cost is output tokens; the run prints the output tokens for each feature. A run should cost a few dollars at most at Claude Opus 5.5 prices.
+
+**From GitHub:** add the repository secret `ANTHROPIC_API_KEY`, then run the **AI generator eval** workflow from the Actions tab. It never runs automatically. The report appears in the job summary and the run folder is uploaded as an artifact.
+
+### Why the review step matters
+
+While building the eval, a deliberately bad spec included a test with no assertion that clicked `.submit-button`. That class happens to exist on the login button, so the test **passed** its Playwright run while checking nothing. Only the review step flagged it. A pass/fail count alone would have scored it as a good test.
+
+The feature descriptions only state behaviour verified on the live site (sort orders, error messages, checkout totals), so a failing generated test points at the generator, not the description.
+
+---
+
 ## Tests
 
 | Command | What runs | Count |
 |---|---|---:|
-| `npm test` | Unit tests for the prompt, the API call (with a fake client, no network), output cleanup, argument parsing, and every review rule | 18 |
+| `npm test` | Unit tests for the prompt, the API call (with a fake client, no network), output cleanup, argument parsing, every review rule, and the eval scoring | 26 |
 | `npm run test:e2e` | The reviewed example spec, `examples/output/login.spec.js`, against the live Sauce Demo site | 4 |
 
 The example spec was generated, then reviewed: the reviewer flagged a CSS class selector, which was changed to `[data-test="inventory-item"]`. The note is in the file header.
@@ -65,9 +96,14 @@ The example spec was generated, then reviewed: the reviewer flagged a CSS class 
 │   ├── generator.js        # API call with an injectable client
 │   ├── review.js           # Review rules for generated specs
 │   ├── reviewCli.js        # CLI: review existing spec files
+│   ├── eval.js             # CLI: generate and score an eval run
+│   ├── evalReport.js       # Scoring, report, and fixes checklist
 │   └── prompts/testPrompt.js
+├── eval/
+│   ├── playwright.eval.config.js   # One run, no retries
+│   └── runs/<label>/               # Saved eval runs
 ├── examples/
-│   ├── input/              # Feature descriptions
+│   ├── input/              # 10 feature descriptions
 │   └── output/login.spec.js
 └── test/                   # Unit tests (node:test)
 ```

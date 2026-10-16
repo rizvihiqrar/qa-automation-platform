@@ -1,0 +1,47 @@
+name: AI generator eval
+
+# Manual only: each run makes 10 paid Claude API calls.
+# Needs the repository secret ANTHROPIC_API_KEY.
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: Name for this run (used as the folder name)
+        required: true
+        default: run-1
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: packages/ai-test-generator
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/ai-test-generator/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Generate and score
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run eval -- --generate --label "${{ inputs.label }}"
+
+      - name: Add report to the job summary
+        if: always()
+        run: cat "eval/runs/${{ inputs.label }}/REPORT.md" >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-${{ inputs.label }}
+          path: packages/ai-test-generator/eval/runs/${{ inputs.label }}/
+          retention-days: 30

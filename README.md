@@ -12,7 +12,7 @@ Strongest first.
 
 | Package | In plain English | Checks |
 |---|---|---:|
-| [ai-test-generator](packages/ai-test-generator) | Uses Claude to write browser tests from a feature description, then reviews the output for weak tests before anyone commits them | 22 |
+| [ai-test-generator](packages/ai-test-generator) | Uses Claude to write browser tests from a feature description, reviews the output for weak tests, and measures how often generated tests are usable as-is | 30 |
 | [qa-for-ai-features](packages/qa-for-ai-features) | Tests an AI feature's response format, response time, and safety refusals | 11 |
 | [flaky-test-analyzer](packages/flaky-test-analyzer) | Reads results from many test runs and points out the tests that only pass after a retry | 8 |
 | [worker-scaling-benchmark](packages/worker-scaling-benchmark) | Measures whether running tests in parallel actually makes a suite faster | 10 |
