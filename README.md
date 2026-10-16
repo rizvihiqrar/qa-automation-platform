@@ -77,6 +77,21 @@ Requires Node 20 or later.
 
 ---
 
+## Type-Checking
+
+The packages are JavaScript today. A shared `tsconfig.base.json` type-checks them (`checkJs`, no build step), and the CI `typecheck` job runs it on every push:
+
+```bash
+npm ci
+npm run typecheck   # 8 packages so far; the list is in scripts/typecheck.mjs
+```
+
+What it does and doesn't catch: it catches wrong use of anything typed, such as Node's APIs (`fs.readFilSync` fails with "Did you mean readFileSync?") and functions with JSDoc types. In plain JavaScript, TypeScript treats every parameter as optional, so a call missing an argument to an untyped function passes. That gap is why the roadmap moves packages to TypeScript next, one per day.
+
+The first pass found 19 errors. Two were real: code assumed `server.address()` always returns an object, but it returns a string for pipe and socket listeners. Both are fixed (webhook-harness, api-drift-checker), along with the same pattern in two packages not yet type-checked (k6-performance, a11y-aoda-audit). The rest were types that only needed writing down (JSDoc), and one test that passes bad input on purpose is marked `@ts-expect-error`.
+
+---
+
 ## Bugs Found and Fixed While Building This
 
 Bringing these projects together surfaced real defects. Each fix is described in the package README.
