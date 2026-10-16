@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 9 * * *'   # nightly regression, 09:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Unit and integration
+          - { package: test-data-factory,        browsers: false, command: npm test }
+          - { package: flaky-test-analyzer,      browsers: false, command: npm test }
+          - { package: worker-scaling-benchmark, browsers: false, command: npm test }
+          - { package: matrix-build-demo,        browsers: false, command: npm test }
+          - { package: pipeline-templates-demo,  browsers: false, command: npm run lint && npm test }
+          - { package: mutation-testing-demo,    browsers: false, command: npm test && npm run test:mutation }
+          # API
+          - { package: qa-practice-api,          browsers: false, command: npm test }
+          - { package: graphql-test-suite,       browsers: false, command: npm test }
+          - { package: postman-api-collection,   browsers: false, command: npm test }
+          - { package: contract-testing-demo,    browsers: false, command: npm test }
+          - { package: qa-for-ai-features,       browsers: false, command: npx playwright test }
+          # Browser
+          - { package: multi-user-flow-patterns, browsers: true,  command: npm test }
+          - { package: bdd-playwright-demo,      browsers: true,  command: npm test }
+          - { package: ai-test-generator,        browsers: true,  command: npm test && npm run review && npm run test:e2e }
+    defaults:
+      run:
+        working-directory: packages/${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
+
+      - run: npm ci
+
+      - name: Install Playwright browser
+        if: matrix.browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Test
+        run: ${{ matrix.command }}
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.package }}
+          path: |
+            packages/${{ matrix.package }}/playwright-report/
+            packages/${{ matrix.package }}/reports/
+          if-no-files-found: ignore
+          retention-days: 7
