@@ -23,7 +23,7 @@ Status: ✅ done · 🔶 in progress · ⬜ planned
 | 6 | **Defect report linter**: required fields, repro steps, expected vs actual, severity | Defect reports, bug lifecycle | ✅ 13 rules, a score per report, Markdown and JSON input, 20 tests |
 | 7 | **Webhook harness**: signature checks, retries, idempotency | Webhooks, REST APIs | ✅ signing, replay protection, once-only processing incl. concurrent duplicates, retry rules; 20 tests |
 | 8 | **Log signature grouper**: group error logs by normalized signature | Log analysis, root cause | ✅ plain and JSON logs, stack traces kept together, new/grown/gone vs a baseline; 15 tests |
-| 9 | **OpenAPI drift checker** against qa-practice-api | API testing, contract thinking | ⬜ |
+| 9 | **OpenAPI drift checker** against qa-practice-api | API testing, contract thinking | ✅ found and fixed 2 real API bugs (text price stored as null, negative stock); live check 20/20; 16 tests |
 | 10 | **Exploratory session tracker**: charters, time boxes, findings report | Exploratory testing, QA documentation | ⬜ |
 | 11 | **k6 performance suite** with thresholds against qa-practice-api | Performance testing (re-add to resume only once this exists) | ⬜ |
 | 12 | **Release gate**: block a deploy on smoke results; post a summary | CI/CD, production deployments | ⬜ |
