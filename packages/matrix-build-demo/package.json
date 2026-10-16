@@ -1,0 +1,16 @@
+{
+  "name": "matrix-build-demo",
+  "version": "1.0.0",
+  "description": "Utility library demonstrating matrix CI builds across multiple Node.js versions and operating systems",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

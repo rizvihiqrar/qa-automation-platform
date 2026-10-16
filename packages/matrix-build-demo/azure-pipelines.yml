@@ -1,0 +1,81 @@
+# Azure DevOps Pipelines — Matrix Build Demo
+#
+# Azure Pipelines natively supports matrix strategy at the job level.
+# Each entry under strategy.matrix becomes a separate parallel job with
+# the variable (nodeVersion) injected as $(nodeVersion).
+#
+# This pipeline also demonstrates:
+#   - PublishTestResults@2: shows pass/fail breakdown per matrix cell in the
+#     Azure DevOps Tests tab, labelled by Node version
+#   - PublishPipelineArtifact@1: uploads the coverage report once (Node 20 only)
+#
+# Azure Pipelines docs:
+#   https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema
+
+name: Matrix Build Demo
+
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+# ── Matrix: one parallel job per Node version ────────────────────────────────
+strategy:
+  matrix:
+    Node18:
+      nodeVersion: '18.x'
+    Node20:
+      nodeVersion: '20.x'
+    Node22:
+      nodeVersion: '22.x'
+  # maxParallel defaults to the number of matrix entries — all run at once.
+  # Set maxParallel: 1 to run sequentially (useful for resource-constrained agents).
+  maxParallel: 3
+
+steps:
+  # ── Setup ──────────────────────────────────────────────────────────────────
+  - task: NodeTool@0
+    inputs:
+      versionSpec: $(nodeVersion)
+    displayName: 'Use Node $(nodeVersion)'
+
+  - script: npm ci
+    displayName: 'Install dependencies'
+
+  # ── Test ───────────────────────────────────────────────────────────────────
+  - script: |
+      npm test -- --ci \
+        --reporters=default \
+        --reporters=jest-junit \
+        --coverageReporters=text \
+        --coverageReporters=cobertura \
+        --coverage
+    displayName: 'Run tests (Node $(nodeVersion))'
+    env:
+      JEST_JUNIT_OUTPUT_DIR: test-results
+      JEST_JUNIT_OUTPUT_NAME: junit-$(nodeVersion).xml
+
+  # ── Publish results ────────────────────────────────────────────────────────
+  # PublishTestResults shows each matrix cell as a separate test run in the
+  # Azure DevOps Tests tab — testRunTitle makes them easy to distinguish.
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: 'test-results/junit-$(nodeVersion).xml'
+      testRunTitle: 'Node $(nodeVersion)'
+    displayName: 'Publish test results (Node $(nodeVersion))'
+
+  # Publish coverage only once (Node 20) to avoid redundant uploads.
+  - task: PublishPipelineArtifact@1
+    condition: and(always(), eq(variables['nodeVersion'], '20.x'))
+    inputs:
+      targetPath: coverage/
+      artifactName: coverage-report
+    displayName: 'Publish coverage (Node 20 only)'

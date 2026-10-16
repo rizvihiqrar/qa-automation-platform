@@ -1,0 +1,49 @@
+# GitLab CI — Matrix Build Demo
+#
+# GitLab CI doesn't have a native matrix keyword in the free tier, so this
+# uses YAML anchors (&test_template / *test_definition) to share job config
+# and creates one explicit job per Node version.
+#
+# GitLab 15.9+ supports a matrix: keyword under parallel: — this anchor
+# pattern is the backwards-compatible approach that works on all runners.
+#
+# GitLab docs: https://docs.gitlab.com/ee/ci/yaml/
+
+stages:
+  - test
+
+# YAML anchor: define the common job body once, merge into each job below.
+.test_template: &test_definition
+  stage: test
+  script:
+    - npm ci
+    - npm test
+  cache:
+    key: $CI_COMMIT_REF_SLUG-$NODE_VERSION
+    paths:
+      - node_modules/
+  artifacts:
+    when: always
+    reports:
+      junit: junit.xml
+    expire_in: 7 days
+
+# ── One job per Node version ─────────────────────────────────────────────────
+
+test:node18:
+  <<: *test_definition
+  image: node:18-alpine
+  variables:
+    NODE_VERSION: '18'
+
+test:node20:
+  <<: *test_definition
+  image: node:20-alpine
+  variables:
+    NODE_VERSION: '20'
+
+test:node22:
+  <<: *test_definition
+  image: node:22-alpine
+  variables:
+    NODE_VERSION: '22'

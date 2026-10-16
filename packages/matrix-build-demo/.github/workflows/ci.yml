@@ -1,0 +1,53 @@
+# Matrix CI — runs tests against every combination of Node version and OS.
+#
+# Strategy:
+#   fail-fast: false  →  all matrix cells run even if one fails; lets you see
+#                         which exact version/OS combination broke rather than
+#                         stopping at the first failure.
+#
+# GitHub Actions docs:
+#   https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+
+name: Matrix CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Node ${{ matrix.node-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Keep running all matrix cells even if one fails so you can see the
+      # full cross-version/OS failure picture in one pipeline run.
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --ci
+
+      - name: Upload coverage (Ubuntu / Node 20 only)
+        # Only upload coverage once — avoid 9 identical uploads for the same report.
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 20
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
