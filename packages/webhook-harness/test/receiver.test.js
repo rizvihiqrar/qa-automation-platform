@@ -22,6 +22,7 @@ before(async () => {
 });
 after(() => server.close());
 
+/** @param {{ id?: string | null, body?: string, secret?: string, ts?: number, signature?: string, method?: string }} [options] */
 async function post({ id = 'evt', body = '{"type":"t"}', secret = SECRET, ts = Math.floor(Date.now() / 1000), signature, method = 'POST' } = {}) {
   const headers = { [HEADERS.timestamp]: String(ts), [HEADERS.signature]: signature ?? sign(secret, ts, body) };
   if (id) headers[HEADERS.id] = id;

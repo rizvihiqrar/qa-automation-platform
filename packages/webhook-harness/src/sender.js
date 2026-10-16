@@ -14,6 +14,15 @@ export function backoffDelays(maxAttempts, baseDelayMs) {
   return Array.from({ length: maxAttempts - 1 }, (_, i) => baseDelayMs * 2 ** i);
 }
 
+/**
+ * Only `status` is read from the response, so a test double can return just that.
+ * @param {{
+ *   url: string, secret: string, event: unknown, id?: string,
+ *   maxAttempts?: number, baseDelayMs?: number,
+ *   sleep?: (ms: number) => Promise<unknown>, nowMs?: () => number,
+ *   fetchImpl?: (url: string, init: RequestInit) => Promise<{ status: number }>,
+ * }} options
+ */
 export async function deliver({
   url, secret, event,
   id = randomUUID(),

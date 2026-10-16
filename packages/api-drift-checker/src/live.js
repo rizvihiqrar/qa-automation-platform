@@ -16,7 +16,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const spec = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'spec', 'qa-practice-api.openapi.json'), 'utf8'));
 
 const freePort = () => new Promise((resolve) => {
-  const srv = net.createServer().listen(0, '127.0.0.1', () => { const { port } = srv.address(); srv.close(() => resolve(port)); });
+  const srv = net.createServer().listen(0, '127.0.0.1', () => {
+    // address() is a string for pipe/socket listeners; this one is TCP.
+    const address = srv.address();
+    srv.close(() => resolve(typeof address === 'object' && address ? address.port : 0));
+  });
 });
 
 async function waitForHealth(url, timeoutMs = 15000) {

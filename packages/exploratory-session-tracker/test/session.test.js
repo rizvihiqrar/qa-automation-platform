@@ -79,6 +79,7 @@ test('a missing start time leaves duration unknown instead of guessing', () => {
 });
 
 test('newSessionTemplate needs a charter and round-trips through the parser', () => {
+  // @ts-expect-error the charter is left out on purpose to test the error
   assert.throws(() => newSessionTemplate({}), /charter is required/);
   const text = newSessionTemplate({ charter: 'Explore refunds with partial amounts to find rounding errors', area: 'Payments', tester: 'QA', timebox: 45, started: '2026-10-17T14:00' });
   const s = parseSession(text);

@@ -67,7 +67,9 @@ export function startServer(listener, port = 0) {
   const server = http.createServer(listener);
   return new Promise((resolve) => {
     server.listen(port, '127.0.0.1', () => {
-      const { port: actual } = server.address();
+      // address() is a string for pipe/socket listeners; this server always listens on TCP.
+      const address = server.address();
+      const actual = typeof address === 'object' && address ? address.port : port;
       resolve({ url: `http://127.0.0.1:${actual}/webhooks`, close: () => new Promise((r) => server.close(r)) });
     });
   });

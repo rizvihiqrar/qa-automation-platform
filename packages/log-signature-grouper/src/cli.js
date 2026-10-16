@@ -31,6 +31,11 @@ export function parseArgs(argv) {
 
 const load = (files) => files.flatMap((f) => parseLog(fs.readFileSync(f, 'utf8')));
 
+/**
+ * @param {Array<{ count: number, level: string, signature: string, services: string[] }>} groups
+ * @param {string} format 'text' or 'md'
+ * @param {(group: any) => string} [extra] text added after each count
+ */
 function table(groups, format, extra = () => '') {
   if (format === 'md') {
     return ['| Count | Level | Pattern | Services |', '|---:|---|---|---|',
