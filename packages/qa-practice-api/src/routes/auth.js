@@ -1,38 +1,47 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import * as store from '../db/store.js';
+import { hashPassword, verifyPassword } from '../security/password.js';
 import { signToken, requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 const safe = ({ password, ...rest }) => rest;
 
-router.post('/register', (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'name, email, and password are required' });
+// Hashing happens in src/security/password.js, off the event loop (see there).
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'name, email, and password are required' });
+    }
+    if (store.users.findOne({ email })) {
+      return res.status(409).json({ error: 'Email already in use' });
+    }
+    const hash = await hashPassword(password);
+    // Re-check: another request may have registered the same email while hashing.
+    if (store.users.findOne({ email })) {
+      return res.status(409).json({ error: 'Email already in use' });
+    }
+    const user = store.users.insert({ name, email, password: hash, role: 'user' });
+    res.status(201).json({ user: safe(user), token: signToken({ id: user.id, role: user.role }) });
+  } catch {
+    res.status(500).json({ error: 'Registration failed' });
   }
-  if (store.users.findOne({ email })) {
-    return res.status(409).json({ error: 'Email already in use' });
-  }
-  const user = store.users.insert({
-    name,
-    email,
-    password: bcrypt.hashSync(password, 10),
-    role: 'user',
-  });
-  res.status(201).json({ user: safe(user), token: signToken({ id: user.id, role: user.role }) });
 });
 
-router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'email and password are required' });
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email and password are required' });
+    }
+    const user = store.users.findOne({ email });
+    if (!user || !(await verifyPassword(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    res.json({ user: safe(user), token: signToken({ id: user.id, role: user.role }) });
+  } catch {
+    res.status(500).json({ error: 'Login failed' });
   }
-  const user = store.users.findOne({ email });
-  if (!user || !bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-  res.json({ user: safe(user), token: signToken({ id: user.id, role: user.role }) });
 });
 
 router.get('/me', requireAuth, (req, res) => {
