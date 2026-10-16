@@ -6,15 +6,36 @@
 // their braces, which is enough for generated specs but can be fooled by braces
 // inside string literals.
 
+export type Severity = 'error' | 'warning';
+
+export interface Finding {
+  severity: Severity;
+  rule: string;
+  line: number;
+  message: string;
+}
+
+export interface FoundTest {
+  title: string;
+  line: number;
+  body: string;
+}
+
+export interface Review {
+  tests: number;
+  findings: Finding[];
+  passed: boolean;
+}
+
 const TEST_CALL = /\btest\(\s*(['"`])(.+?)\1\s*,\s*async\b/g;
 
-function lineOf(source, index) {
+function lineOf(source: string, index: number): number {
   return source.slice(0, index).split('\n').length;
 }
 
 // Returns the test body: the text between the `{` after the arrow and its matching `}`.
 // (Searching from the arrow skips the `({ page })` parameter brace.)
-function blockBody(source, start) {
+function blockBody(source: string, start: number): string {
   const arrow = source.indexOf('=>', start);
   if (arrow === -1) return '';
   const open = source.indexOf('{', arrow);
@@ -27,17 +48,17 @@ function blockBody(source, start) {
   return source.slice(open + 1);
 }
 
-export function findTests(source) {
+export function findTests(source: string): FoundTest[] {
   return [...source.matchAll(TEST_CALL)].map((m) => ({
-    title: m[2],
+    title: m[2] ?? '',
     line: lineOf(source, m.index),
     body: blockBody(source, m.index + m[0].length),
   }));
 }
 
-export function reviewSpec(source) {
-  const findings = [];
-  const add = (severity, rule, line, message) => findings.push({ severity, rule, line, message });
+export function reviewSpec(source: string): Review {
+  const findings: Finding[] = [];
+  const add = (severity: Severity, rule: string, line: number, message: string) => findings.push({ severity, rule, line, message });
 
   if (source.includes('```')) add('error', 'markdown-fence', lineOf(source, source.indexOf('```')), 'Output still contains a markdown code fence');
 
@@ -65,7 +86,7 @@ export function reviewSpec(source) {
   };
 }
 
-export function formatReview({ tests, findings, passed }) {
+export function formatReview({ tests, findings, passed }: Review): string {
   const lines = findings.map((f) => `  ${f.severity.padEnd(7)} line ${String(f.line).padStart(3)}  ${f.rule}: ${f.message}`);
   const summary = `${tests} test(s), ${findings.filter((f) => f.severity === 'error').length} error(s), ${findings.filter((f) => f.severity === 'warning').length} warning(s): ${passed ? 'PASS' : 'FAIL'}`;
   return [...lines, summary].join('\n');

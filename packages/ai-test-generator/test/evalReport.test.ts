@@ -1,10 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { collectRunResults, summarize, toMarkdown, fixesTemplate, stripLocalPaths } from '../src/evalReport.js';
-import { parseEvalArgs } from '../src/eval.js';
+import { collectRunResults, summarize, toMarkdown, fixesTemplate, stripLocalPaths } from '../src/evalReport.ts';
+import { parseEvalArgs } from '../src/eval.ts';
+import type { Finding, Review, Severity } from '../src/review.ts';
+import type { RunCounts, SummaryRow } from '../src/evalReport.ts';
 
-const review = (passed, findings = []) => ({ tests: 3, passed, findings });
-const counts = (passed, failed = 0) => ({ total: passed + failed, passed, failed, flaky: 0, skipped: 0 });
+const finding = (severity: Severity, rule: string): Finding => ({ severity, rule, line: 1, message: rule });
+const review = (passed: boolean, findings: Finding[] = []): Review => ({ tests: 3, passed, findings });
+const counts = (passed: number, failed = 0): RunCounts => ({ total: passed + failed, passed, failed, flaky: 0, skipped: 0 });
+const row = (rows: SummaryRow[], feature: string): SummaryRow => {
+  const r = rows.find((x) => x.feature === feature);
+  assert.ok(r, `no row for ${feature}`);
+  return r;
+};
 
 test('collectRunResults counts statuses per spec file, including nested suites', () => {
   const report = {
@@ -32,8 +40,8 @@ test('collectRunResults counts statuses per spec file, including nested suites',
 test('summarize computes review, pass and usable-as-is rates', () => {
   const { rows, totals } = summarize([
     { feature: 'login', review: review(true), run: counts(4) },
-    { feature: 'cart', review: review(true, [{ severity: 'warning', rule: 'fixed-wait' }]), run: counts(3) },
-    { feature: 'sort', review: review(false, [{ severity: 'error', rule: 'no-assertion' }]), run: counts(2, 2) },
+    { feature: 'cart', review: review(true, [finding('warning', 'fixed-wait')]), run: counts(3) },
+    { feature: 'sort', review: review(false, [finding('error', 'no-assertion')]), run: counts(2, 2) },
     { feature: 'logout', review: review(true), run: null },
   ]);
   assert.equal(totals.features, 4);
@@ -43,17 +51,17 @@ test('summarize computes review, pass and usable-as-is rates', () => {
   assert.equal(totals.testPassRate, 82);
   assert.equal(totals.clean, 1); // only login: clean review and every test passed
   assert.equal(totals.ran, 3);
-  assert.deepEqual(rows.find((r) => r.feature === 'cart').rules, ['fixed-wait']);
-  assert.equal(rows.find((r) => r.feature === 'logout').ran, false);
+  assert.deepEqual(row(rows, 'cart').rules, ['fixed-wait']);
+  assert.equal(row(rows, 'logout').ran, false);
 });
 
 test('a spec whose tests all pass but has review warnings is not usable as-is', () => {
-  const { rows } = summarize([{ feature: 'x', review: review(true, [{ severity: 'warning', rule: 'brittle-selector' }]), run: counts(3) }]);
-  assert.equal(rows[0].clean, false);
+  const { rows } = summarize([{ feature: 'x', review: review(true, [finding('warning', 'brittle-selector')]), run: counts(3) }]);
+  assert.equal(row(rows, 'x').clean, false);
 });
 
 test('rates are zero rather than NaN when nothing ran', () => {
-  const { totals } = summarize([{ feature: 'x', review: review(false, [{ severity: 'error', rule: 'no-tests' }]), run: null }]);
+  const { totals } = summarize([{ feature: 'x', review: review(false, [finding('error', 'no-tests')]), run: null }]);
   assert.equal(totals.testPassRate, 0);
   assert.equal(totals.cleanRate, 0);
 });

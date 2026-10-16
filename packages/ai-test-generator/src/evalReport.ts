@@ -1,31 +1,81 @@
 // Scores an eval run: for each feature, did the generated spec pass review,
 // and how many of its tests passed when run? Pure functions, unit-tested.
 
-import path from 'path';
+import path from 'node:path';
+import type { Review } from './review.ts';
+
+// The parts of a Playwright JSON report this module reads.
+export interface PlaywrightTest { status?: string }
+export interface PlaywrightSpec { title?: string; file?: string; tests?: PlaywrightTest[] }
+export interface PlaywrightSuite { file?: string; specs?: PlaywrightSpec[]; suites?: PlaywrightSuite[] }
+export interface PlaywrightReport { suites?: PlaywrightSuite[] }
+
+export interface RunCounts {
+  total: number;
+  passed: number;
+  failed: number;
+  flaky: number;
+  skipped: number;
+}
+
+export interface FeatureResult {
+  feature: string;
+  review: Review;
+  // null when the spec never ran (for example, it didn't load).
+  run: RunCounts | null;
+}
+
+export interface SummaryRow {
+  feature: string;
+  reviewPassed: boolean;
+  errors: number;
+  warnings: number;
+  rules: string[];
+  ran: boolean;
+  tests: number;
+  passed: number;
+  failed: number;
+  clean: boolean;
+}
+
+export interface Summary {
+  rows: SummaryRow[];
+  totals: {
+    features: number;
+    reviewPassed: number;
+    ran: number;
+    testsRun: number;
+    testsPassed: number;
+    clean: number;
+    reviewPassRate: number;
+    testPassRate: number;
+    cleanRate: number;
+  };
+}
 
 // Removes absolute file paths (which carry the local username) from a parsed
 // report before it is saved, so committed runs don't leak machine details.
 const LOCAL_PATH = /[A-Za-z]:[\\/][^\s"'`<>|]*|\/(?:home|Users|runner)\/[^\s"'`<>|]*/g;
-export function stripLocalPaths(value) {
-  if (typeof value === 'string') return value.replace(LOCAL_PATH, '<local-path>');
-  if (Array.isArray(value)) return value.map(stripLocalPaths);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripLocalPaths(v)]));
+export function stripLocalPaths<T>(value: T): T {
+  if (typeof value === 'string') return value.replace(LOCAL_PATH, '<local-path>') as T;
+  if (Array.isArray(value)) return value.map(stripLocalPaths) as T;
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripLocalPaths(v)])) as T;
   return value;
 }
 
 // Playwright test status -> bucket. A flaky test passed only after a retry.
-const BUCKET = { expected: 'passed', unexpected: 'failed', flaky: 'flaky', skipped: 'skipped' };
+const BUCKET: Record<string, Exclude<keyof RunCounts, 'total'>> = { expected: 'passed', unexpected: 'failed', flaky: 'flaky', skipped: 'skipped' };
 
 // Reads a Playwright JSON report into per-file counts, keyed by spec file name.
-export function collectRunResults(report) {
-  const byFile = new Map();
-  const walk = (suite, file) => {
+export function collectRunResults(report: PlaywrightReport): Map<string, RunCounts> {
+  const byFile = new Map<string, RunCounts>();
+  const walk = (suite: PlaywrightSuite, file: string | undefined) => {
     for (const child of suite.suites ?? []) walk(child, child.file ?? file);
     for (const spec of suite.specs ?? []) {
       const key = path.basename(spec.file ?? file ?? '');
       const counts = byFile.get(key) ?? { total: 0, passed: 0, failed: 0, flaky: 0, skipped: 0 };
       for (const test of spec.tests ?? []) {
-        const bucket = BUCKET[test.status];
+        const bucket = BUCKET[test.status ?? ''];
         if (!bucket) continue;
         counts.total += 1;
         counts[bucket] += 1;
@@ -37,12 +87,10 @@ export function collectRunResults(report) {
   return byFile;
 }
 
-const pct = (n, d) => (d === 0 ? 0 : Math.round((n / d) * 100));
+const pct = (n: number, d: number) => (d === 0 ? 0 : Math.round((n / d) * 100));
 
-// features: [{ feature, review: { tests, findings, passed }, run: counts | null }]
-// run is null when the spec never ran (for example, it didn't load).
-export function summarize(features) {
-  const rows = features.map(({ feature, review, run }) => {
+export function summarize(features: FeatureResult[]): Summary {
+  const rows = features.map(({ feature, review, run }): SummaryRow => {
     const errors = review.findings.filter((f) => f.severity === 'error').length;
     const warnings = review.findings.filter((f) => f.severity === 'warning').length;
     const allPassed = run !== null && run.total > 0 && run.passed === run.total;
@@ -78,7 +126,7 @@ export function summarize(features) {
   };
 }
 
-export function toMarkdown({ rows, totals }, { label, model }) {
+export function toMarkdown({ rows, totals }: Summary, { label, model }: { label: string; model: string }): string {
   const lines = [
     `# Eval run: ${label}`,
     '',
@@ -105,7 +153,7 @@ export function toMarkdown({ rows, totals }, { label, model }) {
 
 // A checklist for the human reviewer: every spec that needs work, with space to
 // record what was changed. This is the "what did a person have to fix" record.
-export function fixesTemplate({ rows }, { label }) {
+export function fixesTemplate({ rows }: Summary, { label }: { label: string }): string {
   const needsWork = rows.filter((r) => !r.clean);
   const lines = [
     `# Human fixes: ${label}`,

@@ -39,7 +39,7 @@ The resume leads with TypeScript, so convert one area a day, keeping CI green af
 | 15 | Shared `tsconfig`, type-check job in CI | ✅ `checkJs` over 8 packages, CI `typecheck` job; first pass fixed 2 unsafe `server.address()` uses; found that untyped JS calls aren't arity-checked |
 | 16 | test-data-factory | ✅ strict TypeScript run by Node 24 type stripping (no build); typed User/Order/Product; CI on Node 24 |
 | 17 | flaky-test-analyzer, worker-scaling-benchmark | ✅ typed Playwright report and benchmark models; strict index checks caught two empty-input bugs (median returned NaN, summarize crashed) |
-| 18 | ai-test-generator | ⬜ |
+| 18 | ai-test-generator | ✅ typed review findings, eval scoring and Playwright report; the API client is a small typed interface the fake test client also satisfies |
 | 19 | qa-for-ai-features, qa-practice-api | ⬜ |
 | 20 | multi-user-flow-patterns, bdd-playwright-demo | ⬜ |
 | 21 | Remaining packages: every package under the type-check. The tools and suites move to TypeScript; the CI demos (matrix, pipeline templates, mutation, contract, GraphQL, Postman) stay JavaScript under `checkJs`, since they exist to show CI patterns, not code | ⬜ |
