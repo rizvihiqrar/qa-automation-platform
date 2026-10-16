@@ -1,0 +1,1 @@
+{ "name": "webhook-harness", "version": "1.0.0", "type": "module", "description": "Webhook signing, verification, replay protection, idempotency and retry tests", "scripts": { "test": "node --test", "demo": "node src/demo.js" }, "engines": { "node": ">=20" }, "license": "MIT" }
