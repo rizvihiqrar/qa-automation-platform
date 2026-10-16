@@ -1,0 +1,1 @@
+{ "name": "release-gate", "version": "1.0.0", "type": "module", "description": "Go / no-go release decision from smoke tests, contract checks and performance thresholds", "scripts": { "test": "node --test" }, "engines": { "node": ">=20" }, "license": "MIT" }
