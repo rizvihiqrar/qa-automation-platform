@@ -1,0 +1,1 @@
+{ "name": "k6-performance", "version": "1.0.0", "type": "module", "description": "k6 smoke, load and spike tests with thresholds against qa-practice-api", "scripts": { "test": "node --test", "perf": "node src/run.js smoke load spike", "perf:ci": "node src/run.js smoke load" }, "engines": { "node": ">=20" }, "license": "MIT" }
