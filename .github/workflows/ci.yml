@@ -23,6 +23,7 @@ jobs:
         include:
           # Unit and integration
           - { package: test-data-factory,        browsers: false, command: npm test }
+          - { package: sql-data-integrity,       browsers: false, command: npm test && npm run check }
           - { package: flaky-test-analyzer,      browsers: false, command: npm test }
           - { package: worker-scaling-benchmark, browsers: false, command: npm test }
           - { package: matrix-build-demo,        browsers: false, command: npm test }

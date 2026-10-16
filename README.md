@@ -1,6 +1,6 @@
 # QA Automation Platform
 
-One repository of test automation work, run by one CI pipeline: browser tests, API tests, contract tests, AI-assisted test generation, test data, and the tooling that keeps a suite trustworthy.
+One repository of test automation work, run by one CI pipeline: browser tests, API tests, contract tests, AI-assisted test generation, test data, SQL data-integrity checks, and the tooling that keeps a suite trustworthy.
 
 **For non-technical readers:** each folder under `packages/` is a small project that tests something, or helps testers do their job. The table below says what each one does in plain English. Every project runs automatically on each change and every night, and the green or red result is visible on the Actions tab.
 
@@ -20,6 +20,7 @@ Strongest first.
 | [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with its own API test suite | 32 |
 | [multi-user-flow-patterns](packages/multi-user-flow-patterns) | Runs several users at once to catch bugs that only appear when people share a system | 9 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios |
+| [sql-data-integrity](packages/sql-data-integrity) | Runs 15 SQL rules over an orders database and lists the exact rows that break them: orphans, duplicates, wrong totals, mismatched payments | 33 |
 | [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 25 |
 | [mutation-testing-demo](packages/mutation-testing-demo) | Deliberately breaks the code to prove the tests would notice (89.1% caught) | 89 |
 | [postman-api-collection](packages/postman-api-collection) | API checks in Postman, runnable from the command line | 25 |
@@ -27,7 +28,7 @@ Strongest first.
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 
-About 400 automated tests and checks in total.
+15 packages, about 440 automated tests and checks in total.
 
 ---
 
@@ -37,7 +38,7 @@ About 400 automated tests and checks in total.
 flowchart LR
   subgraph CI["GitHub Actions: on push, pull request, and nightly"]
     direction TB
-    U[Unit and integration<br/>test-data-factory, matrix, pipeline, mutation]
+    U[Unit and integration<br/>test data, SQL integrity, matrix, pipeline, mutation]
     A[API<br/>qa-practice-api, GraphQL, Postman, Pact, AI features]
     B[Browser<br/>multi-user, BDD, AI-generated specs]
     T[Tooling<br/>flaky analyzer, worker benchmark]
