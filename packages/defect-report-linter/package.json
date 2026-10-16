@@ -1,0 +1,1 @@
+{ "name": "defect-report-linter", "version": "1.0.0", "type": "module", "description": "Checks defect reports for missing steps, results, severity and evidence, and scores them", "scripts": { "test": "node --test", "lint": "node src/cli.js examples/" }, "engines": { "node": ">=20" }, "license": "MIT" }
