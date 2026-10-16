@@ -1,0 +1,10 @@
+node_modules/
+playwright-report/
+test-results/
+blob-report/
+coverage/
+reports/
+.stryker-tmp/
+*.log
+.env
+.DS_Store
