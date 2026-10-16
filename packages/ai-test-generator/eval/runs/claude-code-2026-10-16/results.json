@@ -1,0 +1,135 @@
+{
+  "rows": [
+    {
+      "feature": "feature-cart-persistence",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-cart",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-checkout-complete",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-checkout-info",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-checkout-overview",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-inventory-sort",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-login",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-logout",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "clean": true
+    },
+    {
+      "feature": "feature-product-details",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 4,
+      "passed": 3,
+      "failed": 1,
+      "clean": false
+    },
+    {
+      "feature": "feature-reset-app-state",
+      "reviewPassed": true,
+      "errors": 0,
+      "warnings": 0,
+      "rules": [],
+      "ran": true,
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "clean": true
+    }
+  ],
+  "totals": {
+    "features": 10,
+    "reviewPassed": 10,
+    "ran": 10,
+    "testsRun": 43,
+    "testsPassed": 42,
+    "clean": 9,
+    "reviewPassRate": 100,
+    "testPassRate": 98,
+    "cleanRate": 90
+  }
+}
