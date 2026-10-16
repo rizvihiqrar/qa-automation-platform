@@ -1,0 +1,19 @@
+{
+  // Shared settings for type-checking the packages' JavaScript (no build, no emit).
+  // Strictness is off for now so the first pass reports real mistakes (unknown
+  // properties, wrong argument counts) rather than missing annotations; it is
+  // tightened package by package as each one moves to TypeScript (Days 16-21).
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"]
+  }
+}

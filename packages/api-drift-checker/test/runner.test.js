@@ -56,6 +56,7 @@ test('a matching API has no drift', async () => {
 });
 
 test('each kind of drift is caught at the right step', async () => {
+  /** @type {Array<[keyof typeof drift, string[]]>} */
   const cases = [
     ['leakPassword', ['log in:extra']],
     ['badStatus', ['log in:enum']],

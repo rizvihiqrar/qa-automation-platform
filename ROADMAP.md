@@ -36,7 +36,7 @@ The resume leads with TypeScript, so convert one area a day, keeping CI green af
 
 | Day | Scope | Status |
 |---:|---|---|
-| 15 | Shared `tsconfig`, type-check job in CI | ⬜ |
+| 15 | Shared `tsconfig`, type-check job in CI | ✅ `checkJs` over 8 packages, CI `typecheck` job; first pass fixed 2 unsafe `server.address()` uses; found that untyped JS calls aren't arity-checked |
 | 16 | test-data-factory | ⬜ |
 | 17 | flaky-test-analyzer, worker-scaling-benchmark | ⬜ |
 | 18 | ai-test-generator | ⬜ |

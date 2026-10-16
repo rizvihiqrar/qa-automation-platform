@@ -38,6 +38,10 @@ export function decide(policyInput, results) {
   return { decision: reasons.length === 0 ? 'go' : 'no-go', reasons, checks, policy };
 }
 
+/**
+ * @param {{ decision: string, reasons: string[], checks: Array<{ name: string, status: string, detail: string }> }} outcome
+ * @param {{ version?: string }} [options]
+ */
 export function formatMarkdown({ decision, reasons, checks }, { version } = {}) {
   const lines = [
     `## Release gate${version ? ` for ${version}` : ''}: ${decision === 'go' ? '✅ GO' : '⛔ NO-GO'}`,
