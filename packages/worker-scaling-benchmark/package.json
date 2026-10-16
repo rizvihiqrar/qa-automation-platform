@@ -1,0 +1,13 @@
+{
+  "name": "worker-scaling-benchmark",
+  "version": "1.0.0",
+  "description": "Measures how a Playwright suite's runtime scales with worker count",
+  "type": "module",
+  "bin": { "worker-scaling-benchmark": "src/bench.js" },
+  "scripts": {
+    "test": "node --test",
+    "bench": "node src/bench.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
