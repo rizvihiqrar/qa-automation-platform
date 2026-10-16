@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 export const PACKAGES = [
+  'test-data-factory',
   'flaky-test-analyzer',
   'worker-scaling-benchmark',
   'defect-report-linter',
