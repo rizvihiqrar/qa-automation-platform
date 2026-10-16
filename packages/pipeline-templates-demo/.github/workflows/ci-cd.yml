@@ -1,0 +1,94 @@
+# GitHub Actions — CI/CD Pipeline (calls the reusable workflow)
+#
+# This is the CONSUMER — it calls reusable-ci.yml the same way that
+# azure-pipelines.yml calls .azure/templates/jobs/ci-job.yml.
+#
+# Pipeline:
+#   ci (reusable workflow) → deploy-staging → deploy-prod
+#
+# Comparison with Azure DevOps:
+#   Azure: - template: .azure/templates/jobs/ci-job.yml
+#   GitHub:   uses: ./.github/workflows/reusable-ci.yml
+#
+# GitHub Actions reusable workflow docs:
+#   https://docs.github.com/en/actions/using-workflows/reusing-workflows
+
+name: CI/CD — Template Pattern
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Call the reusable CI workflow ─────────────────────────────────────────
+  # `uses:` references a workflow file; `with:` passes parameters.
+  # This is equivalent to a template: reference in Azure DevOps.
+  ci:
+    uses: ./.github/workflows/reusable-ci.yml
+    with:
+      node-version: '20'
+      upload-coverage: true
+
+  # ── Deploy to staging ─────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [ci]
+    runs-on: ubuntu-latest
+    # Only deploy from main — skip on PRs.
+    if: github.ref == 'refs/heads/main'
+    # Staging environment: add required reviewers in Settings → Environments
+    # to create a manual approval gate (equivalent to Azure DevOps environment approvals).
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+      - name: Deploy to staging (simulated)
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Deploying to: staging"
+          echo "  SHA: ${{ github.sha }}"
+          echo "  Actor: ${{ github.actor }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Deploy complete (simulated)"
+
+      # GitHub Actions has no built-in lifecycle hooks, so health check
+      # runs as a regular step after the deploy step — same net effect
+      # as postRouteTraffic in Azure DevOps.
+      - name: Health check
+        run: |
+          echo "Checking https://staging.myapp.example.com/health ..."
+          echo "Health check passed (simulated)"
+
+  # ── Deploy to production ──────────────────────────────────────────────────
+  deploy-prod:
+    name: Deploy to Production
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production (simulated)
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Deploying to: production"
+          echo "  SHA: ${{ github.sha }}"
+          echo "  Actor: ${{ github.actor }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Deploy complete (simulated)"
+
+      - name: Health check
+        run: |
+          echo "Checking https://myapp.example.com/health ..."
+          echo "Health check passed (simulated)"

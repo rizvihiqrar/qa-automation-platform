@@ -1,0 +1,80 @@
+# GitLab CI — Pipeline Templates Demo
+#
+# GitLab's equivalent of template includes uses the `include:` keyword.
+# Templates can be stored locally (include: local), in a separate project
+# (include: project), or pulled from the GitLab template library (include: template).
+#
+# This file shows the `include: local` pattern — the shared job
+# configuration lives in .gitlab/ci-templates.yml (referenced below).
+#
+# If you split a large pipeline into multiple files and include them here,
+# every include merges into a single resolved pipeline before running.
+#
+# GitLab include docs:
+#   https://docs.gitlab.com/ee/ci/yaml/includes.html
+
+include:
+  - local: '.gitlab/ci-templates.yml'
+
+stages:
+  - lint
+  - test
+  - deploy
+
+# ── 1. Lint ──────────────────────────────────────────────────────────────────
+# 'extends: .node_job' merges the shared hidden job from ci-templates.yml.
+lint:
+  extends: .node_job
+  stage: lint
+  script:
+    - npm ci
+    - npm run lint
+
+# ── 2. Unit tests ────────────────────────────────────────────────────────────
+test:
+  extends: .node_job
+  stage: test
+  needs: [lint]
+  script:
+    - npm ci
+    - npm test -- --ci
+  coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+  artifacts:
+    when: always
+    paths:
+      - coverage/
+    expire_in: 7 days
+
+# ── 3. Deploy to staging ──────────────────────────────────────────────────────
+deploy:staging:
+  stage: deploy
+  needs: [test]
+  image: alpine:latest
+  # 'when: manual' is the GitLab equivalent of an Azure DevOps environment
+  # approval gate — a human must click Deploy in the pipeline UI.
+  when: manual
+  only:
+    - main
+  script:
+    - echo "Deploying to staging (simulated)"
+    - echo "Commit:  $CI_COMMIT_SHA"
+    - echo "Actor:   $GITLAB_USER_LOGIN"
+  environment:
+    name: staging
+    url: https://staging.myapp.example.com
+
+# ── 4. Deploy to production ───────────────────────────────────────────────────
+deploy:production:
+  stage: deploy
+  needs: [deploy:staging]
+  image: alpine:latest
+  when: manual
+  only:
+    - main
+  script:
+    - echo "Deploying to production (simulated)"
+    - echo "Commit:  $CI_COMMIT_SHA"
+    - echo "Actor:   $GITLAB_USER_LOGIN"
+  environment:
+    name: production
+    url: https://myapp.example.com

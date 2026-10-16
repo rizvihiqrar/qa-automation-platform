@@ -1,0 +1,68 @@
+# Azure DevOps Pipelines — Pipeline Templates Demo
+#
+# This is the CONSUMING pipeline — it references reusable templates from
+# .azure/templates/ rather than defining every step inline.
+#
+# Template types demonstrated:
+#   steps template  → .azure/templates/steps/*.yml  (reusable step sequences)
+#   jobs template   → .azure/templates/jobs/*.yml   (reusable full jobs)
+#   stages template → .azure/templates/stages/*.yml (reusable stage + lifecycle hooks)
+#
+# The result is a pipeline that reads as an outline:
+#   Stage CI     → job template (lint + test + coverage)
+#   Stage Staging→ deploy stage template (preDeploy + deploy + routeTraffic + postRouteTraffic + on.success/failure)
+#   Stage Prod   → same stage template, different environment
+#
+# Azure Pipelines template docs:
+#   https://learn.microsoft.com/en-us/azure/devops/pipelines/process/templates
+
+name: Bookmark API — Templated Pipeline
+
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+# ── Stage 1: CI ───────────────────────────────────────────────────────────────
+# Single call to the jobs/ci-job.yml template expands to:
+#   install → lint → test (with JUnit publish) → coverage upload
+stages:
+  - stage: CI
+    displayName: 'Continuous Integration'
+    jobs:
+      - template: .azure/templates/jobs/ci-job.yml
+        parameters:
+          nodeVersion: '20.x'
+          withCoverage: true
+
+# ── Stage 2: Deploy to Staging ────────────────────────────────────────────────
+# The stages/deploy-stage.yml template wires up the full runOnce lifecycle:
+#   preDeploy → deploy → routeTraffic → postRouteTraffic → on.success/failure
+#
+# To add a manual approval gate: go to Pipelines → Environments → staging
+# and add an Approvals check. The pipeline pauses here until an approver
+# clicks Approve in the Azure DevOps UI.
+  - template: .azure/templates/stages/deploy-stage.yml
+    parameters:
+      stageName: DeployStaging
+      displayName: 'Deploy to Staging'
+      environment: staging
+      dependsOn: [CI]
+      healthUrl: 'https://staging.myapp.example.com/health'
+      # Only deploy from main — skip staging deploy on PR pipelines.
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+
+# ── Stage 3: Deploy to Production ────────────────────────────────────────────
+# Same template, different environment parameter — zero code duplication.
+# Prod requires staging to have succeeded first (dependsOn: [DeployStaging]).
+  - template: .azure/templates/stages/deploy-stage.yml
+    parameters:
+      stageName: DeployProd
+      displayName: 'Deploy to Production'
+      environment: production
+      dependsOn: [DeployStaging]
+      healthUrl: 'https://myapp.example.com/health'
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))

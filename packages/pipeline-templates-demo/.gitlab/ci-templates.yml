@@ -1,0 +1,15 @@
+# GitLab CI — Shared job template (included by .gitlab-ci.yml)
+#
+# Hidden jobs (names starting with '.') are not run directly —
+# they exist to be extended via 'extends:' in the main pipeline.
+#
+# This is the GitLab equivalent of an Azure DevOps steps template:
+# define common configuration once, merge it into each real job.
+
+.node_job:
+  image: node:20-alpine
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - node_modules/
+  interruptible: true
