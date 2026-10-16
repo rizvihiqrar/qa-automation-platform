@@ -1,0 +1,13 @@
+{
+  "name": "postman-api-collection",
+  "description": "Postman collection with Newman CI runner — REST API tests for CRUD, auth, and error handling",
+  "devDependencies": {
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  },
+  "scripts": {
+    "test": "newman run collection/dummyjson-api.postman_collection.json --reporters cli,htmlextra --reporter-htmlextra-export reports/report.html",
+    "smoke": "newman run collection/dummyjson-api.postman_collection.json --folder Smoke --reporters cli",
+    "regression": "newman run collection/dummyjson-api.postman_collection.json --folder Regression --reporters cli"
+  }
+}
