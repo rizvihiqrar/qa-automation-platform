@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { chat, assertResponseSchema } from '../utils/aiClient.js';
+import { chat, assertResponseSchema } from '../utils/aiClient.ts';
 
 test.describe('Pattern: AI response schema validation', () => {
 
@@ -41,6 +41,18 @@ test.describe('Pattern: AI response schema validation', () => {
     expect(typeof body.usage.output_tokens).toBe('number');
     expect(body.usage.input_tokens).toBeGreaterThan(0);
     expect(body.usage.output_tokens).toBeGreaterThan(0);
+  });
+
+  test('a malformed request gets a 400, and the API keeps serving @regression', async ({ request }) => {
+    const bad = await request.post('http://localhost:3031/v1/messages', {
+      headers: { 'Content-Type': 'application/json' },
+      // A Buffer is sent as-is; a string would be JSON-encoded into valid JSON.
+      data: Buffer.from('{"messages": ['),
+    });
+    expect(bad.status()).toBe(400);
+
+    const res = await chat({ messages: [{ role: 'user', content: 'Hello' }] }, request);
+    expect(res.status()).toBe(200);
   });
 
   test('stop_reason is a known value @regression', async ({ request }) => {

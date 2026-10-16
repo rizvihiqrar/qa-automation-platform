@@ -5,9 +5,9 @@ test.describe.configure({ mode: 'serial' });
 const ts       = Date.now();
 const testUser = { name: 'Orders Tester', email: `orders.${ts}@example.com`, password: 'Pass123!' };
 
-let token;
-let productId;
-let orderId;
+let token: string;
+let productId: number;
+let orderId: number;
 
 test.describe('Orders routes', () => {
   test.beforeAll(async ({ request }) => {
@@ -63,6 +63,29 @@ test.describe('Orders routes', () => {
 
     expect(res.status()).toBe(400);
     expect(body.error).toMatch(/insufficient stock/i);
+  });
+
+  // Stock used to be checked line by line, so two lines for the same product could
+  // each pass and together sell more than was in stock.
+  test('POST /orders checks stock against the total across lines for the same product @regression', async ({ request }) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    const created = await request.post('/products', { headers, data: { name: 'Scarce Widget', category: 'test', price: 5, stock: 10 } });
+    const scarceId: number = (await created.json()).id;
+
+    const res = await request.post('/orders', {
+      headers,
+      data: { items: [{ product_id: scarceId, quantity: 6 }, { product_id: scarceId, quantity: 6 }] },
+    });
+    expect(res.status()).toBe(400);
+    expect((await res.json()).error).toMatch(/insufficient stock.*available: 10/i);
+    expect((await (await request.get(`/products/${scarceId}`)).json()).stock).toBe(10);
+
+    const ok = await request.post('/orders', {
+      headers,
+      data: { items: [{ product_id: scarceId, quantity: 4 }, { product_id: scarceId, quantity: 6 }] },
+    });
+    expect(ok.status()).toBe(201);
+    expect((await (await request.get(`/products/${scarceId}`)).json()).stock).toBe(0);
   });
 
   test('POST /orders with empty items array returns 400 @regression', async ({ request }) => {

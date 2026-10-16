@@ -9,7 +9,7 @@ export default defineConfig({
     extraHTTPHeaders: { 'Content-Type': 'application/json' },
   },
   webServer: {
-    command: 'node src/server.js',
+    command: 'node src/server.ts',
     port: 4000,
     reuseExistingServer: !process.env.CI,
     env: { NODE_ENV: 'test', PORT: '4000' },

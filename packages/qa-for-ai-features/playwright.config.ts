@@ -11,7 +11,7 @@ export default defineConfig({
   // One mock server for the whole run. Starting it per spec file made parallel
   // workers race for port 3031 (EADDRINUSE).
   webServer: {
-    command: 'node mocks/aiServer.js',
+    command: 'node mocks/aiServer.ts',
     port: 3031,
     reuseExistingServer: !process.env.CI,
   },

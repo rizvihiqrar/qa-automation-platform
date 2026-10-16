@@ -5,7 +5,7 @@ test.describe.configure({ mode: 'serial' });
 const ts       = Date.now();
 const testUser = { name: 'Auth Tester', email: `auth.${ts}@example.com`, password: 'Pass123!' };
 
-let token;
+let token: string;
 
 test.describe('Auth routes', () => {
   test('POST /auth/register creates user and returns token @smoke', async ({ request }) => {

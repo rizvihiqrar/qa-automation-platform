@@ -45,7 +45,7 @@ let server = null;
 try {
   if (!baseUrl) {
     const port = await freePort();
-    server = spawn(process.execPath, [path.join(ROOT, '..', 'qa-practice-api', 'src', 'server.js')], { env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
+    server = spawn(process.execPath, [path.join(ROOT, '..', 'qa-practice-api', 'src', 'server.ts')], { env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
     baseUrl = `http://127.0.0.1:${port}`;
   }
   await waitForHealth(baseUrl);

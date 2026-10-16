@@ -9,6 +9,8 @@ export const PACKAGES = [
   'flaky-test-analyzer',
   'worker-scaling-benchmark',
   'ai-test-generator',
+  'qa-for-ai-features',
+  'qa-practice-api',
   'defect-report-linter',
   'log-signature-grouper',
   'webhook-harness',

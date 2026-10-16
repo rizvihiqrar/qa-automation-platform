@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import * as store from '../db/store.js';
-import { hashPassword, verifyPassword } from '../security/password.js';
-import { signToken, requireAuth } from '../middleware/auth.js';
+import * as store from '../db/store.ts';
+import { hashPassword, verifyPassword } from '../security/password.ts';
+import { signToken, requireAuth, currentUser } from '../middleware/auth.ts';
 
 const router = Router();
-const safe = ({ password, ...rest }) => rest;
+const safe = ({ password: _password, ...rest }: store.User) => rest;
 
-// Hashing happens in src/security/password.js, off the event loop (see there).
+// Hashing happens in src/security/password.ts, off the event loop (see there).
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -45,7 +45,7 @@ router.post('/login', async (req, res) => {
 });
 
 router.get('/me', requireAuth, (req, res) => {
-  const user = store.users.findById(req.user.id);
+  const user = store.users.findById(currentUser(req).id);
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json(safe(user));
 });

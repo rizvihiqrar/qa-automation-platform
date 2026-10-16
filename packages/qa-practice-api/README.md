@@ -2,15 +2,15 @@
 
 A purpose-built REST API for QA automation practice. Unlike third-party public APIs, this one is fully under your control — you can read the source, add edge cases, break things intentionally, and write tests against known behaviour.
 
-Built with Node.js, Express, and SQLite. No external services required. Spins up in seconds.
+Built with Node.js and Express, in strict TypeScript that Node 24 runs directly (no build step). No database or external services required. Spins up in seconds.
 
 ## Stack
 
-- **Runtime:** Node.js 20 + Express
-- **Database:** SQLite via `better-sqlite3` (in-memory for tests, file-based for dev)
+- **Runtime:** Node.js 24 + Express, TypeScript run by Node's type stripping
+- **Data:** an in-memory store (`src/db/store.ts`): typed tables of users, products and orders, reset on every restart
 - **Auth:** JWT (`jsonwebtoken`) + scrypt password hashing (Node's built-in `crypto.scrypt`, which runs off the event loop; see [k6-performance](../k6-performance) for why it replaced bcryptjs)
 - **Tests:** Playwright API mode (no browser)
-- **CI:** GitHub Actions — smoke gates regression
+- **CI:** GitHub Actions, as one job in the monorepo pipeline
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ npm test               # full suite (starts server automatically)
 npm run test:smoke     # @smoke tagged tests only
 ```
 
-Tests use an in-memory SQLite database — each run starts clean, no state leaks between runs.
+The data lives in memory, so each run starts with an empty store and no state leaks between runs.
 
 ## API Reference
 
@@ -81,6 +81,8 @@ These are intentional behaviours worth writing tests for:
 | `POST /products` with `price: "abc"` | `400`, same message. Found by [api-drift-checker](../api-drift-checker): this used to return `201` with `price: null`. |
 | `POST /products` with `stock: -3` | `400 { error: "stock must be a non-negative whole number" }`. Also found by the drift checker; it used to return `201`. |
 | `POST /orders` with quantity > stock | `400 { error: "Insufficient stock for product X (available: Y)" }` |
+| `POST /orders` with two lines for the same product | Stock is checked against the combined quantity. It used to be checked line by line, so two lines of 6 against a stock of 10 were accepted and left stock at -2. |
+| `PUT /products/:id` with `price: "abc"` or `stock: -7` | `400`, with the same messages as `POST`. Update used to skip these checks and store `price: null` and negative stock. |
 | `PATCH /orders/:id/status` unknown value | `400 { error: "status must be one of: pending, processing, ..." }` |
 | `PUT /users/:id` for another user | `403 { error: "Cannot modify another user's account" }` |
 | JWT after user deletion | Token stays cryptographically valid — route returns `404` on DB lookup. JWT invalidation requires a denylist; short expiry (`1h`) is the mitigation here. |
@@ -92,5 +94,3 @@ These are intentional behaviours worth writing tests for:
 |---|---|---|
 | `PORT` | `4000` | Server port |
 | `JWT_SECRET` | `qa-practice-secret-change-in-prod` | Change this in any real deployment |
-| `DB_FILE` | `:memory:` (test) / `data/app.db` (dev) | Set to `:memory:` for isolated test runs |
-| `NODE_ENV` | — | Set to `test` to use in-memory DB automatically |

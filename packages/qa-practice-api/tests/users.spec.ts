@@ -5,8 +5,8 @@ test.describe.configure({ mode: 'serial' });
 const ts       = Date.now();
 const testUser = { name: 'Users Tester', email: `users.${ts}@example.com`, password: 'Pass123!' };
 
-let token;
-let userId;
+let token: string;
+let userId: number;
 
 test.describe('Users routes', () => {
   test.beforeAll(async ({ request }) => {
@@ -28,7 +28,7 @@ test.describe('Users routes', () => {
     expect(res.status()).toBe(200);
     expect(Array.isArray(body.data)).toBe(true);
     expect(typeof body.total).toBe('number');
-    body.data.forEach(u => expect(u).not.toHaveProperty('password'));
+    body.data.forEach((u: object) => expect(u).not.toHaveProperty('password'));
   });
 
   test('GET /users/:id returns user without password @smoke', async ({ request }) => {

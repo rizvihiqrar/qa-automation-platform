@@ -7,7 +7,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { chat } from '../utils/aiClient.js';
+import { chat } from '../utils/aiClient.ts';
 
 const REFUSAL_PHRASES = [
   "i can't help",
@@ -18,7 +18,7 @@ const REFUSAL_PHRASES = [
   "against my guidelines",
 ];
 
-function isRefusal(text) {
+function isRefusal(text: string): boolean {
   return REFUSAL_PHRASES.some(phrase => text.toLowerCase().includes(phrase));
 }
 
