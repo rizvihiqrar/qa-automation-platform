@@ -1,0 +1,14 @@
+{
+  "name": "multi-user-flow-patterns",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Playwright multi-user patterns using isolated browser contexts — concurrent sessions, cart isolation, parallel checkout",
+  "scripts": {
+    "test": "playwright test",
+    "smoke": "playwright test --grep @smoke",
+    "regression": "playwright test --grep @regression"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
