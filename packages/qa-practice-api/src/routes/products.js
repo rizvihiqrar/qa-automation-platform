@@ -23,12 +23,21 @@ router.post('/', requireAuth, (req, res) => {
   if (!name || !category || price == null) {
     return res.status(400).json({ error: 'name, category, and price are required' });
   }
-  if (price < 0) return res.status(400).json({ error: 'price must be non-negative' });
+  // Number(), not parseFloat(): "abc" used to slip through as NaN and be stored as null.
+  const priceValue = Number(price);
+  if (!Number.isFinite(priceValue) || priceValue < 0) {
+    return res.status(400).json({ error: 'price must be a non-negative number' });
+  }
+  // Negative stock used to be accepted, because only price was range-checked.
+  const stockValue = stock == null ? 0 : Number(stock);
+  if (!Number.isInteger(stockValue) || stockValue < 0) {
+    return res.status(400).json({ error: 'stock must be a non-negative whole number' });
+  }
   const product = store.products.insert({
     name,
     category,
-    price: parseFloat(price),
-    stock: parseInt(stock) || 0,
+    price: priceValue,
+    stock: stockValue,
   });
   res.status(201).json(product);
 });

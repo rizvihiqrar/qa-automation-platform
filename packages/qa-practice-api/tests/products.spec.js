@@ -55,6 +55,25 @@ test.describe('Products routes', () => {
     expect(res.status()).toBe(400);
   });
 
+  // Both found by api-drift-checker: the API used to answer 201 for these.
+  test('POST /products with a non-numeric price returns 400 @regression', async ({ request }) => {
+    const res = await request.post('/products', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { name: 'Text Price', category: 'test', price: 'abc' },
+    });
+    expect(res.status()).toBe(400);
+    expect((await res.json()).error).toBe('price must be a non-negative number');
+  });
+
+  test('POST /products with negative stock returns 400 @regression', async ({ request }) => {
+    const res = await request.post('/products', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { name: 'Negative Stock', category: 'test', price: 5, stock: -3 },
+    });
+    expect(res.status()).toBe(400);
+    expect((await res.json()).error).toBe('stock must be a non-negative whole number');
+  });
+
   test('POST /products missing required fields returns 400 @regression', async ({ request }) => {
     const res = await request.post('/products', {
       headers: { Authorization: `Bearer ${token}` },

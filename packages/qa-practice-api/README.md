@@ -77,7 +77,9 @@ These are intentional behaviours worth writing tests for:
 | `GET /users/999999` | `404 { error: "User 999999 not found" }` |
 | `POST /auth/login` wrong password | `401` — does not distinguish wrong email vs wrong password (security best practice) |
 | `POST /auth/register` duplicate email | `409 { error: "Email already in use" }` |
-| `POST /products` with `price: -5` | `400 { error: "price must be non-negative" }` |
+| `POST /products` with `price: -5` | `400 { error: "price must be a non-negative number" }` |
+| `POST /products` with `price: "abc"` | `400`, same message. Found by [api-drift-checker](../api-drift-checker): this used to return `201` with `price: null`. |
+| `POST /products` with `stock: -3` | `400 { error: "stock must be a non-negative whole number" }`. Also found by the drift checker; it used to return `201`. |
 | `POST /orders` with quantity > stock | `400 { error: "Insufficient stock for product X (available: Y)" }` |
 | `PATCH /orders/:id/status` unknown value | `400 { error: "status must be one of: pending, processing, ..." }` |
 | `PUT /users/:id` for another user | `403 { error: "Cannot modify another user's account" }` |
