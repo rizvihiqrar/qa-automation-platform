@@ -30,6 +30,9 @@ async function waitForHealth(url, timeoutMs = 15000) {
 
 const urlArg = process.argv.indexOf('--url');
 let baseUrl = urlArg !== -1 ? process.argv[urlArg + 1] : null;
+// --json <file> also writes { passed, summary } for tools such as the release gate.
+const jsonArg = process.argv.indexOf('--json');
+const jsonFile = jsonArg !== -1 ? process.argv[jsonArg + 1] : null;
 let child = null;
 
 try {
@@ -42,7 +45,16 @@ try {
   await waitForHealth(baseUrl);
   const results = await runScenario({ baseUrl, spec, steps: steps() });
   console.log(formatResults(results, untestedOperations(spec, results)));
-  if (results.some((r) => r.issues.length)) process.exitCode = 1;
+  const drifted = results.filter((r) => r.issues.length).length;
+  if (jsonFile) {
+    fs.writeFileSync(jsonFile, JSON.stringify({
+      passed: drifted === 0,
+      summary: `${results.length - drifted}/${results.length} responses match the spec`,
+      drifted,
+      total: results.length,
+    }, null, 2));
+  }
+  if (drifted) process.exitCode = 1;
 } catch (err) {
   console.error(err.message);
   process.exitCode = 2;

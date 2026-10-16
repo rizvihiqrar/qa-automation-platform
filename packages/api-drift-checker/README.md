@@ -53,6 +53,7 @@ It also lists any documented operation the scenario never called, so gaps in cov
 npm ci --prefix ../qa-practice-api   # the API's own dependencies
 npm run check:live                   # start the API, run the scenario, stop it
 node src/live.js --url http://localhost:4000   # an API that's already running
+node src/live.js --json contract.json          # also write { passed, summary } for the release gate
 ```
 
 Exit code 1 on any drift, so it can run as a contract gate in CI. The CI job for this package does exactly that against the real API.

@@ -1,0 +1,69 @@
+name: Release
+
+# Manual: verify a release candidate, let the gate decide, deploy only on GO.
+# The deploy step is simulated; this portfolio has no real environment to deploy to.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release
+        required: true
+        default: 1.0.0
+
+jobs:
+  verify:
+    name: Verify and gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefix packages/qa-practice-api
+          npm ci --prefix packages/api-drift-checker
+          npm ci --prefix packages/k6-performance
+
+      - uses: grafana/setup-k6-action@v1
+
+      # Each check may fail; the gate below makes the decision, so these steps
+      # always continue and just record their results.
+      - name: Smoke tests
+        working-directory: packages/qa-practice-api
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/smoke.json
+        run: npx playwright test --grep @smoke --reporter=json || true
+
+      - name: API contract check
+        working-directory: packages/api-drift-checker
+        run: node src/live.js --json "${{ runner.temp }}/contract.json" || true
+
+      - name: Performance smoke
+        working-directory: packages/k6-performance
+        run: |
+          node src/run.js smoke || true
+          cp results/smoke.json "${{ runner.temp }}/performance.json" || true
+
+      - name: Release gate
+        run: >
+          node packages/release-gate/src/cli.js
+          --policy packages/release-gate/gate.policy.json
+          --version "${{ inputs.version }}"
+          --playwright "smoke-tests=${{ runner.temp }}/smoke.json"
+          --check "api-contract=${{ runner.temp }}/contract.json"
+          --k6 "performance=${{ runner.temp }}/performance.json"
+
+  deploy:
+    name: Deploy to staging
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy (simulated)
+        run: |
+          echo "Deploying ${{ inputs.version }} to staging (simulated)"
+          echo "### Deployed ${{ inputs.version }} to staging (simulated)" >> "$GITHUB_STEP_SUMMARY"
