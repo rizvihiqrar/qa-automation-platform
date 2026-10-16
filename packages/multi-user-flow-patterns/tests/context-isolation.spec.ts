@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { USERS } from '../fixtures/users.js';
-import { createSession, teardownSession } from '../utils/userSession.js';
+import { USERS } from '../fixtures/users.ts';
+import { createSession, teardownSession } from '../utils/userSession.ts';
 
 test.describe('Pattern: Session state isolation', () => {
 
@@ -35,11 +35,13 @@ test.describe('Pattern: Session state isolation', () => {
     // User A logs out
     await sessionA.page.click('#react-burger-menu-btn');
     await sessionA.page.click('[data-test="logout-sidebar-link"]');
-    await expect(sessionA.page).toHaveURL(/$/);
+    // This used to be toHaveURL(/$/), which matches every URL and so proved nothing.
+    await expect(sessionA.page.locator('[data-test="login-button"]')).toBeVisible();
+    await expect(sessionA.page).not.toHaveURL(/inventory/);
 
     // User B is still on the inventory page, unaffected
     await expect(sessionB.page).toHaveURL(/inventory/);
-    await expect(sessionB.page.locator('.inventory_list')).toBeVisible();
+    await expect(sessionB.page.locator('[data-test="inventory-list"]')).toBeVisible();
 
     await Promise.all([teardownSession(sessionA), teardownSession(sessionB)]);
   });
@@ -57,12 +59,13 @@ test.describe('Pattern: Session state isolation', () => {
     await sessionA.page.selectOption('[data-test="product-sort-container"]', 'za');
 
     // Each user sees their own sort — first item names will differ
-    const firstItemA = await sessionA.page.locator('.inventory_item_name').first().innerText();
-    const firstItemB = await sessionB.page.locator('.inventory_item_name').first().innerText();
+    const firstItemA = await sessionA.page.locator('[data-test="inventory-item-name"]').first().innerText();
+    const firstItemB = await sessionB.page.locator('[data-test="inventory-item-name"]').first().innerText();
 
-    // Sort Z-A first item starts with T (Test.allTheThings() T-Shirt)
-    // Sort hi-lo first item is the most expensive
-    expect(firstItemA).not.toBe(firstItemB);
+    // Assert each user's exact first item: only checking that they differ would also
+    // pass if one sort silently didn't apply.
+    expect(firstItemA).toBe('Test.allTheThings() T-Shirt (Red)');
+    expect(firstItemB).toBe('Sauce Labs Fleece Jacket');
 
     await Promise.all([teardownSession(sessionA), teardownSession(sessionB)]);
   });

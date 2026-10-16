@@ -1,6 +1,21 @@
+import type { Browser, BrowserContext, Page } from '@playwright/test';
+import type { Credentials } from '../fixtures/users.ts';
+
 const BASE_URL = process.env.BASE_URL || 'https://www.saucedemo.com';
 
-export async function createSession(browser, credentials) {
+export interface Session {
+  context: BrowserContext;
+  page: Page;
+}
+
+export interface ShippingInfo {
+  firstName: string;
+  lastName: string;
+  zip: string;
+}
+
+// Each session gets its own browser context: separate cookies and storage, like a second browser.
+export async function createSession(browser: Browser, credentials: Credentials): Promise<Session> {
   const context = await browser.newContext({ baseURL: BASE_URL });
   const page = await context.newPage();
   await page.goto('/');
@@ -11,11 +26,11 @@ export async function createSession(browser, credentials) {
   return { context, page };
 }
 
-export async function teardownSession({ context }) {
+export async function teardownSession({ context }: Session): Promise<void> {
   await context.close();
 }
 
-export async function completeCheckout(page, info) {
+export async function completeCheckout(page: Page, info: ShippingInfo): Promise<void> {
   await page.click('[data-test="add-to-cart-sauce-labs-backpack"]');
   await page.click('[data-test="shopping-cart-link"]');
   await page.click('[data-test="checkout"]');
@@ -24,5 +39,5 @@ export async function completeCheckout(page, info) {
   await page.fill('[data-test="postalCode"]', info.zip);
   await page.click('[data-test="continue"]');
   await page.click('[data-test="finish"]');
-  await page.waitForSelector('.complete-header', { timeout: 15000 });
+  await page.locator('[data-test="complete-header"]').waitFor({ timeout: 15000 });
 }

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { USERS } from '../fixtures/users.js';
-import { createSession, teardownSession } from '../utils/userSession.js';
+import { USERS } from '../fixtures/users.ts';
+import { createSession, teardownSession } from '../utils/userSession.ts';
 
 test.describe('Pattern: Concurrent browser sessions', () => {
 
@@ -27,8 +27,8 @@ test.describe('Pattern: Concurrent browser sessions', () => {
     await expect(sessionB.page).toHaveURL(/inventory/);
 
     // Both see the same product catalogue
-    const countA = await sessionA.page.locator('.inventory_item').count();
-    const countB = await sessionB.page.locator('.inventory_item').count();
+    const countA = await sessionA.page.locator('[data-test="inventory-item"]').count();
+    const countB = await sessionB.page.locator('[data-test="inventory-item"]').count();
     expect(countA).toBe(6);
     expect(countB).toBe(6);
 

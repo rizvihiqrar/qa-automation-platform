@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { USERS } from '../fixtures/users.js';
-import { createSession, teardownSession, completeCheckout } from '../utils/userSession.js';
+import { USERS } from '../fixtures/users.ts';
+import { createSession, teardownSession, completeCheckout } from '../utils/userSession.ts';
 
 test.describe('Pattern: Parallel workflow completion', () => {
 
@@ -16,8 +16,8 @@ test.describe('Pattern: Parallel workflow completion', () => {
     ]);
 
     await Promise.all([
-      expect(sessionA.page.locator('.complete-header')).toContainText('Thank you'),
-      expect(sessionB.page.locator('.complete-header')).toContainText('Thank you'),
+      expect(sessionA.page.locator('[data-test="complete-header"]')).toContainText('Thank you'),
+      expect(sessionB.page.locator('[data-test="complete-header"]')).toContainText('Thank you'),
     ]);
 
     await Promise.all([teardownSession(sessionA), teardownSession(sessionB)]);
@@ -29,7 +29,7 @@ test.describe('Pattern: Parallel workflow completion', () => {
       createSession(browser, USERS.standard),
     ]);
 
-    // User A goes to cart; User B goes to checkout entry — concurrently
+    // At the same moment, User A opens the cart and User B adds an item
     await Promise.all([
       sessionA.page.click('[data-test="shopping-cart-link"]'),
       sessionB.page.click('[data-test="add-to-cart-sauce-labs-backpack"]'),
