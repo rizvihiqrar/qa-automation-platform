@@ -42,7 +42,7 @@ let child = null;
 try {
   if (!baseUrl) {
     const port = await freePort();
-    const server = path.join(HERE, '..', '..', 'qa-practice-api', 'src', 'server.js');
+    const server = path.join(HERE, '..', '..', 'qa-practice-api', 'src', 'server.ts');
     child = spawn(process.execPath, [server], { env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
     baseUrl = `http://127.0.0.1:${port}`;
   }

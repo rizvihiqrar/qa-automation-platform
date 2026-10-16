@@ -4,11 +4,12 @@
   "type": "module",
   "description": "QA patterns for AI-powered features — response schema validation, latency SLAs, content safety checks, conversation state testing",
   "scripts": {
-    "test":       "playwright test",
-    "smoke":      "playwright test --grep @smoke",
+    "test": "playwright test",
+    "smoke": "playwright test --grep @smoke",
     "regression": "playwright test --grep @regression"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^24.19.2"
   }
 }

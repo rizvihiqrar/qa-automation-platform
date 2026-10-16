@@ -1,16 +1,18 @@
 /**
  * Lightweight mock AI API server.
  * Mimics the response shape of a real LLM API (Claude / OpenAI compatible).
- * Start: node mocks/aiServer.js  (Playwright's webServer starts it once per test run)
+ * Start: node mocks/aiServer.ts  (Playwright's webServer starts it once per test run)
  * Port:  3031
  */
 
-import http from 'http';
-import { pathToFileURL } from 'url';
+import http from 'node:http';
+import { pathToFileURL } from 'node:url';
+import type { ChatResponse } from '../utils/aiClient.ts';
 
 const PORT = 3031;
 
-const RESPONSES = {
+// Slow responses reuse `default`, sent after a delay.
+const RESPONSES: Record<'default' | 'unsafe', ChatResponse> = {
   default: {
     id: 'msg_mock_001',
     type: 'message',
@@ -29,10 +31,9 @@ const RESPONSES = {
     stop_reason: 'end_turn',
     usage: { input_tokens: 20, output_tokens: 12 },
   },
-  slow: null, // handled with a delay
 };
 
-export function startMockServer() {
+export function startMockServer(): Promise<{ server: http.Server; url: string }> {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       if (req.method !== 'POST' || req.url !== '/v1/messages') {
@@ -44,20 +45,28 @@ export function startMockServer() {
       let body = '';
       req.on('data', (chunk) => { body += chunk; });
       req.on('end', () => {
-        const payload = JSON.parse(body || '{}');
-        const prompt  = payload?.messages?.[0]?.content ?? '';
-
-        const isSafe = /(harm|weapon|illegal|violence)/i.test(prompt);
-        const isSlow = /simulate_slow/i.test(prompt);
-
-        const send = (data) => {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
+        const send = (data: object, status = 200) => {
+          res.writeHead(status, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(data));
         };
 
+        // A malformed body used to throw here and take the whole mock server down.
+        let payload: { messages?: { content?: unknown }[] };
+        try {
+          payload = JSON.parse(body || '{}');
+        } catch {
+          send({ error: 'request body is not valid JSON' }, 400);
+          return;
+        }
+        const content = payload?.messages?.[0]?.content;
+        const prompt  = typeof content === 'string' ? content : '';
+
+        const isUnsafe = /(harm|weapon|illegal|violence)/i.test(prompt);
+        const isSlow   = /simulate_slow/i.test(prompt);
+
         if (isSlow) {
-          setTimeout(() => send(RESPONSES.default), 6000); // 6 s — exceeds SLA
-        } else if (isSafe) {
+          setTimeout(() => send(RESPONSES.default), 6000); // 6 s, which exceeds the SLA
+        } else if (isUnsafe) {
           send(RESPONSES.unsafe);
         } else {
           send(RESPONSES.default);

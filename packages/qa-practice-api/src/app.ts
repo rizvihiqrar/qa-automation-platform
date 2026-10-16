@@ -1,8 +1,8 @@
 import express from 'express';
-import authRoutes    from './routes/auth.js';
-import userRoutes    from './routes/users.js';
-import productRoutes from './routes/products.js';
-import orderRoutes   from './routes/orders.js';
+import authRoutes    from './routes/auth.ts';
+import userRoutes    from './routes/users.ts';
+import productRoutes from './routes/products.ts';
+import orderRoutes   from './routes/orders.ts';
 
 const app = express();
 app.disable('x-powered-by');

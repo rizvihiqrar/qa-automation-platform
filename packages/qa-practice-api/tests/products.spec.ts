@@ -5,8 +5,8 @@ test.describe.configure({ mode: 'serial' });
 const ts       = Date.now();
 const testUser = { name: 'Products Tester', email: `products.${ts}@example.com`, password: 'Pass123!' };
 
-let token;
-let productId;
+let token: string;
+let productId: number;
 
 test.describe('Products routes', () => {
   test.beforeAll(async ({ request }) => {
@@ -104,7 +104,7 @@ test.describe('Products routes', () => {
     const body = await res.json();
 
     expect(res.status()).toBe(200);
-    body.data.forEach(p => expect(p.category).toBe('hardware'));
+    body.data.forEach((p: { category: string }) => expect(p.category).toBe('hardware'));
   });
 
   test('PUT /products/:id updates a field without changing others @regression', async ({ request }) => {
@@ -118,6 +118,22 @@ test.describe('Products routes', () => {
     expect(body.price).toBe(34.99);
     expect(body.name).toBe('Test Widget');
     expect(body.stock).toBe(100);
+  });
+
+  // Update used to skip the create rules: price "abc" was stored as null and negative stock was accepted.
+  test('PUT /products/:id applies the same price and stock rules as POST @regression', async ({ request }) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    const badPrice = await request.put(`/products/${productId}`, { headers, data: { price: 'abc' } });
+    expect(badPrice.status()).toBe(400);
+    expect((await badPrice.json()).error).toBe('price must be a non-negative number');
+
+    const badStock = await request.put(`/products/${productId}`, { headers, data: { stock: -7 } });
+    expect(badStock.status()).toBe(400);
+    expect((await badStock.json()).error).toBe('stock must be a non-negative whole number');
+
+    const unchanged = await (await request.get(`/products/${productId}`)).json();
+    expect(unchanged.price).toBe(34.99);
+    expect(unchanged.stock).toBe(100);
   });
 
   test('DELETE /products/:id removes product @regression', async ({ request }) => {

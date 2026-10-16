@@ -7,7 +7,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { chat } from '../utils/aiClient.js';
+import { chat } from '../utils/aiClient.ts';
 
 const SLA_MS = 5000; // 5 second SLA for a complete response
 
@@ -35,21 +35,19 @@ test.describe('Pattern: AI latency and SLA', () => {
   });
 
   test('slow response correctly fails the SLA threshold @regression', async ({ request }) => {
-    // The mock server adds a 6 s delay when prompt contains "simulate_slow"
+    // The mock server adds a 6 s delay when prompt contains "simulate_slow".
+    // This used to pass 15000 as a third argument to test(), which Playwright
+    // ignores; the type-check flagged it. The extended timeout is set here instead.
+    test.setTimeout(15_000);
     const start = Date.now();
-    const res = await chat(
+    // A request that errors out (for example, a client timeout) is also a slow response.
+    await chat(
       { messages: [{ role: 'user', content: 'simulate_slow request' }] },
       request
     ).catch(() => null);
     const elapsed = Date.now() - start;
 
-    // Either the request times out (null) or takes longer than the SLA
-    // Either outcome confirms the SLA check catches the degradation
-    if (res !== null) {
-      expect(elapsed, 'Slow response should exceed the SLA').toBeGreaterThanOrEqual(SLA_MS);
-    } else {
-      expect(elapsed).toBeGreaterThanOrEqual(SLA_MS);
-    }
-  }, 15000); // Extended timeout for this test only
+    expect(elapsed, 'Slow response should exceed the SLA').toBeGreaterThanOrEqual(SLA_MS);
+  });
 
 });
