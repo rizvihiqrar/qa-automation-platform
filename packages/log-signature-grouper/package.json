@@ -1,0 +1,1 @@
+{ "name": "log-signature-grouper", "version": "1.0.0", "type": "module", "description": "Groups log errors by pattern and flags new error patterns against a baseline", "scripts": { "test": "node --test", "demo": "node src/cli.js examples/app-2026-10-16.log --baseline examples/app-2026-10-15.log" }, "engines": { "node": ">=20" }, "license": "MIT" }
