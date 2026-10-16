@@ -6,5 +6,7 @@ coverage/
 reports/
 .stryker-tmp/
 *.log
+# Sample logs are test fixtures, not output.
+!packages/log-signature-grouper/examples/*.log
 .env
 .DS_Store

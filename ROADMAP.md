@@ -22,7 +22,7 @@ Status: ✅ done · 🔶 in progress · ⬜ planned
 | 5 | **SQL data-integrity kit** on SQLite: orphan rows, duplicates, totals that don't reconcile | SQL, data integrity checks | ✅ 15 checks, 33 tests, each check proven by an injected defect |
 | 6 | **Defect report linter**: required fields, repro steps, expected vs actual, severity | Defect reports, bug lifecycle | ✅ 13 rules, a score per report, Markdown and JSON input, 20 tests |
 | 7 | **Webhook harness**: signature checks, retries, idempotency | Webhooks, REST APIs | ✅ signing, replay protection, once-only processing incl. concurrent duplicates, retry rules; 20 tests |
-| 8 | **Log signature grouper**: group error logs by normalized signature | Log analysis, root cause | ⬜ |
+| 8 | **Log signature grouper**: group error logs by normalized signature | Log analysis, root cause | ✅ plain and JSON logs, stack traces kept together, new/grown/gone vs a baseline; 15 tests |
 | 9 | **OpenAPI drift checker** against qa-practice-api | API testing, contract thinking | ⬜ |
 | 10 | **Exploratory session tracker**: charters, time boxes, findings report | Exploratory testing, QA documentation | ⬜ |
 | 11 | **k6 performance suite** with thresholds against qa-practice-api | Performance testing (re-add to resume only once this exists) | ⬜ |
