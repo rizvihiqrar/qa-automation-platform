@@ -1,0 +1,27 @@
+[
+  {
+    "title": "Sort by price (low to high) lists the Onesie second instead of first",
+    "severity": "Medium",
+    "component": "Inventory",
+    "environment": "Firefox 131, macOS 15, production",
+    "steps": ["Log in as standard_user", "Open the sort menu", "Choose Price (low to high)"],
+    "expected": "Sauce Labs Onesie ($7.99) is first.",
+    "actual": "Sauce Labs Bike Light ($9.99) is first; the Onesie is second.",
+    "evidence": ["sort-low-high.png"]
+  },
+  {
+    "title": "Typo on the checkout complete page",
+    "severity": "Critical",
+    "environment": "Chrome 129, staging",
+    "steps": ["Complete a checkout", "Read the confirmation heading"],
+    "expected": "Heading reads \"Thank you for your order!\"",
+    "actual": "Heading reads \"Thank you for your oder!\""
+  },
+  {
+    "title": "Cart badge",
+    "severity": "Low",
+    "steps": ["Add an item"],
+    "expected": "Badge shows 1",
+    "actual": "Badge shows 1"
+  }
+]
