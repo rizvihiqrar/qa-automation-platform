@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { parseArgs } from '../src/index.js';
+import { parseArgs } from '../src/index.ts';
 
-const CLI = fileURLToPath(new URL('../src/index.js', import.meta.url));
-const run = (...args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
+const CLI = fileURLToPath(new URL('../src/index.ts', import.meta.url));
+const run = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
 
 test('parseArgs applies defaults', () => {
   assert.deepEqual(parseArgs([]), { type: 'users', format: 'json', count: 10, seed: null, output: null, table: 'users' });

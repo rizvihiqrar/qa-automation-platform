@@ -21,12 +21,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
       - name: Type-check packages
-        run: npm run typecheck
+        run: npm run typecheck -- --install
 
   test:
     name: ${{ matrix.package }}
@@ -71,7 +71,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
 

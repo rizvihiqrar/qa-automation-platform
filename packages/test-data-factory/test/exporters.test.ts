@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { toCsvString } from '../src/exporters/csvExporter.js';
-import { toSqlString } from '../src/exporters/sqlExporter.js';
-import { toJsonString } from '../src/exporters/jsonExporter.js';
+import { toCsvString } from '../src/exporters/csvExporter.ts';
+import { toSqlString } from '../src/exporters/sqlExporter.ts';
+import { toJsonString } from '../src/exporters/jsonExporter.ts';
 
 const records = [
   { id: 1, name: 'Widget, large', note: 'says "hi"', active: true, address: { city: 'Ajax', zip: 'L1S' }, shippedAt: null },
@@ -23,6 +23,7 @@ test('CSV quotes values with commas, quotes or newlines', () => {
 
 test('CSV writes null as an empty field', () => {
   const firstRow = toCsvString(records).split('\n')[1];
+  assert.ok(firstRow);
   assert.ok(firstRow.endsWith(','), firstRow);
 });
 

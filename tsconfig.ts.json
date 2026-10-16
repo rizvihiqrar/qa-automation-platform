@@ -1,0 +1,16 @@
+{
+  // For packages written in TypeScript. Node 24 runs .ts files directly by
+  // stripping types, so there is no build: code must use only erasable syntax
+  // (no enums or namespaces), import with explicit .ts extensions, and mark
+  // type-only imports. Strict mode is on.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "checkJs": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true
+  }
+}
