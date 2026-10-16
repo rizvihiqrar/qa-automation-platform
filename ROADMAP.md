@@ -27,7 +27,7 @@ Status: ✅ done · 🔶 in progress · ⬜ planned
 | 10 | **Exploratory session tracker**: charters, time boxes, findings report | Exploratory testing, QA documentation | ✅ charters, timeboxes, tagged notes, team debrief, session scaffolding; 10 tests |
 | 11 | **k6 performance suite** with thresholds against qa-practice-api | Performance testing (re-add to resume only once this exists) | ✅ found event-loop blocking in password hashing; browsing p95 67 ms → 1 ms after the fix; thresholds now set from measurements |
 | 12 | **Release gate**: block a deploy on smoke results; post a summary | CI/CD, production deployments | ✅ policy-based GO/NO-GO from smoke, contract and k6 results; Release workflow deploys (simulated) only on GO; 15 tests |
-| 13 | **Accessibility** against a local UI, framed around AODA, with a findings report | Accessibility | ⬜ |
+| 13 | **Accessibility** against a local UI, framed around AODA, with a findings report | Accessibility | ✅ before/after demo store; 9 issue types found and fixed; catches placeholder-only labels axe misses; 16 tests |
 | 14 | **Results dashboard** wired to CI: pass rate, runtime, flake rate over time | Impact metrics | ⬜ |
 
 ## Days 15–21: TypeScript
