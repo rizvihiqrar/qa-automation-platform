@@ -32,6 +32,7 @@ jobs:
           - { package: k6-performance,           browsers: false, k6: true, command: npm ci --prefix ../qa-practice-api && npm test && npm run perf:ci }
           - { package: release-gate,             browsers: false, command: npm test }
           - { package: a11y-aoda-audit,          browsers: true,  command: npm test && npm run audit }
+          - { package: ci-dashboard,             browsers: false, command: npm test }
           - { package: flaky-test-analyzer,      browsers: false, command: npm test }
           - { package: worker-scaling-benchmark, browsers: false, command: npm test }
           - { package: matrix-build-demo,        browsers: false, command: npm test }

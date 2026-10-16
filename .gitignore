@@ -11,3 +11,4 @@ reports/
 .env
 .DS_Store
 packages/k6-performance/results/
+packages/ci-dashboard/site/
