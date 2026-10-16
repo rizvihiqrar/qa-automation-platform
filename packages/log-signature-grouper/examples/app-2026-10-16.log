@@ -1,0 +1,16 @@
+2026-10-16T08:00:00.950Z INFO [api] Server started on port 8080
+2026-10-16T08:01:12.300Z ERROR [payments] Timeout calling bank API after 3000ms for order 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+2026-10-16T08:01:45.122Z ERROR [payments] Timeout calling bank API after 3000ms for order 0b1c2d3e-4f5a-4b6c-9d8e-7f6a5b4c3d2e
+2026-10-16T08:02:09.774Z ERROR [payments] Timeout calling bank API after 3000ms for order 2c3d4e5f-6a7b-4c8d-ae9f-0a1b2c3d4e5f
+2026-10-16T08:03:31.410Z ERROR [payments] Timeout calling bank API after 3000ms for order 3d4e5f6a-7b8c-4d9e-bf0a-1b2c3d4e5f6a
+2026-10-16T08:04:58.019Z ERROR [payments] Timeout calling bank API after 3000ms for order 4e5f6a7b-8c9d-4eaf-80b1-2c3d4e5f6a7b
+2026-10-16T08:06:20.663Z WARN [payments] Bank API slow: responded in 2875ms for order 5f6a7b8c-9d0e-4fa0-91c2-3d4e5f6a7b8c
+2026-10-16T08:07:44.208Z ERROR [checkout] TypeError: Cannot read properties of undefined (reading 'total')
+    at calculateTotals (src/checkout/totals.js:88:31)
+    at CheckoutService.confirm (src/checkout/service.js:142:18)
+2026-10-16T08:09:01.555Z ERROR [users] User not found: chloe.tran@example.com
+{"time":"2026-10-16T08:10:22.004Z","level":"error","service":"checkout","msg":"TypeError: Cannot read properties of undefined (reading 'total')"}
+{"time":"2026-10-16T08:11:47.390Z","level":"warning","service":"db","msg":"Connection pool 90% full (18/20)"}
+2026-10-16T08:13:15.876Z ERROR [checkout] TypeError: Cannot read properties of undefined (reading 'total')
+    at calculateTotals (src/checkout/totals.js:88:31)
+2026-10-16T08:15:00.000Z INFO [api] GET /api/orders 200 51ms

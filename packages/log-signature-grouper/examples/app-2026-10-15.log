@@ -1,0 +1,10 @@
+2026-10-15T08:00:01.120Z INFO [api] Server started on port 8080
+2026-10-15T08:02:14.553Z WARN [payments] Bank API slow: responded in 2310ms for order 8f2a91c4-5b1e-4c3a-9e2d-7a6b0c1d2e3f
+2026-10-15T08:05:47.019Z ERROR [payments] Timeout calling bank API after 3000ms for order 1c7e5f20-9a8b-4d6c-b1e2-3f4a5b6c7d8e
+2026-10-15T08:06:02.884Z INFO [api] GET /api/products 200 34ms
+2026-10-15T08:09:13.402Z ERROR [users] User not found: ana.silva@example.com
+2026-10-15T08:12:55.710Z ERROR [payments] Timeout calling bank API after 3000ms for order 5d4c3b2a-1f0e-4d9c-8b7a-6e5f4d3c2b1a
+2026-10-15T08:15:30.001Z WARN [db] Connection pool 80% full (16/20)
+2026-10-15T08:20:41.932Z ERROR [db] Connection refused to 10.0.4.17:5432
+2026-10-15T08:21:03.217Z ERROR [users] User not found: ben.okafor@example.com
+2026-10-15T08:30:00.000Z INFO [jobs] Nightly cleanup removed 42 expired sessions
