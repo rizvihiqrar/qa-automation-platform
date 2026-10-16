@@ -19,6 +19,20 @@ export const PACKAGES = [
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 
+// --install: run `npm ci` in each package first, so its own dependencies' types
+// (for example @faker-js/faker) are available. CI needs this; locally they're
+// usually installed already.
+if (process.argv.includes('--install')) {
+  for (const name of PACKAGES) {
+    const dir = path.join(ROOT, 'packages', name);
+    const res = spawnSync('npm ci --no-audit --no-fund', { cwd: dir, shell: true, encoding: 'utf8' });
+    if (res.status !== 0) {
+      console.error(`npm ci failed in ${name}:\n${res.stderr}`);
+      process.exit(1);
+    }
+  }
+}
+
 let failed = 0;
 for (const name of PACKAGES) {
   const res = spawnSync(process.execPath, [TSC, '-p', path.join(ROOT, 'packages', name, 'tsconfig.json')], { encoding: 'utf8' });
