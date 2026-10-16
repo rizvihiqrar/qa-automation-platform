@@ -1,0 +1,193 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "qa-practice-api",
+    "version": "1.0.0",
+    "description": "Contract for packages/qa-practice-api, written from its routes. The drift checker compares live responses against it."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": { "description": "Service is up", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" } } } }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "responses": {
+          "201": { "description": "Registered", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResult" } } } },
+          "400": { "description": "Missing fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "Email in use", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "responses": {
+          "200": { "description": "Logged in", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResult" } } } },
+          "400": { "description": "Missing fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "Wrong credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "responses": {
+          "200": { "description": "Current user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "responses": {
+          "200": { "description": "Page of users", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserPage" } } } },
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "responses": {
+          "200": { "description": "A user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "responses": {
+          "200": { "description": "Page of products", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductPage" } } } }
+        }
+      },
+      "post": {
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
+          "400": { "description": "Missing or invalid fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "responses": {
+          "200": { "description": "A product", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "responses": {
+          "200": { "description": "The caller's orders, newest first", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } }
+        }
+      },
+      "post": {
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+          "400": { "description": "Invalid items or not enough stock", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Product not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "responses": {
+          "200": { "description": "An order", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+          "404": { "description": "Not found or not yours", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/orders/{id}/status": {
+      "patch": {
+        "responses": {
+          "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+          "400": { "description": "Unknown status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Health": {
+        "type": "object", "additionalProperties": false, "required": ["status", "timestamp"],
+        "properties": { "status": { "type": "string", "enum": ["ok"] }, "timestamp": { "type": "string", "format": "date-time" } }
+      },
+      "Error": {
+        "type": "object", "additionalProperties": false, "required": ["error"],
+        "properties": { "error": { "type": "string" } }
+      },
+      "User": {
+        "type": "object", "additionalProperties": false, "required": ["id", "name", "email", "role", "created_at"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "role": { "type": "string", "enum": ["user", "admin"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthResult": {
+        "type": "object", "additionalProperties": false, "required": ["user", "token"],
+        "properties": { "user": { "$ref": "#/components/schemas/User" }, "token": { "type": "string" } }
+      },
+      "Product": {
+        "type": "object", "additionalProperties": false, "required": ["id", "name", "category", "price", "stock", "created_at"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "price": { "type": "number", "minimum": 0 },
+          "stock": { "type": "integer", "minimum": 0 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "OrderItem": {
+        "type": "object", "additionalProperties": false, "required": ["product_id", "name", "price", "quantity"],
+        "properties": {
+          "product_id": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string" },
+          "price": { "type": "number", "minimum": 0 },
+          "quantity": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "Order": {
+        "type": "object", "additionalProperties": false, "required": ["id", "user_id", "status", "total", "items", "created_at"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "user_id": { "type": "integer", "minimum": 1 },
+          "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+          "total": { "type": "number", "minimum": 0 },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Page": {
+        "type": "object", "required": ["data", "page", "limit", "total", "pages"],
+        "properties": {
+          "page": { "type": "integer", "minimum": 1 },
+          "limit": { "type": "integer", "minimum": 1 },
+          "total": { "type": "integer", "minimum": 0 },
+          "pages": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "UserPage": {
+        "type": "object", "additionalProperties": false, "required": ["data", "page", "limit", "total", "pages"],
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/User" } },
+          "page": { "type": "integer", "minimum": 1 }, "limit": { "type": "integer", "minimum": 1 },
+          "total": { "type": "integer", "minimum": 0 }, "pages": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "ProductPage": {
+        "type": "object", "additionalProperties": false, "required": ["data", "page", "limit", "total", "pages"],
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } },
+          "page": { "type": "integer", "minimum": 1 }, "limit": { "type": "integer", "minimum": 1 },
+          "total": { "type": "integer", "minimum": 0 }, "pages": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}
