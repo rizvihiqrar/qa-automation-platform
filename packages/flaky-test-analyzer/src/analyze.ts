@@ -1,12 +1,47 @@
 // Reads Playwright JSON reports (from `--reporter=json`) and reports how often
 // each test passed, needed a retry, or failed across runs.
 
-const STATUS_BUCKET = { expected: 'passed', flaky: 'flaky', unexpected: 'failed' };
+/** The parts of Playwright's JSON report this tool reads. */
+export interface PlaywrightTest {
+  status: 'expected' | 'unexpected' | 'flaky' | 'skipped';
+  projectName?: string;
+}
+export interface PlaywrightSpec {
+  title: string;
+  file?: string;
+  tests?: PlaywrightTest[];
+}
+export interface PlaywrightSuite {
+  file?: string;
+  specs?: PlaywrightSpec[];
+  suites?: PlaywrightSuite[];
+}
+export interface PlaywrightReport {
+  suites?: PlaywrightSuite[];
+}
+
+export type Label = 'stable' | 'flaky' | 'failing';
+
+export interface TestRow {
+  id: string;
+  runs: number;
+  passed: number;
+  flaky: number;
+  failed: number;
+}
+export interface AnalyzedRow extends TestRow {
+  label: Label;
+  /** Share of runs (0–1) that needed a retry or failed while passing elsewhere. */
+  flakeRate: number;
+}
+
+type Bucket = 'passed' | 'flaky' | 'failed';
+const STATUS_BUCKET: Partial<Record<PlaywrightTest['status'], Bucket>> = { expected: 'passed', flaky: 'flaky', unexpected: 'failed' };
 
 // Flattens a Playwright JSON report into one entry per test per project.
-export function collectTests(report) {
-  const out = [];
-  const walk = (suite, file) => {
+export function collectTests(report: PlaywrightReport): Array<{ id: string; status: PlaywrightTest['status'] }> {
+  const out: Array<{ id: string; status: PlaywrightTest['status'] }> = [];
+  const walk = (suite: PlaywrightSuite, file: string | undefined): void => {
     for (const child of suite.suites ?? []) walk(child, child.file ?? file);
     for (const spec of suite.specs ?? []) {
       for (const test of spec.tests ?? []) {
@@ -25,8 +60,8 @@ export function collectTests(report) {
 //   failing - failed in every run
 //   flaky   - needed a retry at least once, or passed and failed across runs
 //   stable  - the same result every run
-export function classify(row) {
-  const label =
+export function classify(row: TestRow): AnalyzedRow {
+  const label: Label =
     row.failed === row.runs ? 'failing'
     : row.flaky > 0 || (row.failed > 0 && row.passed > 0) ? 'flaky'
     : 'stable';
@@ -37,8 +72,8 @@ export function classify(row) {
 }
 
 // Aggregates any number of reports into one row per test, most unstable first.
-export function analyze(reports) {
-  const byTest = new Map();
+export function analyze(reports: readonly PlaywrightReport[]): AnalyzedRow[] {
+  const byTest = new Map<string, TestRow>();
   for (const report of reports) {
     for (const { id, status } of collectTests(report)) {
       const bucket = STATUS_BUCKET[status];

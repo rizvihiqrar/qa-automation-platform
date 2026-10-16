@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Usage: node src/cli.js <folder-of-playwright-json-reports>
+// Usage: node src/cli.ts <folder-of-playwright-json-reports>
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { analyze } from './analyze.js';
-import { toMarkdown } from './report.js';
+import { analyze, type PlaywrightReport } from './analyze.ts';
+import { toMarkdown } from './report.ts';
 
 const dir = process.argv[2];
 if (!dir) {
-  console.error('Usage: node src/cli.js <folder-of-playwright-json-reports>');
+  console.error('Usage: node src/cli.ts <folder-of-playwright-json-reports>');
   process.exit(2);
 }
 
@@ -17,8 +17,8 @@ if (files.length === 0) {
   process.exit(2);
 }
 
-const reports = await Promise.all(
-  files.map(async (f) => JSON.parse(await readFile(path.join(dir, f), 'utf8')))
+const reports: PlaywrightReport[] = await Promise.all(
+  files.map(async (f) => JSON.parse(await readFile(path.join(dir, f), 'utf8')) as PlaywrightReport)
 );
 const rows = analyze(reports);
 console.log(`Analyzed ${reports.length} run(s), ${rows.length} test(s)\n`);

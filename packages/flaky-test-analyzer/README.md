@@ -4,7 +4,7 @@ A small Node.js CLI that reads Playwright JSON reports from several CI runs and 
 
 Playwright's retry feature turns a flaky test green, so the test looks fine in the final report. This tool shows the retries, so you can see the tests that keep needing them.
 
-No dependencies. Requires Node 18 or later.
+No dependencies. Written in TypeScript; requires Node 24 or later (it runs the `.ts` files directly).
 
 ---
 
@@ -16,7 +16,7 @@ Save one JSON report per run, then point the tool at the folder:
 # Playwright config or CLI: write the JSON report for each run
 npx playwright test --reporter=json   # or set PLAYWRIGHT_JSON_OUTPUT_NAME per run
 
-node src/cli.js path/to/reports
+node src/cli.ts path/to/reports
 ```
 
 The output is a Markdown table, which you can paste into a PR comment or a README:
@@ -56,11 +56,11 @@ Four tests in the demo suite needed a retry in all three runs. A test that needs
 
 ```
 ├── src/
-│   ├── analyze.js     # Flattens reports, aggregates runs, labels each test
-│   ├── report.js      # Markdown table output
-│   └── cli.js         # Reads a folder of JSON reports
+│   ├── analyze.ts     # Flattens reports, aggregates runs, labels each test
+│   ├── report.ts      # Markdown table output
+│   └── cli.ts         # Reads a folder of JSON reports
 ├── test/
-│   └── analyze.test.js
+│   └── analyze.test.ts
 └── examples/demo-runs/   # Three real Playwright JSON reports
 ```
 
