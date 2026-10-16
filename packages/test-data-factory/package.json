@@ -1,0 +1,14 @@
+{
+  "name": "test-data-factory",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CLI tool to generate realistic test data (users, orders, products) and export to JSON, CSV, or SQL",
+  "bin": { "test-data-factory": "./src/index.js" },
+  "scripts": {
+    "start":   "node src/index.js",
+    "test":    "node --test"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^9.0.0"
+  }
+}
