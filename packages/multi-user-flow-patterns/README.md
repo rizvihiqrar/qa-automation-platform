@@ -8,11 +8,11 @@ Playwright patterns for testing more than one user at once: concurrent sessions,
 
 | File | Tests | Pattern |
 |---|---:|---|
-| `concurrent-sessions.spec.js` | 3 | Two and three users logged in at once; a normal user alongside the `performance_glitch_user` |
-| `context-isolation.spec.js` | 3 | One user's cart, logout, and sort choice don't affect another user |
-| `parallel-workflows.spec.js` | 3 | Two users check out at the same time; users navigate independently; parallel sessions don't slow each other past a threshold |
+| `concurrent-sessions.spec.ts` | 3 | Two and three users logged in at once; a normal user alongside the `performance_glitch_user` |
+| `context-isolation.spec.ts` | 3 | One user's cart, logout, and sort choice don't affect another user |
+| `parallel-workflows.spec.ts` | 3 | Two users check out at the same time; users navigate independently; parallel sessions don't slow each other past a threshold |
 
-**9 tests across 3 files.**
+**9 tests across 3 files**, in strict TypeScript run by Playwright and Node 24.
 
 ---
 
@@ -33,3 +33,13 @@ Set `BASE_URL` to point the suite at another copy of the app.
 ## Why It Matters
 
 Many real bugs only show up with two users: shared caches, session cookies that cross accounts, and locks or queues that slow everyone down. These tests show how to reproduce those situations in a single test with separate browser contexts.
+
+---
+
+## Fix Log
+
+Found while moving to TypeScript (Day 20):
+
+- **An assertion that couldn't fail:** the logout check was `toHaveURL(/$/)`. That regex matches every URL, so it passed whether or not User A was logged out. It now checks that the login button is visible and the page is no longer the inventory.
+- **A sort check that was too loose:** it only asserted that the two users' first items differed, which would also pass if one sort silently didn't apply. It now asserts each user's exact first item.
+- **Selectors:** CSS classes (`.inventory_item`, `.complete-header`) were replaced with the site's `data-test` attributes, matching the rest of the repo.

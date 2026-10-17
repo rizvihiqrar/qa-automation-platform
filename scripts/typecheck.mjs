@@ -11,6 +11,8 @@ export const PACKAGES = [
   'ai-test-generator',
   'qa-for-ai-features',
   'qa-practice-api',
+  'multi-user-flow-patterns',
+  'bdd-playwright-demo',
   'defect-report-linter',
   'log-signature-grouper',
   'webhook-harness',

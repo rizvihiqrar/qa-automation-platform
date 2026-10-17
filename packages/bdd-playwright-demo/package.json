@@ -4,13 +4,14 @@
   "type": "module",
   "description": "Playwright + Cucumber BDD demo — Gherkin feature files executed against saucedemo.com",
   "scripts": {
-    "test":       "cucumber-js",
-    "smoke":      "cucumber-js --tags @smoke",
+    "test": "cucumber-js",
+    "smoke": "cucumber-js --tags @smoke",
     "regression": "cucumber-js --tags @regression"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^11.0.0",
-    "@playwright/test":   "^1.49.0",
-    "playwright":         "^1.49.0"
+    "@cucumber/cucumber": "^13.3.0",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^24.19.2",
+    "playwright": "^1.49.0"
   }
 }
