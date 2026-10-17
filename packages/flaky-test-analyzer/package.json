@@ -6,7 +6,8 @@
   "bin": { "flaky-test-analyzer": "src/cli.ts" },
   "scripts": {
     "test": "node --test",
-    "analyze": "node src/cli.ts"
+    "analyze": "node src/cli.ts",
+    "track": "node src/track.ts"
   },
   "engines": { "node": ">=24" },
   "license": "MIT"

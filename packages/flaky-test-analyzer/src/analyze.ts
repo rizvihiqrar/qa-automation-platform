@@ -28,6 +28,14 @@ export interface TestRow {
   passed: number;
   flaky: number;
   failed: number;
+  /** Runs where this test needed a retry or failed, oldest first. */
+  unstableRuns: string[];
+}
+
+/** One run's report, named so results can point back to the run (a CI run ID, a file name). */
+export interface NamedReport {
+  run: string;
+  report: PlaywrightReport;
 }
 export interface AnalyzedRow extends TestRow {
   label: Label;
@@ -72,15 +80,22 @@ export function classify(row: TestRow): AnalyzedRow {
 }
 
 // Aggregates any number of reports into one row per test, most unstable first.
+// Unnamed reports are numbered 1, 2, 3... in the order given.
 export function analyze(reports: readonly PlaywrightReport[]): AnalyzedRow[] {
+  return analyzeRuns(reports.map((report, i) => ({ run: String(i + 1), report })));
+}
+
+// The same, for reports named by run. Pass them oldest first.
+export function analyzeRuns(runs: readonly NamedReport[]): AnalyzedRow[] {
   const byTest = new Map<string, TestRow>();
-  for (const report of reports) {
+  for (const { run, report } of runs) {
     for (const { id, status } of collectTests(report)) {
       const bucket = STATUS_BUCKET[status];
       if (!bucket) continue; // skipped tests are not counted
-      const row = byTest.get(id) ?? { id, runs: 0, passed: 0, flaky: 0, failed: 0 };
+      const row = byTest.get(id) ?? { id, runs: 0, passed: 0, flaky: 0, failed: 0, unstableRuns: [] };
       row.runs += 1;
       row[bucket] += 1;
+      if (bucket !== 'passed' && !row.unstableRuns.includes(run)) row.unstableRuns.push(run);
       byTest.set(id, row);
     }
   }

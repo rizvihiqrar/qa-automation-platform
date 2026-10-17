@@ -1,0 +1,56 @@
+name: Flaky tests
+
+# After every CI run on main (including the nightly one), reads the regression
+# results of the last 14 runs, lists the flaky tests, and keeps one issue per
+# flaky test (label: flaky-test): opened when a test turns flaky, refreshed
+# while it stays flaky, closed once it passes first time in every analyzed run.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: read     # download artifacts from CI runs
+  contents: read
+  issues: write     # open, update and close flaky-test issues
+
+concurrency:
+  group: flaky-tests
+  cancel-in-progress: false
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RUNS: 14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Runs without the artifact (older than the upload, expired, or cancelled) are skipped.
+      - name: Download regression results from recent CI runs on main
+        run: |
+          mkdir -p runs
+          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --status completed --limit 50 --json databaseId -q '.[].databaseId'); do
+            [ "$(ls runs | wc -l)" -ge "$RUNS" ] && break
+            gh run download "$id" -R "$GITHUB_REPOSITORY" -n regression-results -D "runs/$id" 2>/dev/null || rm -rf "runs/$id"
+          done
+          echo "Runs with results: $(ls runs | wc -l)"
+
+      - name: Track flaky tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node packages/flaky-test-analyzer/src/track.ts runs --out flaky-tests.json --repo "$GITHUB_REPOSITORY" --apply
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flaky-tests
+          path: flaky-tests.json
+          retention-days: 30

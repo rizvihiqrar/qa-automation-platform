@@ -46,6 +46,37 @@ Sample output from a real run of [playwright-demo-suite](https://github.com/rizv
 
 ---
 
+## Tracking Flaky Tests in CI
+
+The **Flaky tests** workflow (`.github/workflows/flaky.yml`) runs this tool after every CI run on main, including the nightly one:
+
+1. CI saves the merged results of the Sauce Demo regression suite (43 tests, 3 shards) as the `regression-results` artifact.
+2. The workflow downloads that artifact from the last 14 CI runs on main, one folder per run.
+3. `src/track.ts` analyzes them, writes `flaky-tests.json` (uploaded as an artifact), and keeps one GitHub issue per flaky test, labelled `flaky-test`. The job summary shows the table and every issue change.
+
+| Situation | What happens to the issue |
+|---|---|
+| A test needed a retry, or failed between passes | Opened, with the counts and a link to each unstable run |
+| Still flaky | Body refreshed with the latest counts (no edit if nothing changed) |
+| Passed first time in every analyzed run, and ran at least 5 times | Closed with a comment; a new flake opens a new issue |
+| Now fails in every run | Kept open and marked as broken, not flaky |
+| Not found in any of the last runs (renamed or removed) | Closed, once there are at least 5 runs of history |
+| Labelled `flaky-test` but opened by a person | Left alone |
+
+Issues rather than a committed list: workflows in this repo aren't allowed to open pull requests, and an issue is where someone would discuss and fix the test anyway. Flaky tests are tracked, not skipped. Quarantining them would hide the signal this tool exists to show.
+
+Try it without changing anything (no token needed):
+
+```bash
+# runs/<run-id>/merged.json, one folder per CI run
+node src/track.ts runs --out flaky-tests.json
+node src/track.ts runs --repo owner/name --apply   # needs GITHUB_TOKEN with issues: write
+```
+
+The lifecycle rules are pure functions in `src/tracker.ts`. `src/github.ts` applies them through the REST API and is tested with a fake `fetch`.
+
+---
+
 ## What the Sample Shows
 
 Four tests in the demo suite needed a retry in all three runs. A test that needs a retry every time is consistently unstable, so the retry is hiding a real problem. A flake rate that stays at 100% usually points to a timing or selector issue, not bad luck.
@@ -58,9 +89,14 @@ Four tests in the demo suite needed a retry in all three runs. A test that needs
 ├── src/
 │   ├── analyze.ts     # Flattens reports, aggregates runs, labels each test
 │   ├── report.ts      # Markdown table output
-│   └── cli.ts         # Reads a folder of JSON reports
+│   ├── cli.ts         # Reads a folder of JSON reports
+│   ├── tracker.ts     # Flaky list and issue lifecycle (pure)
+│   ├── github.ts      # Applies issue changes via the REST API
+│   └── track.ts       # CLI used by the Flaky tests workflow
 ├── test/
-│   └── analyze.test.ts
+│   ├── analyze.test.ts
+│   ├── tracker.test.ts
+│   └── github.test.ts
 └── examples/demo-runs/   # Three real Playwright JSON reports
 ```
 
@@ -69,10 +105,10 @@ Four tests in the demo suite needed a retry in all three runs. A test that needs
 ## Tests
 
 ```bash
-npm test   # 8 tests, Node built-in test runner
+npm test   # 23 tests, Node built-in test runner
 ```
 
-The tests cover nested suites, the project name in each row, each label, skipped results, sorting, and the Markdown output.
+The tests cover nested suites, the project name in each row, each label, skipped results, sorting, the Markdown output, every rule in the issue lifecycle table, and the API calls (paging, skipping pull requests, comment before close, error handling). Four deliberate breaks to the lifecycle rules (close after one clean run, close broken tests, touch manual issues, edit unchanged issues) each made a test fail.
 
 ---
 
