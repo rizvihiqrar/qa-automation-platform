@@ -171,3 +171,12 @@ jobs:
           name: report-regression
           path: packages/ai-test-generator/playwright-report/
           retention-days: 7
+      # The Flaky tests workflow reads these from the last 14 runs on main.
+      - name: Upload merged results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-results
+          path: packages/ai-test-generator/merged.json
+          if-no-files-found: ignore
+          retention-days: 30
