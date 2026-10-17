@@ -58,12 +58,12 @@ test('requirements reads the text and every risk', () => {
   assert.equal(requirements(PLAN.replace(/\n/g, '\r\n')).length, 3, 'CRLF plan');
 });
 
-test('the real plan parses to 12 requirements and 85 cases, every case under a listed requirement', () => {
+test('the real plan parses to 18 requirements and 119 cases, every case under a listed requirement', () => {
   const m = buildMatrix(fs.readFileSync(REAL_PLAN, 'utf8'), null);
-  assert.equal(m.totals.requirements, 12);
-  assert.equal(m.totals.cases, 85);
+  assert.equal(m.totals.requirements, 18);
+  assert.equal(m.totals.cases, 119);
   assert.deepEqual(m.orphanCases, []);
-  assert.equal(m.rows.reduce((n, r) => n + r.cases.length, 0), 85);
+  assert.equal(m.rows.reduce((n, r) => n + r.cases.length, 0), 119);
 });
 
 test('caseResults maps Playwright statuses, walks nested suites and counts tests with no case ID', () => {

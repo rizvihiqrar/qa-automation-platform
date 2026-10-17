@@ -8,3 +8,5 @@
 10116	IGNORE	(ZAP is Out of Date) accepted: updated to the latest release; pinned, so a new release does not fail unrelated changes
 10049	IGNORE	(Non-Storable Content) false positive: per-user API data must not be cached
 100000	IGNORE	(A Client Error response code was returned by the server) false positive: the API refusing a request is the expected answer
+10111	IGNORE	(Authentication Request Identified) false positive: informational, ZAP recognising the sign-in request
+10112	IGNORE	(Session Management Response Identified) false positive: informational, ZAP recognising the token in the sign-in response

@@ -8,7 +8,7 @@ Software teams change their product every day, and each change can break somethi
 
 Each folder under `packages/` is a small project that either tests something (a website, an API, a database, an AI feature) or helps testers do their job (finding unreliable tests, checking bug reports, generating test data). The [table below](#packages) says what each one does.
 
-**What it has found so far:** real bugs, not just green ticks. A login that froze every other user for 70 milliseconds, an API that sold more stock than it had and let delivered orders go back to pending, a webhook processed twice, a tool that rejected every rule on Windows, and test reports that would have published live access tokens. Each one is listed in [Bugs Found](#bugs-found-and-fixed-while-building-this) with its fix.
+**What it has found so far:** real bugs, not just green ticks. A login that froze every other user for 70 milliseconds, an API that sold more stock than it had and let delivered orders go back to pending, an API anyone could sign admin tokens for with a secret printed in this repository, a webhook processed twice, a tool that rejected every rule on Windows, and test reports that would have published live access tokens. Each one is listed in [Bugs Found](#bugs-found-and-fixed-while-building-this) with its fix.
 
 ### Two results in numbers
 
@@ -59,10 +59,10 @@ Strongest first.
 | [flaky-test-analyzer](packages/flaky-test-analyzer) | Reads results from many test runs and points out the tests that only pass after a retry. After every CI run on main it checks the last 14 runs and keeps one GitHub issue per flaky test, opened and closed automatically. Also puts a confidence interval on each pass rate and works out how many runs it takes to catch a rare flake | 37 |
 | [worker-scaling-benchmark](packages/worker-scaling-benchmark) | Measures whether running tests in parallel actually makes a suite faster | 10 |
 | [webhook-harness](packages/webhook-harness) | Proves a webhook receiver rejects forged or replayed messages, processes each one only once, and that the sender retries failures correctly | 21 |
-| [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs in the practice API, now fixed | 16 + 22-step live check |
+| [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs in the practice API, now fixed | 17 + 27-step live check |
 | [k6-performance](packages/k6-performance) | Load and spike tests with per-endpoint limits; found that each login froze every other request for ~70 ms, now fixed (browsing p95 67 ms → 1 ms) | 5 + 3 k6 tests |
 | [contract-testing-demo](packages/contract-testing-demo) | Checks that a live API still returns what the app that uses it expects | 4 |
-| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with its own API test suite and 85 cases designed from a written [test strategy](docs/test-strategy/README.md) (equivalence classes, boundaries, decision tables, state transitions) | 123 |
+| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with its own API test suite and 119 cases designed from a written [test strategy](docs/test-strategy/README.md) (equivalence classes, boundaries, decision tables, state transitions, an access-control matrix), plus a passive [OWASP ZAP scan](packages/qa-practice-api/README.md#security-scan) of every operation in CI | 165 + ZAP scan |
 | [a11y-aoda-audit](packages/a11y-aoda-audit) | Audits a demo store against the WCAG 2.0 AA standard Ontario's AODA requires, before and after fixes; also catches two issues axe misses | 16 |
 | [multi-user-flow-patterns](packages/multi-user-flow-patterns) | Runs several users at once to catch bugs that only appear when people share a system | 9 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios + 4 |
@@ -78,7 +78,7 @@ Strongest first.
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 
-24 packages, about 850 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**.
+24 packages, about 900 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**.
 
 ---
 
@@ -90,9 +90,11 @@ Strongest first.
 flowchart LR
   T["CI workflow (ci.yml)<br/>on pull request, push to main,<br/>nightly, or by hand"]
   T --> TC["typecheck<br/>23 packages + root script tests"]
+  T --> Z["ZAP scan<br/>passive, every API operation"]
   T --> P["One job per package<br/>unit, API, contract, performance,<br/>accessibility, mutation, CI demos"]
   T --> SC{"test-scope.mjs<br/>smoke or full?"}
   P --> L[("Local servers<br/>practice API · mock AI · GraphQL")]
+  Z --> L
   P --> DJ[("DummyJSON<br/>public API")]
   SC --> BR["Browser suites<br/>multi-user · BDD · AI example"]
   SC --> RS["Regression shards<br/>3 on full runs, 1 on smoke"]
@@ -118,6 +120,8 @@ The Sauce Demo regression suite (43 tests) is split across 3 runners with Playwr
 Pull requests and main run different amounts of the live-site browser tests. A pull request runs only the `@smoke` tests of each browser suite (16 of 65 tests), unless it changes that suite, changes how CI picks tests, or has the `full-regression` label. Pushes to main, the nightly run and manual runs always run everything. `scripts/test-scope.mjs` makes the call and writes the reason in the job summary; when in doubt it runs everything. Measured: a smoke run makes 75% fewer live-site test runs but isn't faster to go green, because the k6 performance job (about 60 seconds) is the slowest either way. What smoke buys is fewer runs against a public site that can be slow or flaky.
 
 After each CI run on main, two workflows read its artifacts. **Dashboard** rebuilds the [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) and publishes that run's [test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/), after redacting tokens and withholding any report it can't clean. **Flaky tests** reads the regression results of the last 14 runs and keeps one issue per flaky test, labelled [`flaky-test`](https://github.com/rizvihiqrar/qa-automation-platform/issues?q=label%3Aflaky-test). Retries keep a flaky test green in any single run; across runs, it shows up. How far 14 runs can see is measured, not assumed: they catch a test that fails 1 run in 5 about 96% of the time, but one that fails 1 run in 100 only 13% of the time ([the numbers](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance)). The manual **Variance** workflow repeats the regression suite many times on GitHub's runners when a quicker, sharper answer is needed.
+
+The `zap-baseline` job scans the practice API with OWASP ZAP's passive rules on every run: every operation in its OpenAPI spec is requested once, and a finding nobody has triaged fails the job. The triage, and why it uses ZAP's API scan rather than the plain baseline, is in the [practice API README](packages/qa-practice-api/README.md#security-scan).
 
 The `.github/workflows` folders inside `matrix-build-demo` and `pipeline-templates-demo` are example content for those demos. GitHub only runs the root workflow.
 
@@ -157,7 +161,7 @@ The first `checkJs` pass found 19 errors. Two were real: code assumed `server.ad
 
 ## Bugs Found and Fixed While Building This
 
-Bringing these projects together surfaced real defects. Each fix is described in the package README; five have full [root-cause write-ups](docs/rca/README.md) (symptom, cause in the code, fix, regression tests, prevention). The last five rows came from designing cases for the practice API with named techniques, described in its [test strategy](docs/test-strategy/README.md).
+Bringing these projects together surfaced real defects. Each fix is described in the package README; five have full [root-cause write-ups](docs/rca/README.md) (symptom, cause in the code, fix, regression tests, prevention). Of the last nine rows, five came from designing cases for the practice API with named techniques, described in its [test strategy](docs/test-strategy/README.md), and four from testing who may do what in it and scanning it with OWASP ZAP.
 
 | Package | Problem | Fix |
 |---|---|---|
@@ -187,6 +191,10 @@ Bringing these projects together surfaced real defects. Each fix is described in
 | qa-practice-api | Values were converted instead of checked: price `""` saved as 0, `true` as 1; quantity 1.5 left stock at 8.5; quantities sent as text were joined, so `"2"` + `"3"` was checked as 23, found by equivalence partitioning | Prices, stock and quantities must be JSON numbers (whole numbers where it matters) |
 | qa-practice-api | A `null` order line crashed the route, a malformed body got an HTML error page, and a numeric password at sign-up got a `500`, found by equivalence partitioning | JSON `{ error }` for every failure; `400` for wrong field types |
 | qa-practice-api | `limit=0` gave 10 items per page while `limit=-1` gave 1, found by boundary value analysis | Only a missing or non-numeric limit takes the default |
+| qa-practice-api | Any signed-in customer could create, reprice or delete any product, read every account's email, and mark their own order delivered, found by an access-control matrix | Admin-only routes answer `403` to customers; a customer may only cancel |
+| qa-practice-api | With no `JWT_SECRET` set (and none ever was), tokens were signed with a fallback secret written in this public repository, so anyone could sign an admin token; a deleted account's token kept working for its hour | A random secret per start; every request checks that the account still exists |
+| qa-practice-api | Sign-in had no limit on attempts. A limit that counts only finished failures would still let a burst through: put in as a check, it let all 20 simultaneous guesses have their password checked | 5 attempts per email and client in 15 minutes, counted as they start; `429` with `Retry-After` |
+| qa-practice-api, api-drift-checker | The ZAP scan found responses without `nosniff` or `Cross-Origin-Resource-Policy`, and showed it had reached only 5 of the 13 operations: the OpenAPI spec had no request bodies or path parameters | Both headers on every response; bodies and parameters in the spec; the drift checker no longer counts `parameters` as an operation |
 
 ---
 
