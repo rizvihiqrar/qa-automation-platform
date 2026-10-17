@@ -8,7 +8,7 @@ A finding with **Rule: none** is an open question: deliberately left out of scop
 
 | # | Line | Verdict | Findings |
 |---|---|---|---|
-| L1 | Admins create discount codes and customers enter a code when they place an order to get money off. | needs work | DC-01, DC-02, DC-03, DC-04 |
+| L1 | Admins create discount codes and customers enter a code when they place an order to get money off. | needs work | DC-01, DC-02, DC-03, DC-04, DC-23, DC-24 |
 | L2 | A code is either a percentage off or a fixed amount off. | needs work | DC-05, DC-06, DC-07, DC-08 |
 | L3 | Codes can have an expiry date. | needs work | DC-09, DC-10 |
 | L4 | Codes can have a usage limit. | needs work | DC-11, DC-12, DC-13 |

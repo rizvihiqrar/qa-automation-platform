@@ -77,7 +77,7 @@ Days 1–30 ended at [v1.0.0](https://github.com/rizvihiqrar/qa-automation-platf
 
 | Day | Work | Status |
 |---:|---|---|
-| 37 | Validating AI-written code, part 1: spec and requirement review for discount codes; an AI writes the feature 🤖 | ⬜ |
+| 37 | Validating AI-written code, part 1: spec and requirement review for discount codes; an AI writes the feature 🤖 | ✅ [docs/ai-written-code](docs/ai-written-code/README.md): the nine-line request was reviewed before any code existed. All nine lines needed work: 24 findings (14 missing cases, 8 ambiguities, 2 risks) became a spec of 25 numbered rules and six worked examples, with 2 open questions left out of scope rather than guessed. Among them: 10% of $10.05 rounds to $1.00 with the obvious JavaScript (the spec now says whole cents, half up), different messages for unknown and disabled codes would let anyone probe for codes, and changing what `total` means would silently overcharge in every existing client. The AI then wrote the feature from the exact [prompt](docs/ai-written-code/ai-run/prompt.md), committed unedited before anything ran. It passed every gate it was given (typecheck, the 165 existing tests, the drift check), and none of those gates ran a line of the discount code. A root test keeps the request, log, spec and prompt in step (10 deliberate breaks, each caught) |
 | 38 | Part 2: code review, boundary and decision-table tests on the AI's code | ⬜ |
 | 39 | Part 3: property-based tests (fast-check) and mutation testing; publish what the AI got wrong and which technique caught it | ⬜ |
 | 40 | LLM-as-judge checked against human labels (DeepEval or promptfoo) 🤖 | ⬜ |

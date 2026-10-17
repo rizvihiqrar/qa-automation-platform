@@ -74,6 +74,18 @@ The data lives in memory, so each run starts with an empty store and no state le
 | POST | `/orders` | Yes | `{ items: [{ product_id, quantity }] }` |
 | PATCH | `/orders/:id/status` | Yes | `{ status: "pending\|processing\|shipped\|delivered\|cancelled" }`. Allowed moves: pending → processing or cancelled, processing → shipped or cancelled, shipped → delivered. A customer may only cancel their own order; every other move is the admin's |
 
+`POST /orders` also takes an optional `discount_code`, and orders carry `subtotal`, `discount_code` and `discount` beside `total` (the amount to pay).
+
+### Discount codes
+| Method | Route | Auth | Notes |
+|---|---|---|---|
+| GET | `/discounts` | Admin | Every code |
+| GET | `/discounts/:code` | Admin | Code ignores case |
+| POST | `/discounts` | Admin | `{ code, type: "percent\|fixed", value, expires_at?, max_uses?, min_subtotal?, active? }` |
+| PATCH | `/discounts/:code` | Admin | Only `active`, `expires_at`, `max_uses` |
+
+Discount codes were written by an AI from a [reviewed spec](../../docs/ai-written-code/spec.md) and committed unedited, as a case study in [validating AI-written code](../../docs/ai-written-code/README.md). Until that review and its tests are done (Days 38–39), treat this code as untested: the 165 tests above predate it and never send a discount code.
+
 ## Documented Edge Cases
 
 These are intentional behaviours worth writing tests for:
