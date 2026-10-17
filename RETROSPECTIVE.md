@@ -4,7 +4,7 @@ The 30-day plan in [ROADMAP.md](ROADMAP.md) is done. This page looks back on wha
 
 ## How it was done
 
-The plan was written as 30 "days", each one module or one improvement. Days 1–3 consolidated earlier projects into this repo; from Day 4 on, each day was one branch and one pull request, merged only when CI was green: 29 pull requests in total. The work ran from 2026-10-16 to 2026-10-17 in AI-assisted sessions with Claude Code. Every change went through review and CI like any other, and the bugs on this page were found by running the code, not by reading about it.
+The plan was written as 30 "days", each one module or one improvement. Days 1–3 consolidated earlier projects into this repo; from Day 4 on, each day was one branch and one pull request, merged only when CI was green: 29 pull requests in total. The work was done in AI-assisted sessions with Claude Code. Every change went through review and CI like any other, and the bugs on this page were found by running the code, not by reading about it.
 
 ## What v1.0 contains
 
