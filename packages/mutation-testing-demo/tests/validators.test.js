@@ -13,8 +13,8 @@ describe('validateEmail', () => {
     ['user@example.com',          true],
     ['first.last@domain.co.uk',   true],
     ['user+tag@example.org',      true],
-  ])('valid: %s → true', (input) => {
-    expect(validateEmail(input)).toBe(true);
+  ])('valid: %s → true', (input, expected) => {
+    expect(validateEmail(input)).toBe(expected);
   });
 
   test.each([
@@ -25,8 +25,8 @@ describe('validateEmail', () => {
     ['@nodomain.com',  false],
     ['noat.com',       false],
     ['two@@domain.com',false],
-  ])('invalid: %s → false', (input) => {
-    expect(validateEmail(input)).toBe(false);
+  ])('invalid: %s → false', (input, expected) => {
+    expect(validateEmail(input)).toBe(expected);
   });
 
   test('trims surrounding whitespace before validating', () => {
@@ -44,8 +44,8 @@ describe('validatePrice', () => {
     [9.99,      true],
     [100,       true],
     [0.001,     true],
-  ])('valid: %s → true', (input) => {
-    expect(validatePrice(input)).toBe(true);
+  ])('valid: %s → true', (input, expected) => {
+    expect(validatePrice(input)).toBe(expected);
   });
 
   test.each([
@@ -57,8 +57,8 @@ describe('validatePrice', () => {
     ['10',      false],
     [null,      false],
     [undefined, false],
-  ])('invalid: %s → false', (input) => {
-    expect(validatePrice(input)).toBe(false);
+  ])('invalid: %s → false', (input, expected) => {
+    expect(validatePrice(input)).toBe(expected);
   });
 });
 
@@ -67,8 +67,8 @@ describe('validateQuantity', () => {
     [1,    true],
     [100,  true],
     [999,  true],
-  ])('valid: %s → true', (input) => {
-    expect(validateQuantity(input)).toBe(true);
+  ])('valid: %s → true', (input, expected) => {
+    expect(validateQuantity(input)).toBe(expected);
   });
 
   test.each([
@@ -78,8 +78,8 @@ describe('validateQuantity', () => {
     [NaN,   false],
     ['1',   false],
     [null,  false],
-  ])('invalid: %s → false', (input) => {
-    expect(validateQuantity(input)).toBe(false);
+  ])('invalid: %s → false', (input, expected) => {
+    expect(validateQuantity(input)).toBe(expected);
   });
 });
 
@@ -118,8 +118,8 @@ describe('validateProductId', () => {
     [100,       true],
     ['sku-123', true],
     ['abc',     true],
-  ])('valid: %j → true', (input) => {
-    expect(validateProductId(input)).toBe(true);
+  ])('valid: %j → true', (input, expected) => {
+    expect(validateProductId(input)).toBe(expected);
   });
 
   test.each([
@@ -132,7 +132,7 @@ describe('validateProductId', () => {
     [undefined, false],
     [[],        false],
     [{},        false],
-  ])('invalid: %j → false', (input) => {
-    expect(validateProductId(input)).toBe(false);
+  ])('invalid: %j → false', (input, expected) => {
+    expect(validateProductId(input)).toBe(expected);
   });
 });

@@ -93,7 +93,7 @@ A check that never fails is as useless as no check, so each one is proven both w
 To confirm the tests themselves work, two checks were broken on purpose: one flipped so it fired on good data, and one changed so it could never fire. Both were caught.
 
 ```bash
-npm test   # 33 tests, Node built-in test runner
+npm test   # 35 tests, Node built-in test runner
 ```
 
 ---
@@ -104,6 +104,7 @@ npm test   # 33 tests, Node built-in test runner
 - **No enforced foreign keys:** real systems often lack them or have them switched off for imports. The checks find what the database didn't stop.
 - **Payments compare against item totals,** not the order total, so one wrong order total is reported once instead of twice.
 - **SQLite through sql.js** (WebAssembly): runs the same on Windows, macOS and Linux CI with nothing native to install.
+- **Strict TypeScript, no build:** Node 24 runs the `.ts` files directly. Moving to TypeScript (Day 21) also surfaced a Windows-only bug. With Git's CRLF line endings, `.` in the header regex didn't match the trailing `\r`, so every check file was rejected on Windows. CI runs on Linux and never saw it. Headers are now split on `\r?\n`, and a test covers CRLF input. A flag given without a value, such as `--format` at the end, now fails clearly instead of quietly using the default.
 
 ---
 
@@ -117,8 +118,8 @@ npm test   # 33 tests, Node built-in test runner
 ├── datasets/
 │   └── demo-defects.sql    # Realistic bad data for the demo
 ├── src/
-│   ├── integrity.js        # Load checks, build databases, run checks
-│   ├── report.js           # Text and Markdown output
-│   └── cli.js
+│   ├── integrity.ts        # Load checks, build databases, run checks
+│   ├── report.ts           # Text and Markdown output
+│   └── cli.ts
 └── test/
 ```

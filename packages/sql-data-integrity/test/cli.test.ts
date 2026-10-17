@@ -5,12 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { parseArgs } from '../src/cli.js';
-import { parseCheck } from '../src/integrity.js';
-import { createDemoDatabase } from '../src/integrity.js';
+import { parseArgs } from '../src/cli.ts';
+import { parseCheck } from '../src/integrity.ts';
+import { createDemoDatabase } from '../src/integrity.ts';
 
-const CLI = fileURLToPath(new URL('../src/cli.js', import.meta.url));
-const run = (...args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
+const CLI = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+const run = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
 
 test('parseArgs defaults to the clean dataset and text output', () => {
   assert.deepEqual(parseArgs([]), { dataset: 'clean', db: null, format: 'text' });
@@ -22,10 +22,22 @@ test('parseArgs rejects unknown options and conflicting sources', () => {
   assert.throws(() => parseArgs(['--dataset', 'demo', '--db', 'x.db']), /not both/);
 });
 
+test('parseArgs rejects a flag with no value instead of falling back to the default', () => {
+  assert.throws(() => parseArgs(['--format']), /--format needs a value/);
+  assert.throws(() => parseArgs(['--dataset', '--format', 'md']), /--dataset needs a value/);
+});
+
 test('parseCheck needs every header and a known severity', () => {
   assert.throws(() => parseCheck('-- id: a\n-- severity: error\nSELECT 1;'), /needs id, severity and description/);
   assert.throws(() => parseCheck('-- id: a\n-- severity: high\n-- description: d\nSELECT 1;'), /unknown severity/);
   assert.equal(parseCheck('-- id: a\n-- severity: warning\n-- description: d\nSELECT 1;').id, 'a');
+});
+
+test('parseCheck reads files with Windows line endings', () => {
+  const check = parseCheck('-- id: a\r\n-- severity: error\r\n-- description: d\r\nSELECT 1;\r\n');
+  assert.equal(check.id, 'a');
+  assert.equal(check.severity, 'error');
+  assert.equal(check.description, 'd');
 });
 
 test('CLI exits 0 on clean data', () => {

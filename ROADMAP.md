@@ -42,7 +42,7 @@ The resume leads with TypeScript, so convert one area a day, keeping CI green af
 | 18 | ai-test-generator | ✅ typed review findings, eval scoring and Playwright report; the API client is a small typed interface the fake test client also satisfies |
 | 19 | qa-for-ai-features, qa-practice-api | ✅ typed store, routes and AI response contract. Found along the way: PUT /products skipped the create validation, orders oversold when one product was on two lines, a test timeout Playwright silently ignored, and a mock server that crashed on malformed JSON. All fixed with regression tests |
 | 20 | multi-user-flow-patterns, bdd-playwright-demo | ✅ typed sessions, page objects and Cucumber World. Review found a logout assertion that matched every URL and a sort check too loose to fail; both tightened. Cucumber 11 to 13 for Node 24 |
-| 21 | Remaining packages: every package under the type-check. The tools and suites move to TypeScript; the CI demos (matrix, pipeline templates, mutation, contract, GraphQL, Postman) stay JavaScript under `checkJs`, since they exist to show CI patterns, not code | ⬜ |
+| 21 | Every package under the type-check (23 of 23 with code) | ✅ sql-data-integrity moved to strict TypeScript, which surfaced a Windows bug: CRLF line endings made it reject every check file. The other tools and the CI demos are type-checked as JavaScript (`checkJs`); that pass found `test.each` tables whose expected column was never used. Converting the remaining tools to strict TypeScript is left as follow-up |
 
 ## Days 22–30: Pipeline depth and polish
 
