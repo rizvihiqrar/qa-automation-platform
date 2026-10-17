@@ -54,7 +54,7 @@ The resume leads with TypeScript, so convert one area a day, keeping CI green af
 | 25 | Publish HTML reports to GitHub Pages | ✅ the 9 reports from each CI run on main are published next to the dashboard, with an index of CI results. Everything is scanned first: tokens in text are redacted, and a report whose zipped data holds one is withheld. The first scan found live access tokens in the Postman report (19 redacted) |
 | 26 | Architecture diagram and README pass for non-technical readers | ✅ root README opens with a plain-English section, a "how a change gets tested" diagram and a glossary; the architecture diagram is redrawn (it predated sharding, smoke/full, flaky tracking and Pages reports) and split into two readable views, each checked by rendering it at GitHub's width; stale facts fixed (Node 24, TypeScript status); bugs table brought up to date (18 entries); every package README now has an "In plain English" line |
 | 27 | Pick the two strongest results for the resume, with numbers | ✅ the k6 login-hashing bug (browsing p95 67–84 ms → 1 ms, logins 72 → 40 ms) and the reviewed AI test generator (10/10 specs passed review, 42/43 tests passed first run, review caught an assertion-free test Playwright passed). Both are in the root README's "Two results in numbers" with links to the evidence |
-| 28 | Update LinkedIn projects and the GitHub profile README | ⬜ |
+| 28 | Update LinkedIn projects and the GitHub profile README | ✅ profile README leads with this project and the two results in numbers, notes the archived suites, and condenses the build notes. LinkedIn left as it is by choice |
 | 29 | Archive or fold the remaining standalone repos | ⬜ |
 | 30 | Retrospective; tag v1.0 | ⬜ |
 
