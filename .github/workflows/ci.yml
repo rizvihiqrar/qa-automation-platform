@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # labeled: adding the full-regression label reruns CI with the full suites
+    types: [opened, synchronize, reopened, labeled]
   schedule:
     - cron: '0 9 * * *'   # nightly regression, 09:00 UTC
   workflow_dispatch:
@@ -27,6 +29,8 @@ jobs:
       - run: npm ci
       - name: Type-check packages
         run: npm run typecheck -- --install
+      - name: Test root scripts
+        run: npm test
 
   test:
     name: ${{ matrix.package }}
@@ -59,21 +63,29 @@ jobs:
           - { package: postman-api-collection,   browsers: false, command: npm test }
           - { package: contract-testing-demo,    browsers: false, command: npm test }
           - { package: qa-for-ai-features,       browsers: false, command: npx playwright test }
-          # Browser
-          - { package: multi-user-flow-patterns, browsers: true,  command: npm test }
-          - { package: bdd-playwright-demo,      browsers: true,  command: npm test }
-          - { package: ai-test-generator,        browsers: true,  command: npm test && npm run review && npm run test:e2e }
+          # Browser, against the live Sauce Demo site. `smoke` is what a pull request
+          # runs when it doesn't touch the suite (scripts/test-scope.mjs decides).
+          - { package: multi-user-flow-patterns, browsers: true,  command: npm test, smoke: npm run smoke }
+          - { package: bdd-playwright-demo,      browsers: true,  command: npm test, smoke: npm run smoke }
+          - { package: ai-test-generator,        browsers: true,  command: npm test && npm run review && npm run test:e2e, smoke: npm test && npm run review && npm run test:e2e -- --grep @smoke }
     defaults:
       run:
         working-directory: packages/${{ matrix.package }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # the PR merge commit and its base, to list changed files
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
+
+      - name: Choose smoke or full
+        id: scope
+        if: matrix.smoke
+        run: node ../../scripts/test-scope.mjs ${{ matrix.package }}
 
       - run: npm ci
 
@@ -86,7 +98,7 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Test
-        run: ${{ matrix.command }}
+        run: ${{ steps.scope.outputs.scope == 'smoke' && matrix.smoke || matrix.command }}
 
       - name: Upload reports
         if: always()
@@ -102,16 +114,34 @@ jobs:
   # Sauce Demo regression (43 AI-generated tests, ai-test-generator/tests/regression),
   # split across runners. Each shard uploads a blob report; regression-report merges
   # them into one HTML report and checks every listed test ran exactly once.
-  # To change the shard count, edit the shard list; `total` must match its length.
+  # Full suite: 3 shards. Smoke (a PR that doesn't touch the suite): the 10 @smoke
+  # tests on 1 shard. To change the shard count, edit both lists in `shards` and
+  # `total` below.
+  regression-scope:
+    name: regression scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      scope: ${{ steps.scope.outputs.scope }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: scope
+        run: node scripts/test-scope.mjs ai-test-generator
+
   regression:
     name: regression (shard ${{ matrix.shard }}/${{ matrix.total }})
+    needs: regression-scope
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      GREP: ${{ needs.regression-scope.outputs.scope == 'smoke' && '@smoke' || '' }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
-        total: [3]
+        shard: ${{ fromJSON(needs.regression-scope.outputs.scope == 'smoke' && '[1]' || '[1, 2, 3]') }}
+        total: ${{ fromJSON(needs.regression-scope.outputs.scope == 'smoke' && '[1]' || '[3]') }}
     defaults:
       run:
         working-directory: packages/ai-test-generator
@@ -125,7 +155,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Test shard
-        run: npx playwright test -c playwright.regression.config.js --shard=${{ matrix.shard }}/${{ matrix.total }} --reporter=blob
+        run: npx playwright test -c playwright.regression.config.js --shard=${{ matrix.shard }}/${{ matrix.total }} --reporter=blob ${GREP:+--grep "$GREP"}
       - name: Upload blob report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -136,10 +166,12 @@ jobs:
 
   regression-report:
     name: regression report
-    needs: regression
+    needs: [regression-scope, regression]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      GREP: ${{ needs.regression-scope.outputs.scope == 'smoke' && '@smoke' || '' }}
     defaults:
       run:
         working-directory: packages/ai-test-generator
@@ -162,7 +194,8 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_NAME: merged.json
       - name: Check every test ran exactly once
         run: |
-          npx playwright test -c playwright.regression.config.js --list --reporter=json > list.json
+          # Listed with the same --grep as the shards, so a smoke run is checked against the smoke set.
+          npx playwright test -c playwright.regression.config.js --list --reporter=json ${GREP:+--grep "$GREP"} > list.json
           node src/shardCheckCli.ts list.json merged.json --shards "$(ls all-blob-reports/*.zip | wc -l)"
       - name: Upload merged report
         if: ${{ !cancelled() }}
@@ -172,8 +205,9 @@ jobs:
           path: packages/ai-test-generator/playwright-report/
           retention-days: 7
       # The Flaky tests workflow reads these from the last 14 runs on main.
+      # Only full runs: a smoke run would look like 33 tests went missing.
       - name: Upload merged results
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && needs.regression-scope.outputs.scope == 'full' }}
         uses: actions/upload-artifact@v4
         with:
           name: regression-results
