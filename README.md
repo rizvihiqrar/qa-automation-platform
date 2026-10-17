@@ -184,7 +184,7 @@ Bringing these projects together surfaced real defects. Each fix is described in
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md): one module a day for 30 days, each through its own pull request.
+See [ROADMAP.md](ROADMAP.md): one module a day for 30 days, each through its own pull request. The plan is complete and released as [v1.0.0](https://github.com/rizvihiqrar/qa-automation-platform/releases/tag/v1.0.0); [RETROSPECTIVE.md](RETROSPECTIVE.md) covers what worked, what didn't, and what v1.0 doesn't prove.
 
 ---
 
