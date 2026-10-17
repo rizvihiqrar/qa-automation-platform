@@ -111,6 +111,70 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # OWASP ZAP scan of qa-practice-api, passive rules only (no attacks). ZAP's plain
+  # baseline crawls links from the home page and a JSON API has none, so this
+  # imports the OpenAPI spec instead (zap-api-scan.py) and, with -S, skips the active
+  # scan: every documented operation is requested once, signed in as the seeded
+  # admin, and ZAP's baseline rules check each response. The triage of every finding
+  # is in packages/qa-practice-api/zap/rules.tsv and the package README: fixed
+  # findings are FAIL (they can't come back), accepted ones IGNORE, and anything not
+  # triaged is a WARN, which fails the job until someone decides what it is.
+  zap-baseline:
+    name: zap-baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/qa-practice-api
+    env:
+      ADMIN_EMAIL: admin@zap-scan.test
+      ADMIN_PASSWORD: Zap-scan-admin-1!
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/qa-practice-api/package-lock.json
+
+      - run: npm ci
+
+      - name: Start the API, seeded with an admin
+        run: |
+          node src/server.ts > server.log 2>&1 &
+          for i in $(seq 1 50); do curl -sf http://localhost:4000/health > /dev/null && exit 0; sleep 0.2; done
+          cat server.log; exit 1
+
+      - name: Sign in as the admin for the scan
+        run: |
+          token=$(curl -sf http://localhost:4000/auth/login -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" | jq -r .token)
+          echo "::add-mask::$token"
+          echo "ZAP_AUTH_HEADER_VALUE=Bearer $token" >> "$GITHUB_ENV"
+
+      - name: ZAP scan
+        run: |
+          mkdir -p zap-report && chmod 777 zap-report
+          cp ../api-drift-checker/spec/qa-practice-api.openapi.json zap/rules.tsv zap-report/
+          docker run --rm --network host -v "$PWD/zap-report:/zap/wrk:rw" -e ZAP_AUTH_HEADER_VALUE \
+            ghcr.io/zaproxy/zaproxy:2.17.0 zap-api-scan.py \
+            -t /zap/wrk/qa-practice-api.openapi.json -f openapi -O http://localhost:4000 -S \
+            -c rules.tsv -r index.html -J report.json -w report.md || status=$?
+          rm zap-report/qa-practice-api.openapi.json zap-report/rules.tsv
+          cat zap-report/report.md >> "$GITHUB_STEP_SUMMARY" || true
+          # 0: clean, 1: a FAIL rule fired, 2: an untriaged WARN, 3: ZAP itself failed.
+          exit ${status:-0}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-zap-baseline
+          path: packages/qa-practice-api/zap-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Sauce Demo regression (43 AI-generated tests, ai-test-generator/tests/regression),
   # split across runners. Each shard uploads a blob report; regression-report merges
   # them into one HTML report and checks every listed test ran exactly once.

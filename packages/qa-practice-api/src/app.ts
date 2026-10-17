@@ -6,6 +6,13 @@ import orderRoutes   from './routes/orders.ts';
 
 const app = express();
 app.disable('x-powered-by');
+// Found by the ZAP scan (zap/rules.tsv), on every response including errors:
+// nosniff stops a browser reading a JSON body as HTML or script, and
+// Cross-Origin-Resource-Policy stops other sites loading responses into their pages.
+app.use((_req, res, next) => {
+  res.set({ 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin' });
+  next();
+});
 app.use(express.json());
 
 app.get('/health', (_req, res) =>

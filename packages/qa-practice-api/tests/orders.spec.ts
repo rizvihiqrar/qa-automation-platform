@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { adminAuth } from './admin.ts';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -15,7 +16,7 @@ test.describe('Orders routes', () => {
     token = (await authRes.json()).token;
 
     const prodRes = await request.post('/products', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: adminAuth(),
       data: { name: 'Orderable Widget', category: 'test', price: 19.99, stock: 50 },
     });
     productId = (await prodRes.json()).id;
@@ -69,7 +70,7 @@ test.describe('Orders routes', () => {
   // each pass and together sell more than was in stock.
   test('POST /orders checks stock against the total across lines for the same product @regression', async ({ request }) => {
     const headers = { Authorization: `Bearer ${token}` };
-    const created = await request.post('/products', { headers, data: { name: 'Scarce Widget', category: 'test', price: 5, stock: 10 } });
+    const created = await request.post('/products', { headers: adminAuth(), data: { name: 'Scarce Widget', category: 'test', price: 5, stock: 10 } });
     const scarceId: number = (await created.json()).id;
 
     const res = await request.post('/orders', {
@@ -108,9 +109,10 @@ test.describe('Orders routes', () => {
     expect(body.items[0].name).toBe('Orderable Widget');
   });
 
+  // Moving an order on is the shop's job (customers may only cancel).
   test('PATCH /orders/:id/status updates status @regression', async ({ request }) => {
     const res  = await request.patch(`/orders/${orderId}/status`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: adminAuth(),
       data: { status: 'processing' },
     });
     const body = await res.json();

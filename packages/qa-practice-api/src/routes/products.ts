@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as store from '../db/store.ts';
-import { requireAuth } from '../middleware/auth.ts';
+import { requireAuth, requireAdmin } from '../middleware/auth.ts';
 import { pagination } from './query.ts';
 
 const router = Router();
@@ -33,7 +33,9 @@ router.get('/:id', (req, res) => {
   res.json(product);
 });
 
-router.post('/', requireAuth, (req, res) => {
+// Changing the catalogue is for admins. Any signed-in customer used to be able to
+// reprice or delete any product.
+router.post('/', requireAuth, requireAdmin, (req, res) => {
   const { name, category, price, stock } = req.body;
   if (!name || !category || price == null) {
     return res.status(400).json({ error: 'name, category, and price are required' });
@@ -47,7 +49,7 @@ router.post('/', requireAuth, (req, res) => {
   res.status(201).json(product);
 });
 
-router.put('/:id', requireAuth, (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, (req, res) => {
   const id = String(req.params.id);
   if (!store.products.findById(id)) {
     return res.status(404).json({ error: `Product ${id} not found` });
@@ -62,7 +64,7 @@ router.put('/:id', requireAuth, (req, res) => {
   res.json(updated);
 });
 
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
   const id = String(req.params.id);
   if (!store.products.delete(id)) {
     return res.status(404).json({ error: `Product ${id} not found` });

@@ -16,6 +16,13 @@ export function register(tag) {
   return { email, password, token: res.json('token') };
 }
 
+// Products can only be created by an admin. src/run.js seeds the server with one
+// and passes the same credentials here.
+export function adminLogin() {
+  if (!__ENV.ADMIN_EMAIL || !__ENV.ADMIN_PASSWORD) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set (src/run.js sets them)');
+  return login({ email: __ENV.ADMIN_EMAIL, password: __ENV.ADMIN_PASSWORD });
+}
+
 export function login(user) {
   const res = http.post(`${BASE_URL}/auth/login`, JSON.stringify({ email: user.email, password: user.password }), { headers: JSON_HEADERS, tags: { name: 'login' } });
   check(res, { 'login 200': (r) => r.status === 200 });

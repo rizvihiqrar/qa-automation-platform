@@ -2,7 +2,8 @@
 // Starts packages/qa-practice-api on a free port, runs the scenario, checks every
 // response against the spec, and stops the server. Exit code 1 on any drift.
 //   node src/live.js            (needs `npm ci` in ../qa-practice-api first)
-//   node src/live.js --url http://localhost:4000   (an API that's already running)
+//   node src/live.js --url http://localhost:4000   (an API that's already running,
+//     started with ADMIN_EMAIL and ADMIN_PASSWORD set to the scenario's ADMIN)
 
 import fs from 'fs';
 import net from 'net';
@@ -10,7 +11,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { runScenario, untestedOperations, formatResults } from './runner.js';
-import { steps } from '../scenarios/qa-practice-api.js';
+import { steps, ADMIN } from '../scenarios/qa-practice-api.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const spec = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'spec', 'qa-practice-api.openapi.json'), 'utf8'));
@@ -43,7 +44,7 @@ try {
   if (!baseUrl) {
     const port = await freePort();
     const server = path.join(HERE, '..', '..', 'qa-practice-api', 'src', 'server.ts');
-    child = spawn(process.execPath, [server], { env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
+    child = spawn(process.execPath, [server], { env: { ...process.env, PORT: String(port), ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password }, stdio: 'ignore' });
     baseUrl = `http://127.0.0.1:${port}`;
   }
   await waitForHealth(baseUrl);

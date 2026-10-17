@@ -1,7 +1,7 @@
 // Smoke: one user walks the main journey for a short time. Proves the scripts
 // and the API work before any load is applied.
 import { sleep } from 'k6';
-import { register, login, createProducts, browse, placeOrder, summaryWriter } from './lib.js';
+import { adminLogin, register, login, createProducts, browse, placeOrder, summaryWriter } from './lib.js';
 
 export const options = {
   vus: 1,
@@ -15,8 +15,8 @@ export const options = {
 };
 
 export function setup() {
-  const admin = register('smoke-setup');
-  return { productIds: createProducts(admin.token, 10) };
+  const adminToken = adminLogin();
+  return { productIds: createProducts(adminToken, 10) };
 }
 
 export default function ({ productIds }) {

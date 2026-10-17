@@ -1,0 +1,12 @@
+# ZAP rule configuration for the CI scan (zap-baseline job in .github/workflows/ci.yml).
+# Format: rule id <TAB> FAIL | IGNORE <TAB> (alert name) decision: reason. One line per
+# triaged finding; the reasons in full are in ../README.md#security-scan, and
+# scripts/zap-triage.test.mjs keeps the two in step. A rule not listed here stays WARN,
+# which fails the job, so a new kind of finding has to be triaged before a merge.
+10021	FAIL	(X-Content-Type-Options Header Missing) fixed: nosniff on every response
+90004	FAIL	(Insufficient Site Isolation Against Spectre Vulnerability) fixed: Cross-Origin-Resource-Policy same-origin
+10116	IGNORE	(ZAP is Out of Date) accepted: updated to the latest release; pinned, so a new release does not fail unrelated changes
+10049	IGNORE	(Non-Storable Content) false positive: per-user API data must not be cached
+100000	IGNORE	(A Client Error response code was returned by the server) false positive: the API refusing a request is the expected answer
+10111	IGNORE	(Authentication Request Identified) false positive: informational, ZAP recognising the sign-in request
+10112	IGNORE	(Session Management Response Identified) false positive: informational, ZAP recognising the token in the sign-in response

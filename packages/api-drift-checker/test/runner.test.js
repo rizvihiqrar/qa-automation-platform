@@ -78,6 +78,9 @@ test('untestedOperations lists documented operations the scenario never called',
   assert.ok(untested.includes('GET /health'));
   assert.ok(!untested.includes('GET /products/{id}'));
   assert.ok(!untested.includes('POST /auth/login'));
+  // Path-level `parameters` (on /products/{id} and others) is not an operation.
+  assert.ok(spec.paths['/products/{id}'].parameters);
+  assert.deepEqual(untested.filter((u) => !/^(GET|POST|PUT|PATCH|DELETE) /.test(u)), []);
 });
 
 test('formatResults summarises passes and drift', async () => {
@@ -93,4 +96,18 @@ test('formatResults summarises passes and drift', async () => {
 
 test('a step that uses a variable nobody saved fails clearly', async () => {
   await assert.rejects(runScenario({ baseUrl, spec, steps: [{ name: 'x', method: 'GET', path: '/orders/{orderId}' }] }), /never saved/);
+});
+
+test('auth: true sends the saved token; auth: "<name>" sends that saved variable', async () => {
+  const sent = [];
+  const fetchImpl = async (url, init) => {
+    sent.push(init.headers.Authorization);
+    return new Response(JSON.stringify({ token: 'customer', adminToken: 'admin' }), { status: 200 });
+  };
+  await runScenario({ baseUrl: 'http://x', spec, fetchImpl, steps: [
+    { name: 'save both', method: 'GET', path: '/health', save: (b) => b },
+    { name: 'customer', method: 'GET', path: '/health', auth: true },
+    { name: 'admin', method: 'GET', path: '/health', auth: 'adminToken' },
+  ] });
+  assert.deepEqual(sent, [undefined, 'Bearer customer', 'Bearer admin']);
 });

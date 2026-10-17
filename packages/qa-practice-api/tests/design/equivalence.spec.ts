@@ -1,7 +1,7 @@
 // Equivalence partitioning: one case per class of input, valid and invalid.
 // Classes and the reasoning behind them: docs/test-strategy/test-plan.md.
 import { test, expect } from '@playwright/test';
-import { signUp, makeProduct, stockOf, type Account } from './helpers.ts';
+import { signUp, admin, makeProduct, stockOf, type Account } from './helpers.ts';
 
 let account: Account;
 test.beforeAll(async ({ request }) => { account = await signUp(request); });
@@ -19,7 +19,7 @@ test.describe('product price classes', () => {
   ];
   for (const [id, label, price, status] of cases) {
     test(`${id} price as ${label} returns ${status} @regression`, async ({ request }) => {
-      const res = await request.post('/products', { headers: account.auth, data: { ...product, price } });
+      const res = await request.post('/products', { headers: admin().auth, data: { ...product, price } });
       expect(res.status()).toBe(status);
       const body = await res.json();
       if (status === 201) expect(body.price).toBe(price);
@@ -30,7 +30,7 @@ test.describe('product price classes', () => {
 
 test.describe('product stock classes', () => {
   test('TC-EP-07 stock left out defaults to 0 @regression', async ({ request }) => {
-    const res = await request.post('/products', { headers: account.auth, data: { ...product, price: 1 } });
+    const res = await request.post('/products', { headers: admin().auth, data: { ...product, price: 1 } });
     expect(res.status()).toBe(201);
     expect((await res.json()).stock).toBe(0);
   });
@@ -42,7 +42,7 @@ test.describe('product stock classes', () => {
   ];
   for (const [id, label, stock] of cases) {
     test(`${id} stock as ${label} returns 400 @regression`, async ({ request }) => {
-      const res = await request.post('/products', { headers: account.auth, data: { ...product, price: 1, stock } });
+      const res = await request.post('/products', { headers: admin().auth, data: { ...product, price: 1, stock } });
       expect(res.status()).toBe(400);
       expect((await res.json()).error).toBe('stock must be a non-negative whole number');
     });
@@ -51,7 +51,7 @@ test.describe('product stock classes', () => {
 
 test.describe('order line classes', () => {
   test('TC-EP-11 a whole-number quantity is accepted @regression', async ({ request }) => {
-    const p = await makeProduct(request, account);
+    const p = await makeProduct(request);
     const res = await request.post('/orders', { headers: account.auth, data: { items: [{ product_id: p.id, quantity: 2 }] } });
     expect(res.status()).toBe(201);
     expect(await stockOf(request, p.id)).toBe(8);
@@ -65,7 +65,7 @@ test.describe('order line classes', () => {
   ];
   for (const [id, label, line] of cases) {
     test(`${id} ${label} returns a JSON 400 and takes no stock @regression`, async ({ request }) => {
-      const p = await makeProduct(request, account);
+      const p = await makeProduct(request);
       const res = await request.post('/orders', { headers: account.auth, data: { items: [line(p.id)] } });
       expect(res.status()).toBe(400);
       expect((await res.json()).error).toMatch(/whole-number quantity/);
@@ -83,7 +83,7 @@ test.describe('order line classes', () => {
 test.describe('request body classes', () => {
   test('TC-EP-17 a malformed JSON body returns a JSON 400 @regression', async ({ request }) => {
     // A Buffer, because Playwright JSON-encodes a string body.
-    const res = await request.post('/products', { headers: account.auth, data: Buffer.from('{"name": "Widget",') });
+    const res = await request.post('/products', { headers: admin().auth, data: Buffer.from('{"name": "Widget",') });
     expect(res.status()).toBe(400);
     expect(res.headers()['content-type']).toMatch(/application\/json/);
     expect(await res.json()).toEqual({ error: 'Request body is not valid JSON' });

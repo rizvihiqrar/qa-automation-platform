@@ -1,7 +1,7 @@
 // Spike: browsing traffic jumps from 2 to 40 users in a few seconds, then drops.
 // Checks the API keeps answering correctly during a sudden burst.
 import { sleep } from 'k6';
-import { register, createProducts, browse, summaryWriter } from './lib.js';
+import { adminLogin, register, createProducts, browse, summaryWriter } from './lib.js';
 
 export const options = {
   scenarios: {
@@ -26,8 +26,8 @@ export const options = {
 };
 
 export function setup() {
-  const admin = register('spike-setup');
-  return { productIds: createProducts(admin.token, 20) };
+  const adminToken = adminLogin();
+  return { productIds: createProducts(adminToken, 20) };
 }
 
 export default function ({ productIds }) {
