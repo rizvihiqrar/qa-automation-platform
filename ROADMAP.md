@@ -55,7 +55,7 @@ The resume leads with TypeScript, so convert one area a day, keeping CI green af
 | 26 | Architecture diagram and README pass for non-technical readers | ✅ root README opens with a plain-English section, a "how a change gets tested" diagram and a glossary; the architecture diagram is redrawn (it predated sharding, smoke/full, flaky tracking and Pages reports) and split into two readable views, each checked by rendering it at GitHub's width; stale facts fixed (Node 24, TypeScript status); bugs table brought up to date (18 entries); every package README now has an "In plain English" line |
 | 27 | Pick the two strongest results for the resume, with numbers | ✅ the k6 login-hashing bug (browsing p95 67–84 ms → 1 ms, logins 72 → 40 ms) and the reviewed AI test generator (10/10 specs passed review, 42/43 tests passed first run, review caught an assertion-free test Playwright passed). Both are in the root README's "Two results in numbers" with links to the evidence |
 | 28 | Update LinkedIn projects and the GitHub profile README | ✅ profile README leads with this project and the two results in numbers, notes the archived suites, and condenses the build notes. LinkedIn left as it is by choice |
-| 29 | Archive or fold the remaining standalone repos | ⬜ |
+| 29 | Archive or fold the remaining standalone repos | ✅ accessibility-test-suite, playwright-demo-suite and api-test-suite archived (read-only, still public) with a notice pointing to the packages that replace them: a11y-aoda-audit, the Sauce Demo regression suite, and the API packages. cicd-pipeline-demo stays active for its GitHub Actions, GitLab CI and Azure DevOps pipelines. Nothing folded in, since each archived suite already has a stronger package here |
 | 30 | Retrospective; tag v1.0 | ⬜ |
 
 ---
