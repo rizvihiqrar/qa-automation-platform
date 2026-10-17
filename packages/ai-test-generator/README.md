@@ -98,6 +98,7 @@ The feature descriptions only state behaviour verified on the live site (sort or
 | `npm test` | Unit tests for the prompt, the API call (with a fake client, no network), output cleanup, argument parsing, every review rule, the eval scoring, and the shard check | 38 |
 | `npm run test:e2e` | The reviewed example spec, `examples/output/login.spec.js`, against the live Sauce Demo site | 4 |
 | `npm run test:regression` | The Sauce Demo regression suite, `tests/regression/` (see below) | 43 |
+| `npm run test:review` | Tests written during the [requirement review](../../docs/requirement-review/README.md) of the feature files, `tests/review/` (see below) | 42 (8 are expected to fail) |
 
 The example spec was generated, then reviewed: the reviewer flagged a CSS class selector, which was changed to `[data-test="inventory-item"]`. The note is in the file header.
 
@@ -141,6 +142,18 @@ Three shards cut the wait by about 12 seconds and roughly doubled the runner tim
 
 ---
 
+## Requirement Review
+
+The ten feature files were never reviewed before the AI wrote tests from them. The [review log](../../docs/requirement-review/review-log.md) reads all 43 acceptance criteria for what they leave out and checks each against the live site: 29 findings, of which 8 are defects in the demo shop, 5 are generated tests that check less than their criterion says, 13 are rules that had to be written down, and 3 are questions for the owner.
+
+`tests/review/` holds the tests that came out of it, one per finding, with the finding ID (`RV-nn`) at the start of the title. They are separate from `tests/regression/`, which stays as generated.
+
+- **Eight tests are marked `[known defect]`.** The site is wrong, so each is expected to fail: CI stays green while the defect exists and goes red when the site is fixed, which is the cue to remove the marker. To see what each one finds, run `REVIEW_SHOW_DEFECTS=1 npm run test:review -- -g "known defect"`; every defect fails with the message the log describes.
+- **Stable.** The suite passed 210 of 210 runs (5 repeats of each test, no retries).
+- **RV-11 and RV-13 look at all 63 possible carts** by filling the cart through the site's browser storage and opening the overview address directly (about 6 seconds for all 63). They compare exact text: the item total is a sum of floats, and 6 of the 63 carts print something like `$119.94999999999999`.
+
+---
+
 ## Project Structure
 
 ```
@@ -161,7 +174,9 @@ Three shards cut the wait by about 12 seconds and roughly doubled the runner tim
 │   ├── input/              # 10 feature descriptions
 │   └── output/login.spec.js
 ├── tests/regression/       # 43 reviewed Sauce Demo tests, sharded in CI
+├── tests/review/           # 42 tests from the requirement review (RV-nn)
 ├── playwright.regression.config.js
+├── playwright.review.config.js
 └── test/                   # Unit tests (node:test)
 ```
 
