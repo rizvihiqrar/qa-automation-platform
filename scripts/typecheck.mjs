@@ -2,6 +2,7 @@
 // collection with no JavaScript). TypeScript packages use tsconfig.ts.json; the rest
 // are JavaScript checked with checkJs through tsconfig.base.json.
 import { spawnSync } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -51,7 +52,12 @@ if (process.argv.includes('--install')) {
 
 let failed = 0;
 for (const name of PACKAGES) {
-  const res = spawnSync(process.execPath, [TSC, '-p', path.join(ROOT, 'packages', name, 'tsconfig.json')], { encoding: 'utf8' });
+  // tsconfig.typecheck.json, where present, is used instead of tsconfig.json: Stryker (in
+  // mutation-testing-demo) tries to rewrite any tsconfig.json it finds and fails on TypeScript 7.
+  const dir = path.join(ROOT, 'packages', name);
+  const config = ['tsconfig.typecheck.json', 'tsconfig.json'].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
+  if (!config) { failed += 1; console.log(`FAIL  ${name} (no tsconfig)`); continue; }
+  const res = spawnSync(process.execPath, [TSC, '-p', config], { encoding: 'utf8' });
   const errors = (res.stdout.match(/error TS\d+/g) ?? []).length;
   if (res.status === 0) {
     console.log(`pass  ${name}`);
