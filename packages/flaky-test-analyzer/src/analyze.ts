@@ -12,6 +12,8 @@ export interface PlaywrightSpec {
   tests?: PlaywrightTest[];
 }
 export interface PlaywrightSuite {
+  /** The file name for a file's top-level suite; the describe() title below it. */
+  title?: string;
   file?: string;
   specs?: PlaywrightSpec[];
   suites?: PlaywrightSuite[];
@@ -46,21 +48,24 @@ export interface AnalyzedRow extends TestRow {
 type Bucket = 'passed' | 'flaky' | 'failed';
 const STATUS_BUCKET: Partial<Record<PlaywrightTest['status'], Bucket>> = { expected: 'passed', flaky: 'flaky', unexpected: 'failed' };
 
-// Flattens a Playwright JSON report into one entry per test per project.
+// Flattens a Playwright JSON report into one entry per test per project (and per
+// repeat, with --repeat-each). The ID is file > describe titles > test title
+// [project], so same-named tests in different describe blocks stay apart.
 export function collectTests(report: PlaywrightReport): Array<{ id: string; status: PlaywrightTest['status'] }> {
   const out: Array<{ id: string; status: PlaywrightTest['status'] }> = [];
-  const walk = (suite: PlaywrightSuite, file: string | undefined): void => {
-    for (const child of suite.suites ?? []) walk(child, child.file ?? file);
+  const walk = (suite: PlaywrightSuite, file: string | undefined, describes: readonly string[]): void => {
+    for (const child of suite.suites ?? []) walk(child, child.file ?? file, child.title ? [...describes, child.title] : describes);
     for (const spec of suite.specs ?? []) {
       for (const test of spec.tests ?? []) {
         out.push({
-          id: `${spec.file ?? file} > ${spec.title} [${test.projectName ?? 'default'}]`,
+          id: `${[spec.file ?? file, ...describes, spec.title].join(' > ')} [${test.projectName ?? 'default'}]`,
           status: test.status,
         });
       }
     }
   };
-  for (const suite of report.suites ?? []) walk(suite, suite.file);
+  // Top-level suites are files; their title is the file name, already in the ID.
+  for (const suite of report.suites ?? []) walk(suite, suite.file, []);
   return out;
 }
 

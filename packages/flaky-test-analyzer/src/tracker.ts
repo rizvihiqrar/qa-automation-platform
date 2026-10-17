@@ -10,6 +10,7 @@
 //   - A test that now fails in every run keeps its issue open, marked as broken.
 //   - A test missing from every analyzed run was renamed or removed; its issue closes.
 import type { AnalyzedRow } from './analyze.ts';
+import { wilson, zeroFailureUpperBound } from './stats.ts';
 
 export const LABEL = 'flaky-test';
 export const MIN_CLEAN_RUNS = 5;
@@ -66,11 +67,13 @@ const plainRun: RunLink = (run) => `run ${run}`;
 const pct = (rate: number): string => `${Math.round(rate * 100)}%`;
 
 export function flakyBody(entry: FlakyEntry, windowRuns: number, link: RunLink = plainRun): string {
+  const unstable = entry.flaky + entry.failed;
+  const ci = wilson(unstable, entry.runs);
   return [
     MARKER,
     `**Test:** \`${entry.id}\``,
     '',
-    `Unstable in **${entry.flaky + entry.failed} of ${entry.runs}** runs (flake rate ${pct(entry.flakeRate)}), over the last ${windowRuns} CI runs on main.`,
+    `Unstable in **${unstable} of ${entry.runs}** runs (flake rate ${pct(entry.flakeRate)}, 95% CI ${pct(ci.low)}–${pct(ci.high)}), over the last ${windowRuns} CI runs on main.`,
     '',
     '| Result | Runs |',
     '|---|---:|',
@@ -80,7 +83,8 @@ export function flakyBody(entry: FlakyEntry, windowRuns: number, link: RunLink =
     '',
     `Unstable in: ${entry.unstableRuns.map(link).join(', ')}`,
     '',
-    `This issue closes on its own once the test passes first time in every analyzed run, and has run at least ${MIN_CLEAN_RUNS} times.`,
+    `This issue closes on its own once the test passes first time in every analyzed run, and has run at least ${MIN_CLEAN_RUNS} times. ` +
+      `A close is not proof the flake is gone: ${windowRuns} clean runs only show the flake rate is below ${pct(zeroFailureUpperBound(windowRuns))} (95% confidence).`,
   ].join('\n');
 }
 
@@ -129,7 +133,14 @@ export function planIssues(
         actions.push({ kind: 'close', number: issue.number, title: issue.title, comment: `Not found in any of the last ${window} CI runs, so the test was renamed or removed. Closing.` });
       }
     } else if (row.runs >= MIN_CLEAN_RUNS) {
-      actions.push({ kind: 'close', number: issue.number, title: issue.title, comment: `Passed first time in all ${row.runs} of the last ${window} CI runs. Closing; it reopens as a new issue if it flakes again.` });
+      actions.push({
+        kind: 'close',
+        number: issue.number,
+        title: issue.title,
+        comment:
+          `Passed first time in all ${row.runs} of the last ${window} CI runs, so its flake rate is now below ${pct(zeroFailureUpperBound(row.runs))} (95% confidence). ` +
+          `That rules out frequent flakes, not rare ones. Closing; it reopens as a new issue if it flakes again.`,
+      });
     }
   }
   return actions;

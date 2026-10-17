@@ -40,6 +40,30 @@ test('collectTests flattens nested suites and includes the project name', () => 
   assert.equal(tests[0]?.id, 'a.spec.js > inner [firefox]');
 });
 
+test('same-named tests in different describe blocks are counted separately', () => {
+  const spec = (title: string) => ({ title, file: 'a.spec.js', tests: [{ status: 'expected' as const }] });
+  const twoDescribes: PlaywrightReport = {
+    suites: [
+      {
+        title: 'a.spec.js',
+        file: 'a.spec.js',
+        suites: [
+          { title: 'as a guest', file: 'a.spec.js', specs: [spec('checks out')] },
+          { title: 'as a member', file: 'a.spec.js', specs: [spec('checks out')], suites: [{ title: 'with a coupon', file: 'a.spec.js', specs: [spec('checks out')] }] },
+        ],
+      },
+    ],
+  };
+  assert.deepEqual(
+    analyze([twoDescribes]).map((r) => [r.id, r.runs]),
+    [
+      ['a.spec.js > as a guest > checks out [default]', 1],
+      ['a.spec.js > as a member > checks out [default]', 1],
+      ['a.spec.js > as a member > with a coupon > checks out [default]', 1],
+    ],
+  );
+});
+
 test('a test that always passes is stable with zero flake rate', () => {
   const row = onlyRow([report(['expected']), report(['expected']), report(['expected'])]);
   assert.equal(row.label, 'stable');
