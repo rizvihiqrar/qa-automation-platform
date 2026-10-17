@@ -26,10 +26,18 @@ router.put('/:id', (req, res) => {
   if (me.id !== id && me.role !== 'admin') {
     return res.status(403).json({ error: "Cannot modify another user's account" });
   }
+  if (!store.users.findById(id)) return res.status(404).json({ error: `User ${id} not found` });
   const { name, email } = req.body;
-  const updated = store.users.update(id, { name, email });
-  if (!updated) return res.status(404).json({ error: `User ${id} not found` });
-  res.json(safe(updated));
+  for (const [field, value] of Object.entries({ name, email })) {
+    if (value !== undefined && (typeof value !== 'string' || !value.trim())) {
+      return res.status(400).json({ error: `${field} must be a non-empty string` });
+    }
+  }
+  // Register refused a taken email but update didn't, so two accounts could share
+  // one and login picked whichever was created first (found by a decision table).
+  const owner = email === undefined ? null : store.users.findOne({ email });
+  if (owner && owner.id !== id) return res.status(409).json({ error: 'Email already in use' });
+  res.json(safe(store.users.update(id, { name, email })!));
 });
 
 router.delete('/:id', (req, res) => {

@@ -7,15 +7,17 @@ const router = Router();
 
 // Shared by create and update, so both apply the same rules. Update used to skip
 // them: PUT accepted price "abc" (stored as null) and negative stock.
-// Number(), not parseFloat(): "abc" used to slip through as NaN and be stored as null.
+// JSON numbers only. parseFloat() let "abc" through as NaN (stored as null), and
+// Number() then turned "" into 0 and true into 1 (found by equivalence partitioning,
+// docs/test-strategy/test-plan.md).
 function parsePrice(price: unknown): number | string {
-  const value = Number(price);
-  return Number.isFinite(value) && value >= 0 ? value : 'price must be a non-negative number';
+  return typeof price === 'number' && Number.isFinite(price) && price >= 0
+    ? price : 'price must be a non-negative number';
 }
 
 function parseStock(stock: unknown): number | string {
-  const value = Number(stock);
-  return Number.isInteger(value) && value >= 0 ? value : 'stock must be a non-negative whole number';
+  return Number.isInteger(stock) && (stock as number) >= 0
+    ? stock as number : 'stock must be a non-negative whole number';
 }
 
 router.get('/', (req, res) => {

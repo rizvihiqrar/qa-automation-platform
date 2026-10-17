@@ -3,7 +3,18 @@ import * as store from '../db/store.ts';
 import { requireAuth, currentUser } from '../middleware/auth.ts';
 
 const router = Router();
-const VALID_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+
+// The order lifecycle (state-transition design in docs/test-strategy/test-plan.md).
+// Any status used to be settable from any other, so a delivered order could go
+// back to pending and a cancelled one could ship.
+const NEXT: Record<string, string[]> = {
+  pending:    ['processing', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped:    ['delivered'],
+  delivered:  [],
+  cancelled:  [],
+};
+const VALID_STATUSES = Object.keys(NEXT);
 
 router.use(requireAuth);
 
@@ -32,9 +43,12 @@ router.post('/', (req, res) => {
   // line by line, so two lines for the same product could each pass and oversell it.
   const requested = new Map<number, { product: store.Product; quantity: number }>();
 
-  for (const { product_id, quantity } of items) {
-    if (!product_id || !quantity || quantity < 1) {
-      return res.status(400).json({ error: 'Each item needs product_id and quantity >= 1' });
+  for (const item of items) {
+    // `item ?? {}`: a null line used to crash the route (500). Whole numbers only:
+    // 1.5 left stock at 8.5, and "2" + "3" was joined as text into 23.
+    const { product_id, quantity } = item ?? {};
+    if (!product_id || !Number.isInteger(quantity) || quantity < 1) {
+      return res.status(400).json({ error: 'Each item needs product_id and a whole-number quantity >= 1' });
     }
     const product = store.products.findById(product_id);
     if (!product) return res.status(404).json({ error: `Product ${product_id} not found` });
@@ -71,6 +85,17 @@ router.patch('/:id/status', (req, res) => {
   const order = store.orders.findById(req.params.id);
   if (!order || order.user_id !== currentUser(req).id) {
     return res.status(404).json({ error: `Order ${req.params.id} not found` });
+  }
+  if (!NEXT[order.status]?.includes(status)) {
+    return res.status(409).json({ error: `Cannot change order status from ${order.status} to ${status}` });
+  }
+  // Cancelling returns the stock the order took (it used to stay taken), for
+  // products that still exist.
+  if (status === 'cancelled') {
+    for (const { product_id, quantity } of order.items) {
+      const product = store.products.findById(product_id);
+      if (product) store.products.update(product_id, { stock: product.stock + quantity });
+    }
   }
   res.json(store.orders.update(req.params.id, { status }));
 });

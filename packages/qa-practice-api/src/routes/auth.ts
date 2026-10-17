@@ -5,13 +5,15 @@ import { signToken, requireAuth, currentUser } from '../middleware/auth.ts';
 
 const router = Router();
 const safe = ({ password: _password, ...rest }: store.User) => rest;
+// A number or object here used to reach the hashing code and come back as a 500.
+const allStrings = (...values: unknown[]) => values.every((v) => typeof v === 'string' && v !== '');
 
 // Hashing happens in src/security/password.ts, off the event loop (see there).
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'name, email, and password are required' });
+    if (!allStrings(name, email, password)) {
+      return res.status(400).json({ error: 'name, email, and password are required strings' });
     }
     if (store.users.findOne({ email })) {
       return res.status(409).json({ error: 'Email already in use' });
@@ -31,8 +33,8 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'email and password are required' });
+    if (!allStrings(email, password)) {
+      return res.status(400).json({ error: 'email and password are required strings' });
     }
     const user = store.users.findOne({ email });
     if (!user || !(await verifyPassword(password, user.password))) {
