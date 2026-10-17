@@ -15,7 +15,8 @@ const PKG = path.join(ROOT, 'packages', 'ai-test-generator');
 const FEATURES = path.join(PKG, 'examples', 'input');
 const REVIEW_TESTS = path.join(PKG, 'tests', 'review');
 const REGRESSION_TESTS = path.join(PKG, 'tests', 'regression');
-const read = (...p) => fs.readFileSync(path.join(...p), 'utf8');
+// CRLF working copies on Windows read the same as LF ones on CI.
+const read = (...p) => fs.readFileSync(path.join(...p), 'utf8').replaceAll('\r\n', '\n');
 
 const KINDS = ['ambiguous', 'missing criterion', 'weak criterion', 'hidden precondition', 'inconsistent'];
 const RESULTS = ['defect', 'test gap', 'rule clarified', 'open question'];
