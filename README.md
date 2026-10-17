@@ -64,6 +64,8 @@ The Sauce Demo regression suite (43 tests) is split across 3 runners with Playwr
 
 Pull requests and main run different amounts of the live-site browser tests. A pull request runs only the `@smoke` tests of each browser suite (16 of 65 tests), unless it changes that suite, changes how CI picks tests, or has the `full-regression` label. Pushes to main, the nightly run and manual runs always run everything. `scripts/test-scope.mjs` makes the call and writes the reason in the job summary; when in doubt it runs everything.
 
+Measured on the two Day 24 pull requests: the smoke run made 16 live-site test runs instead of 65 and used 181 instead of 278 runner-seconds for the browser jobs. It did not shorten the wait, because the slowest job is the k6 performance test (about 60 seconds) either way. What smoke buys is fewer runs against a public site that can be slow or flaky, not a faster green.
+
 After each CI run on main, the **Flaky tests** workflow reads the merged regression results of the last 14 runs with flaky-test-analyzer and keeps one issue per flaky test, labelled [`flaky-test`](https://github.com/rizvihiqrar/qa-automation-platform/issues?q=label%3Aflaky-test). Retries keep a flaky test green in any single run; across runs, it shows up.
 
 The `.github/workflows` folders inside `matrix-build-demo` and `pipeline-templates-demo` are example content for those demos. GitHub only runs the root workflow.

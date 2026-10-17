@@ -28,6 +28,10 @@ npm run regression  # @regression only
 
 An HTML report is written to `reports/cucumber-report.html`.
 
+In CI, pull requests that don't change this package run `npm run smoke` (2 scenarios); main and the nightly run use `npm test` (all 9). See the root README for the rules.
+
+`smoke` and `regression` first run `scripts/require-scenarios.ts`, which fails if the tag selects no scenarios. `cucumber-js --tags` exits 0 when nothing matches, so without it a mistyped tag (`@smok`) would give a green run that tested nothing. Playwright's `--grep` already fails in that case.
+
 ---
 
 ## Structure
@@ -38,6 +42,7 @@ An HTML report is written to `reports/cucumber-report.html`.
 │   ├── inventory.feature
 │   └── step_definitions/
 ├── pageObjects/        # LoginPage, InventoryPage
+├── scripts/require-scenarios.ts  # Fails a tagged run that would select nothing
 ├── support/world.ts    # Browser per scenario, typed as the steps' `this`
 └── cucumber.js         # Cucumber config (ESM)
 ```
