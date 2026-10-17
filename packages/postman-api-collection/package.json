@@ -6,7 +6,7 @@
     "newman-reporter-htmlextra": "^1.23.1"
   },
   "scripts": {
-    "test": "newman run collection/dummyjson-api.postman_collection.json --reporters cli,htmlextra --reporter-htmlextra-export reports/report.html",
+    "test": "newman run collection/dummyjson-api.postman_collection.json --reporters cli,htmlextra --reporter-htmlextra-export reports/report.html --reporter-htmlextra-skipHeaders \"Authorization,Cookie,Set-Cookie\" --reporter-htmlextra-hideResponseBody \"Login - Valid\"",
     "smoke": "newman run collection/dummyjson-api.postman_collection.json --folder Smoke --reporters cli",
     "regression": "newman run collection/dummyjson-api.postman_collection.json --folder Regression --reporters cli"
   }

@@ -32,7 +32,7 @@ Half the users, yet browsing was about 100 times slower, and the delays matched 
 | Throughput | 70–73 req/s | **77 req/s** |
 | Errors | 0% | 0% |
 
-The API's own 34 tests and the 20-step contract check still pass.
+The API's own 34 tests and the 20-step contract check still pass. A unit test in qa-practice-api now guards the cause directly (see the [root-cause analysis](../../docs/rca/01-login-hashing-blocked-the-api.md)).
 
 **Lesson about thresholds:** the original limit for browsing (p95 under 250 ms) passed the slow version, because it was a guess. The thresholds are now set from the measured baseline (p95 under 50 ms for browsing), which the old 67–84 ms would fail.
 

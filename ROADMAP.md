@@ -66,7 +66,7 @@ Days 1–30 ended at [v1.0.0](https://github.com/rizvihiqrar/qa-automation-platf
 
 | Day | Work | Status |
 |---:|---|---|
-| 31 | Root-cause write-ups for five bugs already found: the k6 event-loop block, the webhook duplicate race, CRLF rejecting every SQL check, Cucumber passing on an unmatched tag, tokens in the published reports | ⬜ |
+| 31 | Root-cause write-ups for five bugs already found: the k6 event-loop block, the webhook duplicate race, CRLF rejecting every SQL check, Cucumber passing on an unmatched tag, tokens in the published reports | ✅ [docs/rca](docs/rca/README.md): five write-ups, each regression test re-checked by putting the bug back. That found two new bugs and two gaps: the webhook sender gave up on `409` and could lose an event (fixed, end-to-end test); the Postman CI artifact still held 19 live tokens (now 0); the Cucumber tag guard had no test (4 added); the hashing bug was only guarded by a k6 run (a 1-second event-loop test added, 0–11% busy fixed vs 100% for both old versions). A root test keeps the write-ups honest: sections, links, and every named test still existing |
 | 32 | Statistics for run-to-run variance: repeated runs, pass rates with confidence intervals, how many runs before calling a test flaky | ⬜ |
 | 33 | Risk-based test strategy and test plan for qa-practice-api; cases designed with named techniques (equivalence partitioning, boundary values, decision tables, state transitions) | ⬜ |
 | 34 | Generated traceability matrix: requirement → test cases → latest CI result, published with the reports | ⬜ |

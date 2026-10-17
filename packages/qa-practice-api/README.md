@@ -31,6 +31,8 @@ npm run test:smoke     # @smoke tagged tests only
 
 The data lives in memory, so each run starts with an empty store and no state leaks between runs.
 
+`tests/password.spec.ts` holds two unit tests for password hashing. One checks that hashing eight passwords keeps the event loop free (0–11% busy measured, against 100% for hashing on the main thread), which guards the bug [k6 found](../../docs/rca/01-login-hashing-blocked-the-api.md) in about a second instead of a minute of load.
+
 ## API Reference
 
 ### Health

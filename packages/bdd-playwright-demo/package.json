@@ -5,6 +5,7 @@
   "description": "Playwright + Cucumber BDD demo — Gherkin feature files executed against saucedemo.com",
   "scripts": {
     "test": "cucumber-js",
+    "test:guard": "node --test \"test/*.test.ts\"",
     "smoke": "node scripts/require-scenarios.ts @smoke && cucumber-js --tags @smoke",
     "regression": "node scripts/require-scenarios.ts @regression && cucumber-js --tags @regression"
   },

@@ -32,7 +32,7 @@ An HTML report is written to `reports/cucumber-report.html`.
 
 In CI, pull requests that don't change this package run `npm run smoke` (2 scenarios); main and the nightly run use `npm test` (all 9). See the root README for the rules.
 
-`smoke` and `regression` first run `scripts/require-scenarios.ts`, which fails if the tag selects no scenarios. `cucumber-js --tags` exits 0 when nothing matches, so without it a mistyped tag (`@smok`) would give a green run that tested nothing. Playwright's `--grep` already fails in that case.
+`smoke` and `regression` first run `scripts/require-scenarios.ts`, which fails if the tag selects no scenarios. `cucumber-js --tags` exits 0 when nothing matches, so without it a mistyped tag (`@smok`) would give a green run that tested nothing. Playwright's `--grep` already fails in that case. The guard has 4 tests of its own (`npm run test:guard`, run first in CI); see the [root-cause analysis](../../docs/rca/04-mistyped-tag-passed-green.md).
 
 ---
 

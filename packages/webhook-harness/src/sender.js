@@ -7,7 +7,10 @@
 import { randomUUID } from 'crypto';
 import { HEADERS, sign } from './signature.js';
 
-const RETRYABLE_4XX = new Set([408, 429]);
+// 409 is the receiver saying "this delivery is still in progress". Stopping there
+// loses the event if that in-progress attempt then fails; retrying ends in either
+// "duplicate" (it succeeded) or a fresh attempt (it failed).
+const RETRYABLE_4XX = new Set([408, 409, 429]);
 const realSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function backoffDelays(maxAttempts, baseDelayMs) {
