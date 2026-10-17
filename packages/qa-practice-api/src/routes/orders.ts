@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as store from '../db/store.ts';
 import type { Request } from 'express';
 import { requireAuth, currentUser, isAdmin } from '../middleware/auth.ts';
+import { checkDiscount, toCents, fromCents } from './discounts.ts';
 
 const router = Router();
 
@@ -43,12 +44,16 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { items } = req.body;
+  const { items, discount_code = null } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'items must be a non-empty array' });
   }
+  // DC-R13: omitted or null means no code; anything else must be a non-empty string.
+  if (discount_code !== null && (typeof discount_code !== 'string' || discount_code.trim() === '')) {
+    return res.status(400).json({ error: 'discount_code must be a non-empty string or null' });
+  }
 
-  let total = 0;
+  let subtotalCents = 0;
   const resolvedItems: store.OrderItem[] = [];
   // Quantity requested per product across all lines. Stock used to be checked
   // line by line, so two lines for the same product could each pass and oversell it.
@@ -70,15 +75,28 @@ router.post('/', (req, res) => {
       });
     }
     requested.set(product.id, { product, quantity: wanted });
-    total += product.price * quantity;
+    subtotalCents += toCents(product.price) * quantity;
     resolvedItems.push({ product_id: product.id, name: product.name, price: product.price, quantity });
   }
 
+  // Discount codes are checked after items and stock (DC-R15); a refusal changes nothing.
+  let code: string | null = null;
+  let discountCents = 0;
+  if (discount_code !== null) {
+    const result = checkDiscount(discount_code, currentUser(req).id, subtotalCents);
+    if ('error' in result) return res.status(422).json({ error: result.error });
+    code = result.code;
+    discountCents = result.discountCents;
+  }
+
   const order = store.orders.insert({
-    user_id: currentUser(req).id,
-    status:  'pending',
-    total:   Math.round(total * 100) / 100,
-    items:   resolvedItems,
+    user_id:       currentUser(req).id,
+    status:        'pending',
+    subtotal:      fromCents(subtotalCents),
+    discount_code: code,
+    discount:      fromCents(discountCents),
+    total:         fromCents(subtotalCents - discountCents),
+    items:         resolvedItems,
   });
 
   for (const { product, quantity } of requested.values()) {
