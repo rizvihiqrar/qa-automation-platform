@@ -2,6 +2,8 @@
 
 A small Node.js CLI that runs a Playwright suite at several worker counts and shows how runtime, pass counts, and flaky results change as you add workers.
 
+**In plain English:** Running tests in parallel should make them faster, but past a point it can make them slower or less reliable. This measures where that point is.
+
 Adding workers is the first thing most teams try when a suite is slow. This tool measures whether it helps, and it shows when extra workers add contention instead of speed.
 
 No dependencies. Written in TypeScript; requires Node 24 or later (it runs the `.ts` files directly) and a Playwright project with `npx playwright` available.

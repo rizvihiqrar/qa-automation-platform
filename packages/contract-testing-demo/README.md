@@ -2,6 +2,8 @@
 
 Consumer-driven contract testing with [Pact](https://docs.pact.io). A frontend consumer defines what it expects from a users API, Pact records those expectations as a contract, and the provider check verifies the real [DummyJSON](https://dummyjson.com) API still honours them.
 
+**In plain English:** When two pieces of software talk to each other, each side expects certain things from the other. This writes those expectations down and checks them automatically, so a change on one side can't silently break the other.
+
 ---
 
 ## How It Works

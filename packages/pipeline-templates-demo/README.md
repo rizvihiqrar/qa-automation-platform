@@ -2,6 +2,8 @@
 
 A Node.js API demonstrating **reusable pipeline templates** — extracting shared CI/CD logic into reusable files so pipelines read as outlines rather than long inline scripts. The pipeline architecture is the subject; the API just provides a real test suite to run.
 
+**In plain English:** Shows how to write the automatic build-and-test steps once and reuse them, for three popular CI services, instead of copying the same steps into every project.
+
 ## What Pipeline Templates Solve
 
 Without templates, every pipeline duplicates the same steps:

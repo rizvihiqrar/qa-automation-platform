@@ -2,6 +2,8 @@
 
 A small Node.js CLI that reads Playwright JSON reports from several CI runs and shows which tests are stable, which need retries, and which fail every time.
 
+**In plain English:** Some tests pass or fail at random, and that makes people stop trusting test results. This tool looks across many runs to find those tests and opens a ticket for each one, so they get fixed instead of ignored.
+
 Playwright's retry feature turns a flaky test green, so the test looks fine in the final report. This tool shows the retries, so you can see the tests that keep needing them.
 
 No dependencies. Written in TypeScript; requires Node 24 or later (it runs the `.ts` files directly).

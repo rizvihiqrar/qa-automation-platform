@@ -2,6 +2,8 @@
 
 Postman collection for the public [DummyJSON](https://dummyjson.com) REST API, run with [Newman](https://github.com/postmanlabs/newman). It covers user CRUD, token authentication, pagination, and error handling, and it can be imported straight into Postman.
 
+**In plain English:** Postman is a popular tool for trying out APIs by hand. This turns those checks into a collection that runs automatically and produces a readable report.
+
 ---
 
 ## What It Tests

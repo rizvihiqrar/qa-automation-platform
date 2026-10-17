@@ -2,6 +2,8 @@
 
 Test patterns for AI-powered features: response schema checks, latency SLAs, and content-safety guardrails. The tests run against a local mock that returns Claude-style message responses, and the same tests can point at a real AI API through `AI_BASE_URL`.
 
+**In plain English:** Products with AI features need extra checks: is the answer in the right format, does it arrive fast enough, and does the AI refuse harmful requests? These tests check all three against a stand-in AI service, so they cost nothing and give the same result every time.
+
 ---
 
 ## What It Tests

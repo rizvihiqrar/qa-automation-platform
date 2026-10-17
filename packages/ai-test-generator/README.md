@@ -2,6 +2,8 @@
 
 Turns a plain-English feature description into a Playwright test file using the Claude API, then **reviews the generated tests** before anyone commits them.
 
+**In plain English:** An AI writes the first draft of a test from a description of a feature, and this tool checks the draft for the mistakes AI tends to make before a person accepts it. It also measures how often the drafts are good enough to use.
+
 AI-generated tests are a draft. The reviewer catches the problems they most often have: tests with no assertions, fixed waits, CSS-class or XPath selectors, leftover markdown fences, `test.only`, and missing or duplicate `@smoke` tags.
 
 ---
