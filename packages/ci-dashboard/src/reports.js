@@ -193,9 +193,9 @@ const RESULT = /** @type {Record<string, { cls: string, icon: string, label: str
 
 /**
  * @param {ReportRow[]} rows
- * @param {{ repo: string, run: { id: number, number: number, event: string, createdAt: string, conclusion: string | null } | null, generatedAt: string }} meta
+ * @param {{ repo: string, run: { id: number, number: number, event: string, createdAt: string, conclusion: string | null } | null, generatedAt: string, traceabilityHref?: string | null }} meta
  */
-export function renderReportsPage(rows, { repo, run, generatedAt }) {
+export function renderReportsPage(rows, { repo, run, generatedAt, traceabilityHref = null }) {
   const runText = run
     ? `CI run <a href="https://github.com/${esc(repo)}/actions/runs/${run.id}">#${run.number}</a> (${esc(run.event)}, ${esc(day(run.createdAt))}, ${esc(run.conclusion ?? 'unknown')})`
     : 'the latest CI run';
@@ -217,6 +217,7 @@ export function renderReportsPage(rows, { repo, run, generatedAt }) {
 <div class="wrap">
   <h1>Test Reports</h1>
   <p class="lede">The HTML reports from ${runText} on main, one per suite. <a href="../">Back to the CI dashboard</a>. Generated ${esc(day(generatedAt))}.</p>
+  ${traceabilityHref ? `<p class="lede">Requirement by requirement: the <a href="${esc(traceabilityHref)}">traceability matrix</a> shows each qa-practice-api requirement, the test cases that check it, and their results in this run.</p>` : ''}
   <section class="card wide">
     <h2>Reports</h2>
     <p class="sub">Updated after every CI run on main. Tokens are redacted before publishing; a report whose zipped data contains one is withheld.</p>

@@ -74,12 +74,30 @@ This caught a real leak before the first publish: the Postman report shows the d
 
 The scan doesn't look for employer or personal names; that check runs before every push instead, so the list of names never has to be written into public code.
 
+## Traceability Matrix
+
+**Live:** https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/
+
+For each of qa-practice-api's 12 requirements: the risks it addresses, the designed test cases that check it, and each case's result in the CI run the reports came from. `src/traceability.js` joins two things that already exist:
+
+- the [test plan](../../docs/test-strategy/test-plan.md), where every case row names its requirement and every requirement names its risks;
+- the JSON report qa-practice-api writes on every run (`reports/results.json`), matched on the case ID each designed test's title starts with.
+
+A requirement passes only when **every** one of its cases passed: one failed case makes it failing, and a case with no result (renamed, skipped, or the suite didn't run) makes it incomplete, so a high pass count can't hide a missing test. The page also flags tests naming a case the plan doesn't have, case IDs used twice, and cases citing an unknown requirement. `matrix.json` next to the page has the same data.
+
+```bash
+npm test --prefix ../qa-practice-api   # writes reports/results.json
+node src/traceability.js --plan ../../docs/test-strategy/test-plan.md --results ../qa-practice-api/reports/results.json --out site/traceability
+```
+
+Checked by putting two fixed bugs back into qa-practice-api (shipped orders could be cancelled; `limit=0` fell back to 10): the matrix went from 12/12 to 9/12 requirements, naming REQ-06, REQ-07 and REQ-08 and the exact cases (TC-ST-15, TC-ST-28, TC-BVA-14). The 38 older route tests passed throughout. `scripts/test-plan.test.mjs` reads the plan with the same parser, so the plan check and the matrix can't disagree about what the plan says.
+
 ---
 
 ## Tests
 
 ```bash
-npm test   # 20 tests
+npm test   # 33 tests
 ```
 
-They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail.
+They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail. For the traceability matrix (13 tests): parsing the real plan (12 requirements, 85 cases), Playwright statuses through nested suites, the worst result winning for a duplicated ID, the requirement status rules, unplanned and orphan cases, a missing or corrupt results file, and escaping plan text. Six deliberate breaks (ignoring missing results, best result winning, skipping nested suites, matching an ID anywhere in a title, unknown statuses passing, unescaped text) each made a test fail.

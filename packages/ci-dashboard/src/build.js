@@ -10,6 +10,7 @@ import { fetchRuns } from './github.js';
 import { computeMetrics } from './metrics.js';
 import { renderHtml } from './render.js';
 import { buildReports, renderReportsPage } from './reports.js';
+import { writeTraceability, TRACED_SUITE, RESULTS_FILE } from './traceability.js';
 
 const arg = (flag, def) => { const i = process.argv.indexOf(flag); return i !== -1 ? process.argv[i + 1] : def; };
 
@@ -20,6 +21,9 @@ const limit = Number(arg('--limit', '40'));
 // published under <out>/reports. See src/reports.js.
 const reportsDir = arg('--reports', null);
 const reportsRun = Number(arg('--reports-run', '0'));
+// --plan <test-plan.md>: also publish the traceability matrix under <out>/reports/traceability,
+// with results from that run's qa-practice-api report. See src/traceability.js.
+const planFile = arg('--plan', null);
 
 let token = process.env.GITHUB_TOKEN;
 if (!token) {
@@ -39,7 +43,20 @@ try {
     const run = runs.find((r) => r.id === reportsRun) ?? null;
     const rows = buildReports({ rawDir: reportsDir, outDir: path.join(out, 'reports'), jobs: run?.jobs ?? [] });
     fs.mkdirSync(path.join(out, 'reports'), { recursive: true });
-    fs.writeFileSync(path.join(out, 'reports', 'index.html'), renderReportsPage(rows, { repo, run, generatedAt }));
+    let traceabilityHref = null;
+    if (planFile) {
+      const traced = rows.find((r) => r.name === TRACED_SUITE);
+      const m = writeTraceability({
+        planFile,
+        resultsFile: path.join(reportsDir, `report-${TRACED_SUITE}`, ...RESULTS_FILE.split('/')),
+        outDir: path.join(out, 'reports', 'traceability'),
+        repo, run, generatedAt,
+        reportHref: traced?.entry && !traced.withheld ? `../${TRACED_SUITE}/${traced.entry}` : null,
+      });
+      traceabilityHref = 'traceability/';
+      console.log(`traceability: ${m.totals.passing}/${m.totals.requirements} requirements passing, ${m.totals.passed}/${m.totals.cases} cases passed${m.hasResults ? '' : ' (no results found)'}`);
+    }
+    fs.writeFileSync(path.join(out, 'reports', 'index.html'), renderReportsPage(rows, { repo, run, generatedAt, traceabilityHref }));
     reportsHref = 'reports/';
     for (const r of rows) {
       console.log(`report ${r.name}: ${r.withheld ? `WITHHELD (${r.withheld})` : r.entry ? `published ${r.entry}${r.redactions ? `, ${r.redactions} redacted` : ''}` : 'no page'}`);

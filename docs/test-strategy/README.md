@@ -7,6 +7,7 @@
 | **System under test** | [qa-practice-api](../../packages/qa-practice-api): users, products and orders over REST, JWT sign-in, in-memory data |
 | **Test plan** | [test-plan.md](test-plan.md): 12 requirements, 85 designed cases, each tied to a technique and a requirement |
 | **Designed tests** | [packages/qa-practice-api/tests/design](../../packages/qa-practice-api/tests/design), run in CI with the rest of the package |
+| **Traceability** | [Live matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/): risk → requirement → case → result in the latest CI run on main, rebuilt after every run ([how it's built](../../packages/ci-dashboard/README.md#traceability-matrix)) |
 | **Kept honest by** | [scripts/test-plan.test.mjs](../../scripts/test-plan.test.mjs): every case in the plan exists as a test and the reverse, every case cites a requirement, every high risk has tests or a scheduled day |
 
 ## Scope

@@ -2,7 +2,7 @@
 
 **In plain English:** the rules the shop API must follow, written down with an ID each, and the test cases that check them. Every case says which technique produced it and which rule it checks, so a failing test points straight at the rule that broke.
 
-The strategy behind it (risks, scope, exit criteria) is in [README.md](README.md). Each case below is a test in [packages/qa-practice-api/tests/design](../../packages/qa-practice-api/tests/design) whose title starts with its ID. [scripts/test-plan.test.mjs](../../scripts/test-plan.test.mjs) fails if a case is in this plan but not in the tests, or the reverse.
+The strategy behind it (risks, scope, exit criteria) is in [README.md](README.md). Each case below is a test in [packages/qa-practice-api/tests/design](../../packages/qa-practice-api/tests/design) whose title starts with its ID. [scripts/test-plan.test.mjs](../../scripts/test-plan.test.mjs) fails if a case is in this plan but not in the tests, or the reverse. The [traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/) is generated from this file and shows each requirement's cases with their latest CI results.
 
 ## Requirements
 
@@ -13,7 +13,7 @@ The strategy behind it (risks, scope, exit criteria) is in [README.md](README.md
 | REQ-03 | Each order line has a `product_id` and a whole-number `quantity` ≥ 1; `items` is a non-empty array | R-04, R-11 |
 | REQ-04 | An order is accepted only if every product exists and has stock for its quantity summed across lines. If accepted, stock goes down by that amount; if not, no stock changes | R-04 |
 | REQ-05 | An order's total is the sum of price × quantity, rounded to cents | R-12 |
-| REQ-06 | Order status follows the lifecycle below. Any other move returns `409` and leaves the status as it was | R-01 |
+| REQ-06 | Order status follows the order lifecycle (pending → processing or cancelled, processing → shipped or cancelled, shipped → delivered). Any other move returns `409` and leaves the status as it was | R-01 |
 | REQ-07 | Cancelling an order returns its stock to the products that still exist | R-01 |
 | REQ-08 | Lists use page ≥ 1 and limit 1–50; values outside are clamped to the nearest edge, a missing or non-numeric value means page 1 or limit 10, and a page past the end is empty | R-17 |
 | REQ-09 | `PUT /users/:id` changes only the caller's own account (admins: any). Another account gets `403` before its existence is checked; `name` and `email` must be non-empty strings; an email used by another account gets `409`; a deleted account gets `404` | R-02 |

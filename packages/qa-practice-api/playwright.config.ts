@@ -16,6 +16,8 @@ export default defineConfig({
   },
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    // Read by the traceability matrix (packages/ci-dashboard/src/traceability.js).
+    ['json', { outputFile: 'reports/results.json' }],
     ['list'],
   ],
 });

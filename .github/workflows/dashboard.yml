@@ -40,11 +40,12 @@ jobs:
           gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -p 'report-*' -D reports-raw || echo "No reports to download"
 
       # Reports are scanned before publishing: tokens redacted, zipped data with a
-      # token withheld (packages/ci-dashboard/src/reports.js).
-      - name: Build dashboard and reports
+      # token withheld (packages/ci-dashboard/src/reports.js). The traceability matrix
+      # joins the test plan with qa-practice-api's results (src/traceability.js).
+      - name: Build dashboard, reports and traceability matrix
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node packages/ci-dashboard/src/build.js --out _site --reports reports-raw --reports-run "$RUN_ID"
+        run: node packages/ci-dashboard/src/build.js --out _site --reports reports-raw --reports-run "$RUN_ID" --plan docs/test-strategy/test-plan.md
 
       - uses: actions/upload-pages-artifact@v3
         with:
