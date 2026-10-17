@@ -41,12 +41,12 @@ test('server errors are retried with backoff until it works', async () => {
   assert.deepEqual(waits, [200, 400]);
 });
 
-test('network errors, 408 and 429 are retried', async () => {
-  const net = fakeFetch([new Error('ECONNRESET'), 429, 408, 204]);
+test('network errors, 408, 409 and 429 are retried', async () => {
+  const net = fakeFetch([new Error('ECONNRESET'), 429, 408, 409, 204]);
   const r = await deliver({ ...base, fetchImpl: net.impl, sleep: recordSleep().sleep });
   assert.equal(r.delivered, true);
   assert.equal(r.attempts[0].error, 'ECONNRESET');
-  assert.equal(r.attempts.length, 4);
+  assert.equal(r.attempts.length, 5);
 });
 
 test('other client errors stop immediately', async () => {
@@ -91,6 +91,55 @@ test('end to end: a receiver failing twice still processes the event exactly onc
     assert.equal(again.delivered, true);
     assert.equal(processed, 1);
   } finally {
+    await server.close();
+  }
+});
+
+// Found while writing docs/rca/02-duplicate-webhook-processed-twice.md. The usual
+// way a duplicate arrives: the sender's first attempt times out while the receiver
+// is still working, so it retries and gets 409 (in progress). If the sender treats
+// that 409 as final and the first attempt then fails, nobody retries: the event
+// is lost. Steps are driven by promises, not timers, so the order is exact.
+test('end to end: a retry that meets 409 keeps retrying, so a slow attempt that then fails is not lost', async () => {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  let started;
+  const firstStarted = new Promise((r) => { started = r; });
+  let calls = 0;
+  let processed = 0;
+  const { listener } = createReceiver({
+    secret: 'e2e',
+    handler: async () => {
+      calls += 1;
+      if (calls === 1) { started(); await gate; throw new Error('database timeout'); }
+      processed += 1;
+    },
+  });
+  const server = await startServer(listener);
+  try {
+    let attempt = 0;
+    // Attempt 1 gives up (like a client timeout) once the receiver has started on it.
+    const fetchImpl = async (url, init) => {
+      attempt += 1;
+      if (attempt > 1) return fetch(url, init);
+      const ac = new AbortController();
+      const pending = fetch(url, { ...init, signal: ac.signal });
+      await firstStarted;
+      ac.abort();
+      return pending;
+    };
+    let sleeps = 0;
+    // Before attempt 3, let the slow first attempt finish by failing.
+    const sleep = async () => {
+      sleeps += 1;
+      if (sleeps === 2) { release(); await new Promise((r) => setTimeout(r, 50)); }
+    };
+    const r = await deliver({ url: server.url, secret: 'e2e', event: { type: 'order.paid' }, fetchImpl, sleep });
+    assert.deepEqual(r.attempts.map((a) => a.status), [null, 409, 200]);
+    assert.equal(r.delivered, true);
+    assert.equal(processed, 1);
+  } finally {
+    release();
     await server.close();
   }
 });

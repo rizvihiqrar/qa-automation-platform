@@ -32,17 +32,21 @@ Events processed: order.created, order.flaky
 | Idempotency | A delivery id is processed once; repeats get `200 duplicate` | handler runs once for two sends |
 | Concurrent duplicates | A copy arriving while the first is still processing gets `409` | two simultaneous sends, one processing |
 | Failed processing | Handler error → `500`, and the id is **not** marked done, so the retry works | fails, then succeeds on retry |
-| Retries | 5xx, 408, 429 and network errors retry with doubling backoff (200, 400, 800 ms…) | delays recorded with a fake clock |
+| Retries | 5xx, 408, 409 (in progress), 429 and network errors retry with doubling backoff (200, 400, 800 ms…) | delays recorded with a fake clock |
 | No pointless retries | Other 4xx stop at once | 400, 401, 404, 422 each sent once |
 | Re-signing | Each retry gets a fresh timestamp and signature, but keeps the same delivery id | headers compared across attempts |
 
 ---
 
-## Bug the Tests Caught
+## Bugs the Tests Caught
 
 The first version of the receiver checked "already processed?" and then ran the handler. Two copies of the same delivery arriving together both passed that check before either finished, so the event ran twice. The fix tracks deliveries in progress and answers a concurrent copy with `409`.
 
 Removing that guard makes the concurrency test fail, which confirms the test really detects the race.
+
+**Second bug, found on Day 31 while writing the [root-cause analysis](../../docs/rca/02-duplicate-webhook-processed-twice.md):** the sender treated that `409` as final. If a retry met `409` because a slow first attempt was still running, and that attempt then failed, nobody retried and the event was lost. `409` is now retried like `408` and `429`, and an end-to-end test reproduces the whole sequence.
+
+**Limit:** delivery ids are tracked in memory, so this guards one receiver process. Several instances behind a load balancer would need the guard in shared storage, such as a unique key in the database.
 
 ---
 
@@ -65,7 +69,7 @@ Headers: `x-webhook-signature` (`sha256=<hex>`), `x-webhook-timestamp` (Unix sec
 ## Tests
 
 ```bash
-npm test   # 20 tests, no dependencies
+npm test   # 21 tests, no dependencies
 ```
 
-The receiver tests run against a real local HTTP server. The sender tests use a fake network and a fake clock, so retry timing is checked without any real waiting.
+The receiver tests run against a real local HTTP server. The sender tests use a fake network and a fake clock, so retry timing is checked without any real waiting; two end-to-end tests run the sender against the real receiver.

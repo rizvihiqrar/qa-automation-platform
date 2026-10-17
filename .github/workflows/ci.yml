@@ -66,7 +66,7 @@ jobs:
           # Browser, against the live Sauce Demo site. `smoke` is what a pull request
           # runs when it doesn't touch the suite (scripts/test-scope.mjs decides).
           - { package: multi-user-flow-patterns, browsers: true,  command: npm test, smoke: npm run smoke }
-          - { package: bdd-playwright-demo,      browsers: true,  command: npm test, smoke: npm run smoke }
+          - { package: bdd-playwright-demo,      browsers: true,  command: npm run test:guard && npm test, smoke: npm run test:guard && npm run smoke }
           - { package: ai-test-generator,        browsers: true,  command: npm test && npm run review && npm run test:e2e, smoke: npm test && npm run review && npm run test:e2e -- --grep @smoke }
     defaults:
       run:

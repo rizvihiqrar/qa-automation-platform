@@ -49,6 +49,8 @@ To use it in Postman: **Import**, select `collection/dummyjson-api.postman_colle
 
 `npm test` writes an HTML report to `reports/report.html` using `newman-reporter-htmlextra`. The platform CI uploads it as a build artifact.
 
+The report leaves out the `Authorization`, `Cookie` and `Set-Cookie` headers and the body of the valid login response. Those held DummyJSON's live access and refresh tokens: 19 of them per report. The Pages publisher already redacted them, but the build artifact itself still had them. Now 0 (see [the write-up](../../docs/rca/05-tokens-in-published-reports.md)).
+
 ---
 
 ## Tech Stack
