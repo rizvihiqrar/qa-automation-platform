@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test",
     "analyze": "node src/cli.ts",
-    "track": "node src/track.ts"
+    "track": "node src/track.ts",
+    "variance": "node src/variance-cli.ts"
   },
   "engines": { "node": ">=24" },
   "license": "MIT"

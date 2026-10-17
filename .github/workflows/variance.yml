@@ -1,0 +1,67 @@
+name: Variance
+
+# Manual: runs the Sauce Demo regression suite many times on GitHub's runners,
+# with no retries, and reports each test's first-try pass rate with a 95%
+# confidence interval (flaky-test-analyzer/src/variance-cli.ts). Answers "how
+# flaky is this suite, and how sure are we?" without waiting for weeks of CI runs.
+on:
+  workflow_dispatch:
+    inputs:
+      repeat:
+        description: Runs of each test (59 clean runs rule out a 1-in-20 flake at 95%)
+        default: '20'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  repeat:
+    name: repeat (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    defaults:
+      run:
+        working-directory: packages/ai-test-generator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/ai-test-generator/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run each test ${{ inputs.repeat }} times
+        # A failing test is the data, not a reason to stop: the summary job reads every result.
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: shard-${{ matrix.shard }}.json
+          REPEAT: ${{ inputs.repeat }}
+        run: npx playwright test -c playwright.regression.config.js --repeat-each="$REPEAT" --retries=0 --shard=${{ matrix.shard }}/3 --reporter=json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: variance-shard-${{ matrix.shard }}
+          path: packages/ai-test-generator/shard-${{ matrix.shard }}.json
+          retention-days: 30
+
+  summary:
+    needs: repeat
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: variance-shard-*
+          path: variance
+          merge-multiple: true
+      - name: Pass rates with confidence intervals
+        run: node packages/flaky-test-analyzer/src/variance-cli.ts variance --window 14 | tee -a "$GITHUB_STEP_SUMMARY"

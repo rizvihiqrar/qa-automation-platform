@@ -57,7 +57,10 @@ test('an open issue is refreshed when the counts change, and left alone when the
 test(`an issue closes once the test passed first time in at least ${MIN_CLEAN_RUNS} runs`, () => {
   const { actions } = plan(history(...Array<Status>(MIN_CLEAN_RUNS).fill('expected')), [issue()]);
   assert.equal(actions[0]?.kind, 'close');
-  assert.match(actions[0]?.kind === 'close' ? actions[0].comment : '', /all 5 of the last 5/);
+  const comment = actions[0]?.kind === 'close' ? actions[0].comment : '';
+  assert.match(comment, /all 5 of the last 5/);
+  // 5 clean runs only rule out flake rates above 45%; the comment must not overclaim.
+  assert.match(comment, /flake rate is now below 45% \(95% confidence\)\. That rules out frequent flakes, not rare ones/);
 });
 
 test('one or two clean runs are not enough to close an issue', () => {
@@ -84,9 +87,10 @@ test('issues with the label that this tool did not open are left alone', () => {
 test('the issue body links each unstable run and states the closing rule', () => {
   const { list } = plan(history('flaky', 'expected', 'unexpected', 'expected'));
   const body = flakyBody(list.flaky[0]!, 4, (run) => `[run ${run}](https://example.test/${run})`);
-  assert.match(body, /Unstable in \*\*2 of 4\*\* runs \(flake rate 50%\)/);
+  assert.match(body, /Unstable in \*\*2 of 4\*\* runs \(flake rate 50%, 95% CI 15%–85%\)/);
   assert.match(body, /\[run 101\]\(https:\/\/example\.test\/101\), \[run 103\]/);
   assert.match(body, /at least 5 times/);
+  assert.match(body, /4 clean runs only show the flake rate is below 53% \(95% confidence\)/);
 });
 
 test('summaryMarkdown lists flaky tests and planned changes, and says when nothing was applied', () => {
