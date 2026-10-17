@@ -27,8 +27,21 @@ export interface OrderItem {
 export interface Order extends Row {
   user_id: number;
   status: string;
+  subtotal: number;
+  discount_code: string | null;
+  discount: number;
   total: number;
   items: OrderItem[];
+}
+
+export interface Discount extends Row {
+  code: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  expires_at: string | null;
+  max_uses: number | null;
+  min_subtotal: number;
+  active: boolean;
 }
 
 // Ids arrive as numbers from tokens and as strings from URL params.
@@ -93,3 +106,4 @@ function matches<T extends Row>(row: T, filter: Partial<T>): boolean {
 export const users    = new Table<User>();
 export const products = new Table<Product>();
 export const orders   = new Table<Order>();
+export const discounts = new Table<Discount>();

@@ -93,11 +93,12 @@
         }
       },
       "post": {
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["items"], "properties": {"items":{"type":"array","minItems":1,"items":{"type":"object","required":["product_id","quantity"],"properties":{"product_id":{"type":"integer"},"quantity":{"type":"integer","minimum":1}}}}} }, "example": {"items":[{"product_id":1,"quantity":1}]} } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["items"], "properties": {"items":{"type":"array","minItems":1,"items":{"type":"object","required":["product_id","quantity"],"properties":{"product_id":{"type":"integer"},"quantity":{"type":"integer","minimum":1}}}},"discount_code":{"type":"string","nullable":true,"minLength":1}} }, "example": {"items":[{"product_id":1,"quantity":1}]} } } },
         "responses": {
           "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
-          "400": { "description": "Invalid items or not enough stock", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Product not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": { "description": "Invalid items, not enough stock, or a discount_code that is not a non-empty string", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Product not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "422": { "description": "Discount code refused: not valid, expired, used up, already used by this customer, or minimum not met", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -119,6 +120,47 @@
           "400": { "description": "Unknown status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "403": { "description": "A customer asking for any status but cancelled", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "409": { "description": "Not allowed from the current status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/discounts": {
+      "get": {
+        "responses": {
+          "200": { "description": "Every discount code", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Discount" } } } } },
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Not an admin", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "post": {
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["code","type","value"], "properties": {"code":{"type":"string","pattern":"^\\s*[A-Za-z0-9-]{3,20}\\s*$"},"type":{"type":"string","enum":["percent","fixed"]},"value":{"type":"number","exclusiveMinimum":true,"minimum":0},"expires_at":{"type":"string","format":"date-time","nullable":true},"max_uses":{"type":"integer","minimum":1,"nullable":true},"min_subtotal":{"type":"number","minimum":0},"active":{"type":"boolean"}} }, "example": {"code":"SUMMER10","type":"percent","value":10} } } },
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Discount" } } } },
+          "400": { "description": "Missing or invalid fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Not an admin", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "A code with the same letters, ignoring case, exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/discounts/{code}": {
+      "parameters": [{ "name": "code", "in": "path", "required": true, "schema": { "type": "string" }, "example": "SUMMER10" }],
+      "get": {
+        "responses": {
+          "200": { "description": "A discount code", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Discount" } } } },
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Not an admin", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "patch": {
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "properties": {"active":{"type":"boolean"},"expires_at":{"type":"string","format":"date-time","nullable":true},"max_uses":{"type":"integer","minimum":1,"nullable":true}} }, "example": {"active":false} } } },
+        "responses": {
+          "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Discount" } } } },
+          "400": { "description": "Invalid or not changeable fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Not an admin", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "max_uses below the uses already counted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     }
@@ -168,13 +210,30 @@
         }
       },
       "Order": {
-        "type": "object", "additionalProperties": false, "required": ["id", "user_id", "status", "total", "items", "created_at"],
+        "type": "object", "additionalProperties": false, "required": ["id", "user_id", "status", "subtotal", "discount_code", "discount", "total", "items", "created_at"],
         "properties": {
           "id": { "type": "integer", "minimum": 1 },
           "user_id": { "type": "integer", "minimum": 1 },
           "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+          "subtotal": { "type": "number", "minimum": 0 },
+          "discount_code": { "type": "string", "nullable": true },
+          "discount": { "type": "number", "minimum": 0 },
           "total": { "type": "number", "minimum": 0 },
           "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Discount": {
+        "type": "object", "additionalProperties": false, "required": ["code", "type", "value", "expires_at", "max_uses", "min_subtotal", "active", "uses", "created_at"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z0-9-]{3,20}$" },
+          "type": { "type": "string", "enum": ["percent", "fixed"] },
+          "value": { "type": "number" },
+          "expires_at": { "type": "string", "format": "date-time", "nullable": true },
+          "max_uses": { "type": "integer", "minimum": 1, "nullable": true },
+          "min_subtotal": { "type": "number", "minimum": 0 },
+          "active": { "type": "boolean" },
+          "uses": { "type": "integer", "minimum": 0 },
           "created_at": { "type": "string", "format": "date-time" }
         }
       },
