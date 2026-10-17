@@ -14,7 +14,8 @@ export async function runScenario({ baseUrl, spec, steps, fetchImpl = fetch }) {
   for (const step of steps) {
     const path = fill(step.path, vars);
     const headers = { 'Content-Type': 'application/json' };
-    if (step.auth) headers.Authorization = `Bearer ${vars.token}`;
+    // `auth: true` sends the saved `token`; `auth: 'adminToken'` sends that saved variable.
+    if (step.auth) headers.Authorization = `Bearer ${vars[step.auth === true ? 'token' : step.auth]}`;
     const body = typeof step.body === 'function' ? step.body(vars) : step.body;
 
     const res = await fetchImpl(baseUrl + path, { method: step.method, headers, body: body === undefined ? undefined : JSON.stringify(body) });

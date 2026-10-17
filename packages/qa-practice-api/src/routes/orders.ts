@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as store from '../db/store.ts';
-import { requireAuth, currentUser } from '../middleware/auth.ts';
+import type { Request } from 'express';
+import { requireAuth, currentUser, isAdmin } from '../middleware/auth.ts';
 
 const router = Router();
 
@@ -16,18 +17,28 @@ const NEXT: Record<string, string[]> = {
 };
 const VALID_STATUSES = Object.keys(NEXT);
 
+// Moving an order along (processing, shipped, delivered) is the shop's job; a
+// customer may only cancel. Customers used to be able to mark their own orders delivered.
+const CUSTOMER_MOVES = ['cancelled'];
+
+// Admins see every order. A customer sees only their own; anyone else's is
+// answered as not found, so order ids can't be probed.
+function visibleOrder(req: Request): store.Order | null {
+  const order = store.orders.findById(String(req.params.id));
+  return order && (isAdmin(req) || order.user_id === currentUser(req).id) ? order : null;
+}
+
 router.use(requireAuth);
 
 router.get('/', (req, res) => {
-  const { data } = store.orders.findAll({ user_id: currentUser(req).id }, { page: 1, limit: 1000 });
+  const filter = isAdmin(req) ? {} : { user_id: currentUser(req).id };
+  const { data } = store.orders.findAll(filter, { page: 1, limit: 1000 });
   res.json(data.sort((a, b) => b.created_at.localeCompare(a.created_at)));
 });
 
 router.get('/:id', (req, res) => {
-  const order = store.orders.findById(req.params.id);
-  if (!order || order.user_id !== currentUser(req).id) {
-    return res.status(404).json({ error: `Order ${req.params.id} not found` });
-  }
+  const order = visibleOrder(req);
+  if (!order) return res.status(404).json({ error: `Order ${req.params.id} not found` });
   res.json(order);
 });
 
@@ -82,9 +93,10 @@ router.patch('/:id/status', (req, res) => {
   if (!VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
-  const order = store.orders.findById(req.params.id);
-  if (!order || order.user_id !== currentUser(req).id) {
-    return res.status(404).json({ error: `Order ${req.params.id} not found` });
+  const order = visibleOrder(req);
+  if (!order) return res.status(404).json({ error: `Order ${req.params.id} not found` });
+  if (!isAdmin(req) && !CUSTOMER_MOVES.includes(status)) {
+    return res.status(403).json({ error: 'Customers can only cancel an order' });
   }
   if (!NEXT[order.status]?.includes(status)) {
     return res.status(409).json({ error: `Cannot change order status from ${order.status} to ${status}` });

@@ -1,0 +1,3 @@
+# ZAP rule configuration for the CI scan (zap-baseline job in .github/workflows/ci.yml).
+# Format: rule id <TAB> FAIL | IGNORE | WARN <TAB> (alert name): reason
+# Triage table with the reasons: ../README.md#security-scan

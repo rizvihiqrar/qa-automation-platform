@@ -3,3 +3,4 @@ data/
 playwright-report/
 test-results/
 .env
+zap-report/

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { adminAuth } from './admin.ts';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -21,8 +22,9 @@ test.describe('Users routes', () => {
     expect(res.status()).toBe(401);
   });
 
+  // Listing accounts is for admins (a customer gets 403: tests/design/access-control.spec.ts).
   test('GET /users returns paginated list without passwords @smoke', async ({ request }) => {
-    const res  = await request.get('/users', { headers: { Authorization: `Bearer ${token}` } });
+    const res  = await request.get('/users', { headers: adminAuth() });
     const body = await res.json();
 
     expect(res.status()).toBe(200);
@@ -43,10 +45,9 @@ test.describe('Users routes', () => {
     expect(body).not.toHaveProperty('password');
   });
 
+  // To an admin. A customer gets 403 for any id but their own, so ids can't be probed.
   test('GET /users/:id non-existent ID returns 404 @regression', async ({ request }) => {
-    const res  = await request.get('/users/999999', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res  = await request.get('/users/999999', { headers: adminAuth() });
     const body = await res.json();
 
     expect(res.status()).toBe(404);
@@ -71,9 +72,10 @@ test.describe('Users routes', () => {
     });
     expect(del.status()).toBe(204);
 
-    const get = await request.get(`/users/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const get = await request.get(`/users/${userId}`, { headers: adminAuth() });
     expect(get.status()).toBe(404);
+    // The deleted account's token stops working (it used to keep working for its hour).
+    const me = await request.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    expect(me.status()).toBe(401);
   });
 });

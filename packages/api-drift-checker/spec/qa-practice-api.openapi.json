@@ -27,7 +27,8 @@
         "responses": {
           "200": { "description": "Logged in", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResult" } } } },
           "400": { "description": "Missing fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Wrong credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": { "description": "Wrong credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "429": { "description": "Too many sign-in attempts (see the Retry-After header)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -43,7 +44,8 @@
       "get": {
         "responses": {
           "200": { "description": "Page of users", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserPage" } } } },
-          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Not an admin", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -51,6 +53,7 @@
       "get": {
         "responses": {
           "200": { "description": "A user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "403": { "description": "Another user's account, and the caller isn't an admin", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
@@ -65,7 +68,8 @@
         "responses": {
           "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
           "400": { "description": "Missing or invalid fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": { "description": "No or bad token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Not an admin", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -80,7 +84,7 @@
     "/orders": {
       "get": {
         "responses": {
-          "200": { "description": "The caller's orders, newest first", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } }
+          "200": { "description": "The caller's orders (an admin's: every order), newest first", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } }
         }
       },
       "post": {
@@ -104,6 +108,7 @@
         "responses": {
           "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
           "400": { "description": "Unknown status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "A customer asking for any status but cancelled", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "409": { "description": "Not allowed from the current status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }

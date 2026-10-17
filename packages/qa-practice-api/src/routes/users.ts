@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as store from '../db/store.ts';
-import { requireAuth, currentUser } from '../middleware/auth.ts';
+import { requireAuth, requireAdmin, currentUser, isAdmin } from '../middleware/auth.ts';
 import { pagination } from './query.ts';
 
 const router = Router();
@@ -8,13 +8,19 @@ const safe = ({ password: _password, ...rest }: store.User) => rest;
 
 router.use(requireAuth);
 
-router.get('/', (req, res) => {
+// Admins only. The list used to give any signed-in user every account's name and email.
+router.get('/', requireAdmin, (req, res) => {
   const { page, limit } = pagination(req.query);
   const { data, total, pages } = store.users.findAll({}, { page, limit });
   res.json({ data: data.map(safe), page, limit, total, pages });
 });
 
+// Own account or admin, like PUT and DELETE, and 403 before the lookup so a
+// customer can't tell which ids exist.
 router.get('/:id', (req, res) => {
+  if (currentUser(req).id !== parseInt(req.params.id) && !isAdmin(req)) {
+    return res.status(403).json({ error: "Cannot read another user's account" });
+  }
   const user = store.users.findById(req.params.id);
   if (!user) return res.status(404).json({ error: `User ${req.params.id} not found` });
   res.json(safe(user));

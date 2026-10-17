@@ -2,7 +2,7 @@
 // order. Ramps to 20 virtual users, holds, then ramps down.
 import { sleep } from 'k6';
 import exec from 'k6/execution';
-import { register, login, createProducts, browse, placeOrder, summaryWriter } from './lib.js';
+import { adminLogin, register, login, createProducts, browse, placeOrder, summaryWriter } from './lib.js';
 
 export const options = {
   scenarios: {
@@ -30,10 +30,10 @@ export const options = {
 };
 
 export function setup() {
-  const admin = register('load-setup');
+  const adminToken = adminLogin();
   // A pool of accounts created up front, so the test measures logins, not sign-ups.
   const users = Array.from({ length: 10 }, (_, i) => register(`load-${i}`));
-  return { productIds: createProducts(admin.token, 20), users };
+  return { productIds: createProducts(adminToken, 20), users };
 }
 
 // LOGIN_EVERY=4 (default): one iteration in four logs in and orders.

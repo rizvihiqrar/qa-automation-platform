@@ -1,7 +1,7 @@
 // Boundary value analysis: the value on each edge of a valid range and one step
 // either side. Ranges and step sizes: docs/test-strategy/test-plan.md.
 import { test, expect } from '@playwright/test';
-import { signUp, makeProduct, stockOf, uniqueCategory, type Account } from './helpers.ts';
+import { signUp, signIn, admin, makeProduct, stockOf, uniqueCategory, type Account } from './helpers.ts';
 
 let account: Account;
 test.beforeAll(async ({ request }) => { account = await signUp(request); });
@@ -16,7 +16,7 @@ test.describe('price >= 0 (step 0.01)', () => {
   ];
   for (const [id, price, status] of cases) {
     test(`${id} price ${price} returns ${status} @regression`, async ({ request }) => {
-      const res = await request.post('/products', { headers: account.auth, data: { ...product, price } });
+      const res = await request.post('/products', { headers: admin().auth, data: { ...product, price } });
       expect(res.status()).toBe(status);
     });
   }
@@ -30,7 +30,7 @@ test.describe('stock >= 0 (step 1)', () => {
   ];
   for (const [id, stock, status] of cases) {
     test(`${id} stock ${stock} returns ${status} @regression`, async ({ request }) => {
-      const res = await request.post('/products', { headers: account.auth, data: { ...product, price: 1, stock } });
+      const res = await request.post('/products', { headers: admin().auth, data: { ...product, price: 1, stock } });
       expect(res.status()).toBe(status);
     });
   }
@@ -48,7 +48,7 @@ test.describe('1 <= quantity <= stock (stock 5)', () => {
   for (const [id, quantities, status, stockAfter] of cases) {
     const lines = quantities.length > 1 ? `lines of ${quantities.join(' + ')}` : `quantity ${quantities[0]}`;
     test(`${id} ${lines} returns ${status}, leaving stock ${stockAfter} @regression`, async ({ request }) => {
-      const p = await makeProduct(request, account, { stock: 5 });
+      const p = await makeProduct(request, { stock: 5 });
       const items = quantities.map((quantity) => ({ product_id: p.id, quantity }));
       const res = await request.post('/orders', { headers: account.auth, data: { items } });
       expect(res.status()).toBe(status);
@@ -79,8 +79,7 @@ test.describe('1 <= limit <= 50, default 10', () => {
 test.describe('1 <= page <= pages (3 products, limit 2)', () => {
   const category = uniqueCategory();
   test.beforeAll(async ({ request }) => {
-    const owner = await signUp(request);
-    for (let i = 0; i < 3; i++) await makeProduct(request, owner, { category });
+    for (let i = 0; i < 3; i++) await makeProduct(request, { category });
   });
 
   const cases: [id: string, page: number, servedPage: number, items: number][] = [
@@ -95,4 +94,29 @@ test.describe('1 <= page <= pages (3 products, limit 2)', () => {
       expect(body.data).toHaveLength(items);
     });
   }
+});
+
+// Sign-in attempts without a success, per email and client: 5 allowed, the 6th refused.
+test.describe('sign-in attempts <= 5', () => {
+  test('TC-BVA-23 the 5th wrong password still returns 401 @regression', async ({ request }) => {
+    const me = await signUp(request);
+    for (let i = 1; i <= 4; i++) await signIn(request, me.email, 'wrong-password');
+    expect((await signIn(request, me.email, 'wrong-password')).status()).toBe(401);
+  });
+
+  test('TC-BVA-24 the 6th attempt returns 429 @regression', async ({ request }) => {
+    const me = await signUp(request);
+    for (let i = 1; i <= 5; i++) await signIn(request, me.email, 'wrong-password');
+    expect((await signIn(request, me.email, 'wrong-password')).status()).toBe(429);
+  });
+
+  // The same edge under concurrency. Checking a password takes tens of
+  // milliseconds, so a limit that counts only finished failures lets a burst of
+  // guesses all start before the first one is counted.
+  test('TC-BVA-25 20 wrong passwords at once: exactly 5 return 401, 15 return 429 @regression', async ({ request }) => {
+    const me = await signUp(request);
+    const statuses = await Promise.all(Array.from({ length: 20 }, () => signIn(request, me.email, 'wrong-password').then((r) => r.status())));
+    expect(statuses.filter((s) => s === 401)).toHaveLength(5);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(15);
+  });
 });

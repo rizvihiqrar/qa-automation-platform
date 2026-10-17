@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as store from '../db/store.ts';
 import { hashPassword, verifyPassword } from '../security/password.ts';
 import { signToken, requireAuth, currentUser } from '../middleware/auth.ts';
+import { AttemptLimiter } from '../security/rate-limit.ts';
 
 const router = Router();
 const safe = ({ password: _password, ...rest }: store.User) => rest;
@@ -30,16 +31,30 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// 5 sign-in attempts per client and email in 15 minutes. Keyed on the pair, so a
+// guesser can't lock the owner out from another address. req.ip is the socket
+// address: X-Forwarded-For isn't trusted, or a client could pick a new key per request.
+export const LOGIN_ATTEMPTS = 5;
+export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const loginLimiter = new AttemptLimiter(LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!allStrings(email, password)) {
       return res.status(400).json({ error: 'email and password are required strings' });
     }
+    const key = `${req.ip}|${email.toLowerCase()}`;
+    const attempt = loginLimiter.attempt(key);
+    if (!attempt.allowed) {
+      res.set('Retry-After', String(attempt.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many sign-in attempts. Try again later.' });
+    }
     const user = store.users.findOne({ email });
     if (!user || !(await verifyPassword(password, user.password))) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    loginLimiter.succeeded(key);
     res.json({ user: safe(user), token: signToken({ id: user.id, role: user.role }) });
   } catch {
     res.status(500).json({ error: 'Login failed' });

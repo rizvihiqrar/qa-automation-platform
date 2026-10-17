@@ -1,18 +1,15 @@
 import { test, expect } from '@playwright/test';
+import { adminToken } from './admin.ts';
 
 test.describe.configure({ mode: 'serial' });
 
-const ts       = Date.now();
-const testUser = { name: 'Products Tester', email: `products.${ts}@example.com`, password: 'Pass123!' };
-
+// Changing products is for admins, so these tests sign in as the seeded admin.
+// What a customer may not do is in tests/design/access-control.spec.ts.
 let token: string;
 let productId: number;
 
 test.describe('Products routes', () => {
-  test.beforeAll(async ({ request }) => {
-    const res = await request.post('/auth/register', { data: testUser });
-    token = (await res.json()).token;
-  });
+  test.beforeAll(() => { token = adminToken(); });
 
   test('GET /products is public and returns paginated list @smoke', async ({ request }) => {
     const res  = await request.get('/products');
@@ -33,7 +30,7 @@ test.describe('Products routes', () => {
     expect(res.status()).toBe(401);
   });
 
-  test('POST /products creates product when authenticated @smoke', async ({ request }) => {
+  test('POST /products creates product when signed in as admin @smoke', async ({ request }) => {
     const res  = await request.post('/products', {
       headers: { Authorization: `Bearer ${token}` },
       data: { name: 'Test Widget', category: 'hardware', price: 29.99, stock: 100 },

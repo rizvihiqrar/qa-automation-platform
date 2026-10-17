@@ -2,7 +2,7 @@
 // five statuses, so each allowed move and each forbidden one is tried once. The
 // diagram and table are in docs/test-strategy/test-plan.md.
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { signUp, makeProduct, stockOf, type Account } from './helpers.ts';
+import { signUp, admin, makeProduct, stockOf, type Account } from './helpers.ts';
 
 type Status = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -15,22 +15,25 @@ const PATH_TO: Record<Status, Status[]> = {
   cancelled:  ['cancelled'],
 };
 
+// A customer places each order and the admin moves it: the lifecycle rules are the
+// same for everyone allowed to make a move (who may make which move is in
+// tests/design/access-control.spec.ts).
 let account: Account;
 test.beforeAll(async ({ request }) => { account = await signUp(request); });
 
 async function orderIn(request: APIRequestContext, status: Status, quantity = 1) {
-  const p = await makeProduct(request, account, { stock: 10 });
+  const p = await makeProduct(request, { stock: 10 });
   const res = await request.post('/orders', { headers: account.auth, data: { items: [{ product_id: p.id, quantity }] } });
   const order = await res.json();
   for (const step of PATH_TO[status]) {
-    const moved = await request.patch(`/orders/${order.id}/status`, { headers: account.auth, data: { status: step } });
+    const moved = await request.patch(`/orders/${order.id}/status`, { headers: admin().auth, data: { status: step } });
     if (moved.status() !== 200) throw new Error(`setup: could not move order to ${step}: ${moved.status()}`);
   }
   return { orderId: order.id as number, productId: p.id };
 }
 
 const changeStatus = (request: APIRequestContext, orderId: number, status: Status) =>
-  request.patch(`/orders/${orderId}/status`, { headers: account.auth, data: { status } });
+  request.patch(`/orders/${orderId}/status`, { headers: admin().auth, data: { status } });
 
 test.describe('every status change', () => {
   const cases: [id: string, from: Status, to: Status, status: 200 | 409][] = [
@@ -96,7 +99,7 @@ test.describe('stock on cancel', () => {
 
   test('TC-ST-29 cancelling after the product was deleted still succeeds @regression', async ({ request }) => {
     const { orderId, productId } = await orderIn(request, 'pending', 4);
-    expect((await request.delete(`/products/${productId}`, { headers: account.auth })).status()).toBe(204);
+    expect((await request.delete(`/products/${productId}`, { headers: admin().auth })).status()).toBe(204);
     const res = await changeStatus(request, orderId, 'cancelled');
     expect(res.status()).toBe(200);
     expect((await request.get(`/products/${productId}`)).status()).toBe(404);
