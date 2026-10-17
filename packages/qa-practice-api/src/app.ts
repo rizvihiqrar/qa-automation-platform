@@ -3,6 +3,7 @@ import authRoutes    from './routes/auth.ts';
 import userRoutes    from './routes/users.ts';
 import productRoutes from './routes/products.ts';
 import orderRoutes   from './routes/orders.ts';
+import discountRoutes from './routes/discounts.ts';
 
 const app = express();
 app.disable('x-powered-by');
@@ -23,6 +24,7 @@ app.use('/auth',     authRoutes);
 app.use('/users',    userRoutes);
 app.use('/products', productRoutes);
 app.use('/orders',   orderRoutes);
+app.use('/discounts', discountRoutes);
 
 app.use((req, res) =>
   res.status(404).json({ error: `Route ${req.method} ${req.path} not found` })
