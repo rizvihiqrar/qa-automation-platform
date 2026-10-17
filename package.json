@@ -3,7 +3,8 @@
   "private": true,
   "description": "Root tooling for the monorepo (type-checking). Each package keeps its own dependencies.",
   "scripts": {
-    "typecheck": "node scripts/typecheck.mjs"
+    "typecheck": "node scripts/typecheck.mjs",
+    "test": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

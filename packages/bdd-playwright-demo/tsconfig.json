@@ -1,1 +1,1 @@
-{ "extends": "../../tsconfig.ts.json", "include": ["support/**/*.ts", "pageObjects/**/*.ts", "features/**/*.ts"] }
+{ "extends": "../../tsconfig.ts.json", "include": ["support/**/*.ts", "pageObjects/**/*.ts", "features/**/*.ts", "scripts/**/*.ts"] }

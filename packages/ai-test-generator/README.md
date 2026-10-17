@@ -110,6 +110,8 @@ CI splits the suite across 3 runners:
 1. Each `regression (shard N/3)` job runs `playwright test --shard=N/3 --reporter=blob` and uploads its blob report. `fullyParallel` lets a shard take single tests, not whole files, so the split comes out even (15/14/14).
 2. The `regression report` job downloads every blob, merges them into one HTML report (artifact `report-regression`), and runs the shard check.
 
+That is the full run, on main, nightly, and pull requests that change this package. Other pull requests run only the 10 `@smoke` tests on a single shard (`regression (shard 1/1)`); the shard check then lists with the same `--grep`, so it expects 10. Only full runs upload `regression-results` for the Flaky tests workflow, since a smoke run would look like 33 tests had gone missing.
+
 ### The shard check
 
 `src/shardCheck.ts` compares `playwright test --list` with the merged report: every listed test must have run exactly once, and nothing unlisted may have run. It writes a table to the job summary and fails the job otherwise.
