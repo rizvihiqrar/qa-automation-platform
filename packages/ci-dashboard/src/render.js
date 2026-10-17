@@ -4,91 +4,10 @@
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtSec = (s) => (s === null ? '—' : s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`);
 const fmtPct = (p) => (p === null ? '—' : `${p}%`);
-const day = (iso) => (iso ? iso.slice(0, 10) : '—');
+export const day = (iso) => (iso ? iso.slice(0, 10) : '—');
 
-// Round an axis maximum up to a clean number.
-export function niceMax(v) {
-  if (!v || v <= 0) return 1;
-  const pow = 10 ** Math.floor(Math.log10(v));
-  return [1, 2, 2.5, 5, 10].map((m) => m * pow).find((m) => m >= v);
-}
-
-function lineChart({ id, title, subtitle, points, yMax, format }) {
-  // A viewBox close to the card's real width keeps SVG text near 12px on desktop.
-  const W = 500, H = 220, L = 44, R = 60, T = 16, B = 28;
-  const n = points.length;
-  const x = (i) => (n <= 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (n - 1));
-  const y = (v) => T + (H - T - B) * (1 - v / yMax);
-  const ticks = [0, yMax / 2, yMax];
-  const valid = points.map((p, i) => ({ ...p, i })).filter((p) => p.y !== null);
-  const path = valid.map((p, k) => `${k ? 'L' : 'M'}${x(p.i).toFixed(1)},${y(p.y).toFixed(1)}`).join(' ');
-  const last = valid.at(-1);
-  return `
-  <figure class="card" id="${id}">
-    <figcaption><h2>${esc(title)}</h2><p class="sub">${esc(subtitle)}</p></figcaption>
-    <div class="plot" data-chart="${id}">
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">
-        ${ticks.map((t) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text class="tick" x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${esc(format(t))}</text>`).join('')}
-        <line class="axis" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>
-        ${path ? `<path class="series" d="${path}"/>` : ''}
-        ${last ? `<circle class="dot" cx="${x(last.i)}" cy="${y(last.y)}" r="4"/><text class="end-label" x="${x(last.i) + 10}" y="${y(last.y) + 4}">${esc(format(last.y))}</text>` : ''}
-        <line class="crosshair" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>
-        <text class="tick" x="${L}" y="${H - 8}">${esc(points[0]?.label ?? '')}</text>
-        <text class="tick" x="${W - R}" y="${H - 8}" text-anchor="end">${esc(points.at(-1)?.label ?? '')}</text>
-        <rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" tabindex="0" aria-label="${esc(title)}: use arrow keys to read values"/>
-      </svg>
-    </div>
-  </figure>`;
-}
-
-// Horizontal bars as HTML rather than SVG, so labels stay at the page's text size
-// at any width (a scaled SVG made them huge on desktop and tiny on phones).
-function barChart({ title, subtitle, rows }) {
-  const max = niceMax(Math.max(...rows.map((r) => r.value ?? 0), 1));
-  return `
-  <figure class="card wide">
-    <figcaption><h2>${esc(title)}</h2><p class="sub">${esc(subtitle)}</p></figcaption>
-    <div class="plot bars" role="list" aria-label="${esc(title)}">
-      ${rows.map((r) => `<div class="bar-row" role="listitem" tabindex="0" data-name="${esc(r.name)}" data-value="${esc(fmtSec(r.value))}" data-p90="${esc(fmtSec(r.p90))}">
-        <span class="cat">${esc(r.name)}</span>
-        <span class="track"><span class="bar" style="width:${(((r.value ?? 0) / max) * 100).toFixed(1)}%"></span><span class="value">${esc(fmtSec(r.value))}</span></span>
-      </div>`).join('')}
-    </div>
-  </figure>`;
-}
-
-function statusOf(p) {
-  if (p.passRate !== null && p.passRate < 100) return { cls: 'critical', icon: '✕', label: 'Has failures' };
-  if (p.flaky > 0) return { cls: 'warning', icon: '!', label: `Flaky (${p.flaky})` };
-  return { cls: 'good', icon: '✓', label: 'Stable' };
-}
-
-export function renderHtml(metrics, { repo, generatedAt }) {
-  const { overall, packages, trend } = metrics;
-  const tiles = [
-    ['CI runs analysed', String(overall.runs)],
-    ['Runs fully green', fmtPct(overall.runPassRate)],
-    ['Median run time', overall.medianRunMinutes === null ? '—' : `${overall.medianRunMinutes} min`],
-    ['Flaky job results', String(overall.flakyJobs)],
-  ];
-  const passPts = trend.map((t) => ({ y: t.jobPassPct, label: `#${t.number}`, date: day(t.createdAt) }));
-  const minPts = trend.map((t) => ({ y: t.minutes, label: `#${t.number}`, date: day(t.createdAt) }));
-  const byDuration = [...packages].sort((a, b) => (b.medianSeconds ?? 0) - (a.medianSeconds ?? 0))
-    .map((p) => ({ name: p.name, value: p.medianSeconds, p90: p.p90Seconds }));
-  // Data for the tooltip script; "<" is escaped so the JSON can't close the script tag.
-  const chartData = JSON.stringify({
-    pass: { points: passPts, unit: '% of jobs passed' },
-    minutes: { points: minPts, unit: 'min' },
-  }).replace(/</g, '\\u003c');
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CI Dashboard</title>
-<style>
-.viz-root {
+// Shared by the dashboard and the reports page (src/reports.js).
+export const PAGE_STYLE = `.viz-root {
   color-scheme: light;
   --page: #f9f9f7; --surface-1: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
   --grid: #e1e0d9; --axis: #c3c2b7; --series-1: #2a78d6; --meter-track: #cde2fb; --ring: rgba(11,11,11,0.10);
@@ -158,14 +77,98 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .status .icon { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700; margin-right: 6px; }
 .status.good .icon { background: var(--good); } .status.warning .icon { background: var(--warning); color: #0b0b0b; } .status.critical .icon { background: var(--critical); }
 details { margin-top: 8px; } summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
-footer { color: var(--text-muted); font-size: 13px; margin-top: 24px; }
+footer { color: var(--text-muted); font-size: 13px; margin-top: 24px; }`;
+
+// Round an axis maximum up to a clean number.
+export function niceMax(v) {
+  if (!v || v <= 0) return 1;
+  const pow = 10 ** Math.floor(Math.log10(v));
+  return [1, 2, 2.5, 5, 10].map((m) => m * pow).find((m) => m >= v);
+}
+
+function lineChart({ id, title, subtitle, points, yMax, format }) {
+  // A viewBox close to the card's real width keeps SVG text near 12px on desktop.
+  const W = 500, H = 220, L = 44, R = 60, T = 16, B = 28;
+  const n = points.length;
+  const x = (i) => (n <= 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (n - 1));
+  const y = (v) => T + (H - T - B) * (1 - v / yMax);
+  const ticks = [0, yMax / 2, yMax];
+  const valid = points.map((p, i) => ({ ...p, i })).filter((p) => p.y !== null);
+  const path = valid.map((p, k) => `${k ? 'L' : 'M'}${x(p.i).toFixed(1)},${y(p.y).toFixed(1)}`).join(' ');
+  const last = valid.at(-1);
+  return `
+  <figure class="card" id="${id}">
+    <figcaption><h2>${esc(title)}</h2><p class="sub">${esc(subtitle)}</p></figcaption>
+    <div class="plot" data-chart="${id}">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">
+        ${ticks.map((t) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text class="tick" x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${esc(format(t))}</text>`).join('')}
+        <line class="axis" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>
+        ${path ? `<path class="series" d="${path}"/>` : ''}
+        ${last ? `<circle class="dot" cx="${x(last.i)}" cy="${y(last.y)}" r="4"/><text class="end-label" x="${x(last.i) + 10}" y="${y(last.y) + 4}">${esc(format(last.y))}</text>` : ''}
+        <line class="crosshair" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>
+        <text class="tick" x="${L}" y="${H - 8}">${esc(points[0]?.label ?? '')}</text>
+        <text class="tick" x="${W - R}" y="${H - 8}" text-anchor="end">${esc(points.at(-1)?.label ?? '')}</text>
+        <rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" tabindex="0" aria-label="${esc(title)}: use arrow keys to read values"/>
+      </svg>
+    </div>
+  </figure>`;
+}
+
+// Horizontal bars as HTML rather than SVG, so labels stay at the page's text size
+// at any width (a scaled SVG made them huge on desktop and tiny on phones).
+function barChart({ title, subtitle, rows }) {
+  const max = niceMax(Math.max(...rows.map((r) => r.value ?? 0), 1));
+  return `
+  <figure class="card wide">
+    <figcaption><h2>${esc(title)}</h2><p class="sub">${esc(subtitle)}</p></figcaption>
+    <div class="plot bars" role="list" aria-label="${esc(title)}">
+      ${rows.map((r) => `<div class="bar-row" role="listitem" tabindex="0" data-name="${esc(r.name)}" data-value="${esc(fmtSec(r.value))}" data-p90="${esc(fmtSec(r.p90))}">
+        <span class="cat">${esc(r.name)}</span>
+        <span class="track"><span class="bar" style="width:${(((r.value ?? 0) / max) * 100).toFixed(1)}%"></span><span class="value">${esc(fmtSec(r.value))}</span></span>
+      </div>`).join('')}
+    </div>
+  </figure>`;
+}
+
+function statusOf(p) {
+  if (p.passRate !== null && p.passRate < 100) return { cls: 'critical', icon: '✕', label: 'Has failures' };
+  if (p.flaky > 0) return { cls: 'warning', icon: '!', label: `Flaky (${p.flaky})` };
+  return { cls: 'good', icon: '✓', label: 'Stable' };
+}
+
+export function renderHtml(metrics, { repo, generatedAt, reportsHref = null }) {
+  const { overall, packages, trend } = metrics;
+  const tiles = [
+    ['CI runs analysed', String(overall.runs)],
+    ['Runs fully green', fmtPct(overall.runPassRate)],
+    ['Median run time', overall.medianRunMinutes === null ? '—' : `${overall.medianRunMinutes} min`],
+    ['Flaky job results', String(overall.flakyJobs)],
+  ];
+  const passPts = trend.map((t) => ({ y: t.jobPassPct, label: `#${t.number}`, date: day(t.createdAt) }));
+  const minPts = trend.map((t) => ({ y: t.minutes, label: `#${t.number}`, date: day(t.createdAt) }));
+  const byDuration = [...packages].sort((a, b) => (b.medianSeconds ?? 0) - (a.medianSeconds ?? 0))
+    .map((p) => ({ name: p.name, value: p.medianSeconds, p90: p.p90Seconds }));
+  // Data for the tooltip script; "<" is escaped so the JSON can't close the script tag.
+  const chartData = JSON.stringify({
+    pass: { points: passPts, unit: '% of jobs passed' },
+    minutes: { points: minPts, unit: 'min' },
+  }).replace(/</g, '\\u003c');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CI Dashboard</title>
+<style>
+${PAGE_STYLE}
 </style>
 </head>
 <body>
 <div class="viz-root">
 <div class="wrap">
   <h1>CI Dashboard</h1>
-  <p class="lede">Results of the last ${overall.runs} CI runs of <strong>${esc(repo)}</strong>, across ${overall.packages} packages. Generated ${esc(day(generatedAt))}.</p>
+  <p class="lede">Results of the last ${overall.runs} CI runs of <strong>${esc(repo)}</strong>, across ${overall.packages} packages. Generated ${esc(day(generatedAt))}.${reportsHref ? ` <a href="${esc(reportsHref)}">Test reports from the latest run</a>.` : ''}</p>
 
   <section class="tiles" aria-label="Summary">
     ${tiles.map(([l, v]) => `<div class="tile"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`).join('')}

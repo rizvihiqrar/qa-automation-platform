@@ -52,10 +52,34 @@ The `Dashboard` workflow (`.github/workflows/dashboard.yml`) runs after each CI 
 
 ---
 
+## Published Test Reports
+
+**Live:** https://rizvihiqrar.github.io/qa-automation-platform/reports/
+
+After each CI run on main, the Dashboard workflow downloads that run's `report-*` artifacts and publishes them under `/reports/`, with an index showing each suite's CI result. Nine reports today: the merged Sauce Demo regression report, the Playwright reports of five suites, the Cucumber report, the Postman (Newman) report, the Stryker mutation report, and the accessibility audit (Markdown).
+
+```bash
+node src/build.js --out site --reports <folder of report-* artifacts> --reports-run <CI run id>
+```
+
+A report on Pages is public, so `src/reports.js` checks everything before copying it:
+
+| Content | Check |
+|---|---|
+| Text files (HTML, JSON, Markdown, ...) | JWTs, bearer tokens, GitHub tokens, Anthropic keys and Windows user paths are replaced with `[redacted ...]` |
+| Zipped data (Playwright reports embed their results as a zip; traces are zips) | Unzipped and scanned. A report with a token in it is **withheld**, and the index says why |
+| An archive that can't be read | Withheld: what can't be checked isn't published |
+
+This caught a real leak before the first publish: the Postman report shows the demo API's login responses, which contain live (short-lived) access and refresh tokens. The first published run redacted 19 of them. Sauce Demo's password `secret_sauce` stays visible: it's printed on the site's login page and is in the public test code.
+
+The scan doesn't look for employer or personal names; that check runs before every push instead, so the list of names never has to be written into public code.
+
+---
+
 ## Tests
 
 ```bash
-npm test   # 12 tests
+npm test   # 20 tests
 ```
 
-They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained.
+They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail.

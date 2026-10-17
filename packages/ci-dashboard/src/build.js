@@ -9,12 +9,17 @@ import { spawnSync } from 'child_process';
 import { fetchRuns } from './github.js';
 import { computeMetrics } from './metrics.js';
 import { renderHtml } from './render.js';
+import { buildReports, renderReportsPage } from './reports.js';
 
 const arg = (flag, def) => { const i = process.argv.indexOf(flag); return i !== -1 ? process.argv[i + 1] : def; };
 
 const repo = arg('--repo', process.env.GITHUB_REPOSITORY || 'rizvihiqrar/qa-automation-platform');
 const out = arg('--out', 'site');
 const limit = Number(arg('--limit', '40'));
+// --reports <dir>: downloaded report-* artifacts of one CI run (--reports-run <id>),
+// published under <out>/reports. See src/reports.js.
+const reportsDir = arg('--reports', null);
+const reportsRun = Number(arg('--reports-run', '0'));
 
 let token = process.env.GITHUB_TOKEN;
 if (!token) {
@@ -27,7 +32,21 @@ try {
   const runs = await fetchRuns({ repo, token, limit });
   const metrics = computeMetrics(runs);
   fs.mkdirSync(out, { recursive: true });
-  fs.writeFileSync(path.join(out, 'index.html'), renderHtml(metrics, { repo, generatedAt: new Date().toISOString() }));
+  const generatedAt = new Date().toISOString();
+
+  let reportsHref = null;
+  if (reportsDir) {
+    const run = runs.find((r) => r.id === reportsRun) ?? null;
+    const rows = buildReports({ rawDir: reportsDir, outDir: path.join(out, 'reports'), jobs: run?.jobs ?? [] });
+    fs.mkdirSync(path.join(out, 'reports'), { recursive: true });
+    fs.writeFileSync(path.join(out, 'reports', 'index.html'), renderReportsPage(rows, { repo, run, generatedAt }));
+    reportsHref = 'reports/';
+    for (const r of rows) {
+      console.log(`report ${r.name}: ${r.withheld ? `WITHHELD (${r.withheld})` : r.entry ? `published ${r.entry}${r.redactions ? `, ${r.redactions} redacted` : ''}` : 'no page'}`);
+    }
+  }
+
+  fs.writeFileSync(path.join(out, 'index.html'), renderHtml(metrics, { repo, generatedAt, reportsHref }));
   fs.writeFileSync(path.join(out, 'metrics.json'), JSON.stringify(metrics, null, 2));
   console.log(`${metrics.overall.runs} runs, ${metrics.overall.packages} packages, ${metrics.overall.flakyJobs} flaky job result(s) -> ${path.join(out, 'index.html')}`);
 } catch (err) {
