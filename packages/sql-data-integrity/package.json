@@ -5,13 +5,17 @@
   "description": "SQL data-integrity checks for an orders database: orphans, duplicates, totals, payments and date rules",
   "scripts": {
     "test": "node --test",
-    "check": "node src/cli.js"
+    "check": "node src/cli.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "license": "MIT",
   "dependencies": {
     "sql.js": "^1.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/sql.js": "^1.4.11"
   }
 }

@@ -50,7 +50,7 @@ export async function focusIssues(page) {
 // WCAG 3.3.2: a field whose only label is a placeholder. axe accepts a placeholder
 // as an accessible name, but the hint disappears as soon as someone types.
 export async function placeholderOnlyFields(page) {
-  return page.evaluate(() => [...document.querySelectorAll('input, textarea')]
+  return page.evaluate(() => [.../** @type {NodeListOf<HTMLInputElement | HTMLTextAreaElement>} */ (document.querySelectorAll('input, textarea'))]
     .filter((el) => el.type !== 'hidden' && el.placeholder)
     .filter((el) => !(el.labels && el.labels.length) && !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby'))
     .map((el) => ({ rule: 'placeholder-only-label', criteria: ['3.3.2'], level: 'A', target: el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}[placeholder="${el.placeholder}"]`, label: el.placeholder })));

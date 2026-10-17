@@ -79,7 +79,7 @@ test('fetchRuns asks for completed runs and all job attempts, with the token', a
 });
 
 test('fetchRuns reports API errors clearly', async () => {
-  const fetchImpl = async () => ({ ok: false, status: 403 });
+  const fetchImpl = async () => ({ ok: false, status: 403, json: async () => ({}) });
   await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl }), /GitHub API returned 403/);
 });
 

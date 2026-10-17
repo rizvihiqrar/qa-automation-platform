@@ -1,12 +1,12 @@
 // Formats check results as plain text (terminal) or Markdown (PR comments, CI summaries).
 
-import { summarizeResults } from './integrity.js';
+import { summarizeResults, type CheckResult } from './integrity.ts';
 
-const status = (r) => (r.error ? 'ERROR' : r.rows.length === 0 ? 'pass' : r.severity === 'error' ? 'FAIL' : 'warn');
+const status = (r: CheckResult) => (r.error ? 'ERROR' : r.rows.length === 0 ? 'pass' : r.severity === 'error' ? 'FAIL' : 'warn');
 
-export function formatText(results, { maxRows = 5 } = {}) {
+export function formatText(results: CheckResult[], { maxRows = 5 } = {}): string {
   const s = summarizeResults(results);
-  const lines = [];
+  const lines: string[] = [];
   for (const r of results) {
     lines.push(`${status(r).padEnd(5)} ${r.id.padEnd(28)} ${r.rows.length ? `${r.rows.length} row(s)` : ''}`.trimEnd());
     if (r.error) lines.push(`      could not run: ${r.error}`);
@@ -19,7 +19,7 @@ export function formatText(results, { maxRows = 5 } = {}) {
   return lines.join('\n');
 }
 
-export function formatMarkdown(results) {
+export function formatMarkdown(results: CheckResult[]): string {
   const s = summarizeResults(results);
   const lines = [
     `**${s.passed}/${s.checks} checks passed** · ${s.errors} error(s) · ${s.warnings} warning(s) · ${s.badRows} bad row(s)`,

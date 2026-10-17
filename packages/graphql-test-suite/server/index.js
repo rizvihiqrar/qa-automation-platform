@@ -85,11 +85,19 @@ const typeDefs = /* GraphQL */ `
 function findChar(id)     { return characters.find(c => c.id === String(id)) || null; }
 function findLocation(id) { return locations.find(l => l.id === String(id)) || null; }
 
+/**
+ * Query arguments, matching the FilterCharacter and FilterEpisode inputs in the schema.
+ * @typedef {{ name?: string, status?: string, species?: string, gender?: string }} CharacterFilter
+ * @typedef {{ name?: string, episode?: string }} EpisodeFilter
+ * @typedef {{ page?: number, filter?: CharacterFilter }} CharactersArgs
+ * @typedef {{ page?: number, filter?: EpisodeFilter }} EpisodesArgs
+ */
+
 const resolvers = {
   Query: {
     character: (_root, { id }) => findChar(id),
 
-    characters: (_root, { page = 1, filter = {} }) => {
+    characters: (_root, /** @type {CharactersArgs} */ { page = 1, filter = {} }) => {
       let list = [...characters];
       if (filter.name)    list = list.filter(c => c.name.toLowerCase().includes(filter.name.toLowerCase()));
       if (filter.status)  list = list.filter(c => c.status  === filter.status);
@@ -105,7 +113,7 @@ const resolvers = {
 
     episode: (_root, { id }) => episodes.find(e => e.id === String(id)) || null,
 
-    episodes: (_root, { page = 1, filter = {} }) => {
+    episodes: (_root, /** @type {EpisodesArgs} */ { page = 1, filter = {} }) => {
       let list = [...episodes];
       if (filter.name)    list = list.filter(e => e.name.toLowerCase().includes(filter.name.toLowerCase()));
       if (filter.episode) list = list.filter(e => e.episode === filter.episode);

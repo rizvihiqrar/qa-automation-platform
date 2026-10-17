@@ -21,8 +21,17 @@ export function normalizeRun(run, jobs) {
   };
 }
 
+/**
+ * The slice of fetch this module uses, so tests can pass a small fake.
+ * @typedef {(url: string, init: { headers: Record<string, string> }) => Promise<{ ok: boolean, status?: number, json(): Promise<any> }>} FetchLike
+ */
+
+/**
+ * @param {{ repo: string, token?: string, workflow?: string, limit?: number, fetchImpl?: FetchLike }} options
+ */
 export async function fetchRuns({ repo, token, workflow = 'ci.yml', limit = 40, fetchImpl = fetch }) {
-  const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  /** @type {Record<string, string>} */
+  const headers = { Accept:'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
   if (token) headers.Authorization = `Bearer ${token}`;
   const get = async (path) => {
     const res = await fetchImpl(`https://api.github.com${path}`, { headers });

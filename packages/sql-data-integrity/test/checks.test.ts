@@ -1,9 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDatabase, createDemoDatabase, loadChecks, runChecks, summarizeResults } from '../src/integrity.js';
+import { createDatabase, createDemoDatabase, loadChecks, runChecks, summarizeResults, type Check, type CheckResult } from '../src/integrity.ts';
+
+const byId = (results: CheckResult[], id: string): CheckResult => {
+  const r = results.find((x) => x.id === id);
+  assert.ok(r, `no result for ${id}`);
+  return r;
+};
 
 const checks = loadChecks();
-const fired = (results) => results.filter((r) => r.rows.length > 0 || r.error).map((r) => r.id).sort();
+const fired = (results: CheckResult[]) => results.filter((r) => r.rows.length > 0 || r.error).map((r) => r.id).sort();
 
 // One defect at a time on top of the clean seed, and the exact set of checks it
 // should trigger. Some defects legitimately break two rules (a zero quantity
@@ -55,12 +61,12 @@ test('every check is proven by at least one defect', () => {
 test('a split payment that adds up is not flagged', async () => {
   // Order 7 in the seed is paid in two parts: 5000 + 4998 = 9998.
   const results = runChecks(await createDatabase(), checks);
-  assert.equal(results.find((r) => r.id === 'payment_mismatch').rows.length, 0);
+  assert.equal(byId(results, 'payment_mismatch').rows.length, 0);
 });
 
 test('a failing check reports the offending rows', async () => {
   const db = await createDatabase({ extraSql: ['UPDATE orders SET total_cents = 5197 WHERE id = 1;'] });
-  const r = runChecks(db, checks).find((x) => x.id === 'order_total_mismatch');
+  const r = byId(runChecks(db, checks), 'order_total_mismatch');
   assert.deepEqual(r.columns, ['order_id', 'total_cents', 'items_total_cents']);
   assert.deepEqual(r.rows, [[1, 5197, 4997]]);
 });
@@ -77,8 +83,9 @@ test('the demo dataset triggers the six problems it describes', async () => {
 });
 
 test('a check that cannot run is reported as an error, not skipped', async () => {
-  const broken = [{ id: 'broken', severity: 'warning', description: 'x', sql: 'SELECT * FROM missing_table;' }];
+  const broken: Check[] = [{ id: 'broken', severity: 'warning', description: 'x', sql: 'SELECT * FROM missing_table;' }];
   const [r] = runChecks(await createDatabase(), broken);
+  assert.ok(r);
   assert.equal(r.severity, 'error');
-  assert.match(r.error, /no such table/);
+  assert.match(r.error ?? '', /no such table/);
 });
