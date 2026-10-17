@@ -2,6 +2,8 @@
 
 Playwright patterns for testing more than one user at once: concurrent sessions, state isolation between users, and parallel workflows. Each user gets its own browser context, so cookies and storage never leak between them. The target is the public [Sauce Demo](https://www.saucedemo.com) site.
 
+**In plain English:** Some bugs only appear when several people use a system at the same time. These tests act as several users at once to catch them, for example one user's actions leaking into another user's session.
+
 ---
 
 ## What It Tests

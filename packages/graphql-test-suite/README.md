@@ -2,6 +2,8 @@
 
 Playwright API tests for a GraphQL endpoint, covering queries, variables, filtering, pagination, error handling, and schema introspection. Includes a self-contained local mock server so the suite runs reliably without internet dependencies.
 
+**In plain English:** GraphQL is a way for apps to ask a server for exactly the data they need. These tests check that the server answers correctly, including when the question itself is wrong.
+
 ## Stack
 
 - **Playwright** (API mode) — no browser, pure HTTP testing

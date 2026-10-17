@@ -2,6 +2,8 @@
 
 A JavaScript utility library demonstrating **matrix CI builds** — the same test suite run against multiple Node.js versions and operating systems simultaneously. The pipeline configuration is the main subject; the library provides a real test suite to run.
 
+**In plain English:** People run software on different versions and operating systems. This runs the same tests on several combinations at once, so a problem that only happens on one setup is still caught.
+
 ## What Matrix Builds Do
 
 A standard pipeline runs tests once. A matrix pipeline fans out to run the same tests in every combination of versions and environments in parallel:

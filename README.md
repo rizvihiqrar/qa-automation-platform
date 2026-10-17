@@ -2,7 +2,43 @@
 
 One repository of test automation work, run by one CI pipeline: browser tests, API tests, contract tests, AI-assisted test generation, test data, SQL data-integrity checks, and the tooling that keeps a suite trustworthy.
 
-**For non-technical readers:** each folder under `packages/` is a small project that tests something, or helps testers do their job. The table below says what each one does in plain English. Every project runs automatically on each change and every night, and the green or red result is visible on the Actions tab.
+## In Plain English
+
+Software teams change their product every day, and each change can break something that used to work. This project is a working example of how a team catches those breaks automatically, before customers do.
+
+Each folder under `packages/` is a small project that either tests something (a website, an API, a database, an AI feature) or helps testers do their job (finding unreliable tests, checking bug reports, generating test data). The [table below](#packages) says what each one does.
+
+**What it has found so far:** real bugs, not just green ticks. A login that froze every other user for 70 milliseconds, an API that sold more stock than it had, a webhook processed twice, a tool that rejected every rule on Windows, and test reports that would have published live access tokens. Each one is listed in [Bugs Found](#bugs-found-and-fixed-while-building-this) with its fix.
+
+### How a change gets tested
+
+```mermaid
+flowchart TD
+  A["Someone proposes a change<br/>(a pull request)"] --> B["Quick checks, about 1.5 minutes<br/>unit, API and performance tests,<br/>plus the browser smoke tests"]
+  B -->|"all green"| C["Reviewed and merged"]
+  B -->|"something failed"| A
+  C --> D["Full test run on the main version<br/>and again every night"]
+  D --> E["Live dashboard<br/>is the suite healthy?"]
+  D --> F["Published test reports<br/>what exactly ran and passed"]
+  D --> G["Flaky-test issues<br/>tests that pass only on a retry"]
+  D -.->|"when releasing"| H["Release gate<br/>go or no-go for a deployment"]
+```
+
+- **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/):** pass rate, run time and unreliable jobs for every package.
+- **[Test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/):** the detailed results of the latest full run, one report per suite.
+- **[Flaky-test issues](https://github.com/rizvihiqrar/qa-automation-platform/issues?q=label%3Aflaky-test):** opened and closed automatically.
+
+### Words used on this page
+
+| Term | Meaning |
+|---|---|
+| CI (continuous integration) | A service (here, GitHub Actions) that runs every test automatically whenever the code changes |
+| Pull request | A proposed change, checked and reviewed before it becomes part of the main version |
+| Smoke test | A short check of the most important paths, run first because it's fast |
+| Regression test | A test that makes sure something that used to work still works |
+| Flaky test | A test that sometimes passes and sometimes fails without any code change; it erodes trust in the whole suite |
+| Shard | One slice of a test suite; slices run on separate machines at the same time |
+| API | The way programs talk to each other, without a screen |
 
 ---
 
@@ -43,30 +79,40 @@ Strongest first.
 
 ## Architecture
 
+**What CI runs, and what the tests talk to**
+
 ```mermaid
 flowchart LR
-  subgraph CI["GitHub Actions: on push, pull request, and nightly"]
-    direction TB
-    U[Unit and integration<br/>test data, SQL integrity, matrix, pipeline, mutation]
-    A[API<br/>qa-practice-api, GraphQL, Postman, Pact, AI features]
-    B[Browser<br/>multi-user, BDD, AI-generated specs]
-    T[Tooling<br/>flaky analyzer, worker benchmark]
-  end
-  A -->|"live checks"| D[(DummyJSON)]
-  B -->|"browser runs"| S[(Sauce Demo)]
-  A -->|"local servers"| L[(mock AI, practice API, GraphQL)]
-  CI --> R[Reports uploaded as artifacts]
+  T["CI workflow (ci.yml)<br/>on pull request, push to main,<br/>nightly, or by hand"]
+  T --> TC["typecheck<br/>23 packages + root script tests"]
+  T --> P["One job per package<br/>unit, API, contract, performance,<br/>accessibility, mutation, CI demos"]
+  T --> SC{"test-scope.mjs<br/>smoke or full?"}
+  P --> L[("Local servers<br/>practice API · mock AI · GraphQL")]
+  P --> DJ[("DummyJSON<br/>public API")]
+  SC --> BR["Browser suites<br/>multi-user · BDD · AI example"]
+  SC --> RS["Regression shards<br/>3 on full runs, 1 on smoke"]
+  BR --> S[("Sauce Demo<br/>public web shop")]
+  RS --> S
+  RS --> RR["Regression report<br/>merge + shard check"]
+```
+
+**What happens after a run on main**
+
+```mermaid
+flowchart LR
+  R["CI run on main<br/>(push or nightly)"] --> ART[("Artifacts<br/>test reports + regression results")]
+  ART --> DW["Dashboard workflow<br/>scans reports for secrets"] --> PG["GitHub Pages<br/>dashboard + test reports"]
+  ART --> FW["Flaky tests workflow<br/>last 14 runs"] --> IS["Issues labelled flaky-test"]
+  M["Release workflow<br/>(run by hand)"] --> RG["Release gate<br/>smoke · contract · performance"] -->|"GO"| DEP["Deploy (simulated)"]
 ```
 
 Each package keeps its own `package.json`, so it can be read, installed, and run on its own. The root workflow (`.github/workflows/ci.yml`) runs every package as a separate job, so one failure doesn't hide the others.
 
 The Sauce Demo regression suite (43 tests) is split across 3 runners with Playwright's `--shard`, and a `regression report` job merges the shards into one HTML report. It also checks that every test ran exactly once, because a lost or doubled shard still produces a green merged report. Sharding only pays when it removes more test time than the ~25 seconds of setup each runner repeats; the measurements are in the [ai-test-generator README](packages/ai-test-generator/README.md#does-sharding-pay-off-here).
 
-Pull requests and main run different amounts of the live-site browser tests. A pull request runs only the `@smoke` tests of each browser suite (16 of 65 tests), unless it changes that suite, changes how CI picks tests, or has the `full-regression` label. Pushes to main, the nightly run and manual runs always run everything. `scripts/test-scope.mjs` makes the call and writes the reason in the job summary; when in doubt it runs everything.
+Pull requests and main run different amounts of the live-site browser tests. A pull request runs only the `@smoke` tests of each browser suite (16 of 65 tests), unless it changes that suite, changes how CI picks tests, or has the `full-regression` label. Pushes to main, the nightly run and manual runs always run everything. `scripts/test-scope.mjs` makes the call and writes the reason in the job summary; when in doubt it runs everything. Measured: a smoke run makes 75% fewer live-site test runs but isn't faster to go green, because the k6 performance job (about 60 seconds) is the slowest either way. What smoke buys is fewer runs against a public site that can be slow or flaky.
 
-Measured on the two Day 24 pull requests: the smoke run made 16 live-site test runs instead of 65 and used 181 instead of 278 runner-seconds for the browser jobs. It did not shorten the wait, because the slowest job is the k6 performance test (about 60 seconds) either way. What smoke buys is fewer runs against a public site that can be slow or flaky, not a faster green.
-
-After each CI run on main, the **Flaky tests** workflow reads the merged regression results of the last 14 runs with flaky-test-analyzer and keeps one issue per flaky test, labelled [`flaky-test`](https://github.com/rizvihiqrar/qa-automation-platform/issues?q=label%3Aflaky-test). Retries keep a flaky test green in any single run; across runs, it shows up.
+After each CI run on main, two workflows read its artifacts. **Dashboard** rebuilds the [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) and publishes that run's [test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/), after redacting tokens and withholding any report it can't clean. **Flaky tests** reads the regression results of the last 14 runs and keeps one issue per flaky test, labelled [`flaky-test`](https://github.com/rizvihiqrar/qa-automation-platform/issues?q=label%3Aflaky-test). Retries keep a flaky test green in any single run; across runs, it shows up.
 
 The `.github/workflows` folders inside `matrix-build-demo` and `pipeline-templates-demo` are example content for those demos. GitHub only runs the root workflow.
 
@@ -81,24 +127,26 @@ npx playwright install chromium   # browser packages only
 npm test
 ```
 
-Requires Node 20 or later.
+Requires Node 24, the version CI uses: the TypeScript packages run their `.ts` files directly, with no build step.
+
+To run only the quick set CI uses on pull requests: `npm run smoke` in multi-user-flow-patterns and bdd-playwright-demo, or add `--grep @smoke` to a Playwright command (for example `npm run test:regression -- --grep @smoke` in ai-test-generator).
 
 ---
 
 ## Type-Checking
 
-The packages are JavaScript today. A shared `tsconfig.base.json` type-checks them (`checkJs`, no build step), and the CI `typecheck` job runs it on every push:
+Every package with code is type-checked in CI (23 of 23; the Postman collection has no code). The CI `typecheck` job runs it on every push:
 
 ```bash
 npm ci
 npm run typecheck   # the list of packages is in scripts/typecheck.mjs
 ```
 
-Packages moving to TypeScript run directly on Node 24, which strips types at load time, so there's still no build step. They use `tsconfig.ts.json`: strict mode, unchecked index access, and only syntax Node can strip (no enums or namespaces). In TypeScript: test-data-factory, flaky-test-analyzer, worker-scaling-benchmark, ai-test-generator, qa-for-ai-features, qa-practice-api, multi-user-flow-patterns, bdd-playwright-demo, sql-data-integrity. Every other package with code is JavaScript checked by the same type-checker (`checkJs`), so all 23 run through `npm run typecheck` in CI. The CI demos stay JavaScript on purpose: they exist to show pipeline patterns.
+Nine packages are strict TypeScript, run directly by Node 24, which strips types at load time, so there's no build step: test-data-factory, flaky-test-analyzer, worker-scaling-benchmark, ai-test-generator, qa-for-ai-features, qa-practice-api, multi-user-flow-patterns, bdd-playwright-demo, sql-data-integrity. They use `tsconfig.ts.json`: strict mode, unchecked index access, and only syntax Node can strip (no enums or namespaces). The other packages are JavaScript checked by the same type-checker (`checkJs`, shared `tsconfig.base.json`). The CI demos stay JavaScript on purpose: they exist to show pipeline patterns.
 
-What it does and doesn't catch: it catches wrong use of anything typed, such as Node's APIs (`fs.readFilSync` fails with "Did you mean readFileSync?") and functions with JSDoc types. In plain JavaScript, TypeScript treats every parameter as optional, so a call missing an argument to an untyped function passes. That gap is why the roadmap moves packages to TypeScript next, one per day.
+What `checkJs` does and doesn't catch: it catches wrong use of anything typed, such as Node's APIs (`fs.readFilSync` fails with "Did you mean readFileSync?") and functions with JSDoc types. In plain JavaScript, TypeScript treats every parameter as optional, so a call missing an argument to an untyped function passes. That gap is why the main packages moved to strict TypeScript (Days 16–21), and the move found bugs of its own, listed below.
 
-The first pass found 19 errors. Two were real: code assumed `server.address()` always returns an object, but it returns a string for pipe and socket listeners. Both are fixed (webhook-harness, api-drift-checker), along with the same pattern in two packages not yet type-checked (k6-performance, a11y-aoda-audit). The rest were types that only needed writing down (JSDoc), and one test that passes bad input on purpose is marked `@ts-expect-error`.
+The first `checkJs` pass found 19 errors. Two were real: code assumed `server.address()` always returns an object, but it returns a string for pipe and socket listeners. Both are fixed (webhook-harness, api-drift-checker), along with the same pattern in two packages not yet type-checked (k6-performance, a11y-aoda-audit). The rest were types that only needed writing down (JSDoc), and one test that passes bad input on purpose is marked `@ts-expect-error`.
 
 ---
 
@@ -114,10 +162,18 @@ Bringing these projects together surfaced real defects. Each fix is described in
 | qa-for-ai-features | Parallel workers fought over the mock server's port | Start the server once for the whole run |
 | postman-api-collection | "No token" request was still authenticated through a cookie | Disable cookies for that request |
 | test-data-factory | Orders shipped before they were placed; bad `--count` values produced empty files | Fixed the date rules; validate input |
-| ai-test-generator | No tests at all | Added 18 unit tests and a review step for generated output |
+| ai-test-generator | No tests at all | Added unit tests and a review step for generated output (now 38 unit tests) |
 | qa-practice-api | Accepted a text price (saved as `null`) and negative stock, found by api-drift-checker | Validate both; two new API tests |
 | webhook-harness | Two copies of one delivery arriving together were both processed | Track deliveries in progress; answer the second with `409` |
 | qa-practice-api | Password hashing blocked the event loop: browsing p95 went from ~1 ms to 67–84 ms whenever users logged in, found by k6 | Hash with `crypto.scrypt` in the thread pool; browsing p95 back to 1 ms |
+| webhook-harness, api-drift-checker | Code assumed `server.address()` always returns an object; it returns a string for pipe and socket listeners, found by the first type-check | Check the type before reading the port |
+| qa-practice-api | Updating a product skipped the checks that creating one had (a text price was stored as `null`, negative stock accepted); an order with the same product on two lines could oversell (two lines of 6 against stock of 10 left -2), found moving to TypeScript | Same validation on update; stock checked against the combined quantity |
+| qa-for-ai-features | The mock AI server crashed on malformed JSON; a test passed its timeout as an argument Playwright doesn't have, so it was silently ignored | Answer `400` on bad JSON; `test.setTimeout(15_000)` |
+| multi-user-flow-patterns | A logout check (`toHaveURL(/$/)`) matched every URL, so it could never fail; a sort check only compared two users' first items | Check the login button is visible and the page left the inventory; assert each user's exact first item |
+| sql-data-integrity | On Windows, CRLF line endings made the tool reject every SQL check file; CI on Linux never saw it | Split headers on `\r?\n`; a test covers CRLF input |
+| CI (regression shards) | A lost or doubled shard still produced a green merged report (29 or 58 "passed" instead of 43) | Shard check: every listed test must run exactly once |
+| bdd-playwright-demo | `cucumber-js --tags` passes when a tag matches nothing, so a mistyped smoke tag would test nothing and stay green | Fail first when a tag selects no scenarios |
+| ci-dashboard (published reports) | The Postman report contained live access tokens from the demo API, about to be published on a public page | Redact tokens before publishing; withhold any report that can't be cleaned |
 
 ---
 

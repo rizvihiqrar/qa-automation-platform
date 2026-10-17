@@ -2,6 +2,8 @@
 
 Behaviour-driven tests for the [Sauce Demo](https://www.saucedemo.com) storefront, written in Gherkin and run with Cucumber and Playwright. Product owners can read the feature files; the step definitions drive the browser through page objects.
 
+**In plain English:** The tests are written as short scenarios in everyday language ("Given I am logged in, when I add a product, then the cart shows 1"), so people who don't write code can read them and agree on what is being tested.
+
 ---
 
 ## What It Tests

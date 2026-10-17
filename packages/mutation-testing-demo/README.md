@@ -2,6 +2,8 @@
 
 Mutation testing with [Stryker](https://stryker-mutator.io/) applied to a shopping cart module. The goal is to show that **code coverage alone is a weak quality signal** — mutation score reveals whether your tests actually verify the logic, not just execute it.
 
+**In plain English:** A test that runs code isn't necessarily checking it. This plants small bugs in the code on purpose and checks whether the tests notice; here they catch 89% of them.
+
 ## Mutation Score
 
 | File | Mutants | Killed | Survived | Score |

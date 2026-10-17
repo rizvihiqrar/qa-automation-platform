@@ -2,6 +2,8 @@
 
 A CLI that generates realistic test data (users, orders, products) with [Faker](https://fakerjs.dev) and exports it as JSON, CSV, or SQL `INSERT` statements.
 
+**In plain English:** Tests need realistic but fake data: names, orders, products. This generates as much as needed, and the same data every time when asked, so tests are repeatable and no real customer data is ever used.
+
 ---
 
 ## Usage
