@@ -12,3 +12,8 @@ reports/
 .DS_Store
 packages/k6-performance/results/
 packages/ci-dashboard/site/
+
+# Sharded regression: merged in CI, never committed
+all-blob-reports/
+packages/ai-test-generator/list.json
+packages/ai-test-generator/merged.json
