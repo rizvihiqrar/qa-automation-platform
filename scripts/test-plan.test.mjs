@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// The same plan parser the published traceability matrix uses.
+import { planCases, requirements } from '../packages/ci-dashboard/src/traceability.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DOCS = path.join(ROOT, 'docs', 'test-strategy');
@@ -25,24 +27,6 @@ const TECHNIQUES = [
   { prefix: 'DT', heading: 'Decision tables', file: 'decision-tables.spec.ts' },
   { prefix: 'ST', heading: 'State transitions', file: 'state-transitions.spec.ts' },
 ];
-
-// "| TC-EP-01 | REQ-01 | input | expected |" rows, with the "## " section they sit in.
-export function planCases(md) {
-  const cases = [];
-  let heading = null;
-  for (const line of md.split(/\r?\n/)) {
-    if (line.startsWith('## ')) heading = line.slice(3).replace(/:.*/, '');
-    const m = line.match(/^\| (TC-[A-Z]+-\d{2}) \| (REQ-\d{2}) \| (.+) \| (.+) \|$/);
-    if (m) cases.push({ id: m[1], req: m[2], input: m[3], expected: m[4], heading });
-  }
-  return cases;
-}
-
-// "| REQ-01 | text | R-05, R-11 |" rows.
-export function requirements(md) {
-  return [...md.matchAll(/^\| (REQ-\d{2}) \| .+ \| (R-\d{2}(?:, R-\d{2})*) \|$/gm)]
-    .map(([, id, risks]) => ({ id, risks: risks.split(', ') }));
-}
 
 // "| R-01 | risk | L | I | score | tested by | status |" rows.
 export function risks(md) {
@@ -85,7 +69,7 @@ for (const { prefix, heading, file } of TECHNIQUES) {
   test(`${heading}: plan cases and ${file} match exactly, in order`, () => {
     const inPlan = cases.filter((c) => c.id.startsWith(`TC-${prefix}-`));
     assert.ok(inPlan.length > 0);
-    for (const c of inPlan) assert.equal(c.heading, heading, `${c.id} is under "${c.heading}"`);
+    for (const c of inPlan) assert.equal(c.technique, heading, `${c.id} is under "${c.technique}"`);
     assert.deepEqual(specIds(read(path.join(TESTS, file))), inPlan.map((c) => c.id));
   });
 }
