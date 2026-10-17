@@ -98,3 +98,76 @@ jobs:
             packages/${{ matrix.package }}/reports/
           if-no-files-found: ignore
           retention-days: 7
+
+  # Sauce Demo regression (43 AI-generated tests, ai-test-generator/tests/regression),
+  # split across runners. Each shard uploads a blob report; regression-report merges
+  # them into one HTML report and checks every listed test ran exactly once.
+  # To change the shard count, edit the shard list; `total` must match its length.
+  regression:
+    name: regression (shard ${{ matrix.shard }}/${{ matrix.total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+        total: [3]
+    defaults:
+      run:
+        working-directory: packages/ai-test-generator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/ai-test-generator/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Test shard
+        run: npx playwright test -c playwright.regression.config.js --shard=${{ matrix.shard }}/${{ matrix.total }} --reporter=blob
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: packages/ai-test-generator/blob-report
+          retention-days: 1
+
+  regression-report:
+    name: regression report
+    needs: regression
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/ai-test-generator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/ai-test-generator/package-lock.json
+      - run: npm ci   # no browser needed: listing and merging don't launch one
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: packages/ai-test-generator/all-blob-reports
+          merge-multiple: true
+      - name: Merge shard reports
+        run: npx playwright merge-reports -c playwright.regression.config.js --reporter html,json all-blob-reports
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged.json
+      - name: Check every test ran exactly once
+        run: |
+          npx playwright test -c playwright.regression.config.js --list --reporter=json > list.json
+          node src/shardCheckCli.ts list.json merged.json --shards "$(ls all-blob-reports/*.zip | wc -l)"
+      - name: Upload merged report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-regression
+          path: packages/ai-test-generator/playwright-report/
+          retention-days: 7
