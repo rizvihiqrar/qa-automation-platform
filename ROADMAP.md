@@ -48,7 +48,7 @@ The resume leads with TypeScript, so convert one area a day, keeping CI green af
 
 | Day | Work | Status |
 |---:|---|---|
-| 22 | Shard the browser suites across runners | ⬜ |
+| 22 | Shard the browser suites across runners | ✅ the 43 reviewed AI-generated tests became a Sauce Demo regression suite, split across 3 runners with blob reports merged into one HTML report. A shard check proves every test ran exactly once: a lost shard (29 passed) and a doubled one (58 passed) both look green in the merged report. Measured: 53 s → 41 s wall time for about twice the runner time, so the smaller browser suites stay unsharded |
 | 23 | Feed nightly reports into flaky-test-analyzer; tag flaky tests | ⬜ |
 | 24 | Split fast `@smoke` checks on pull requests from full nightly regression | ⬜ |
 | 25 | Publish HTML reports to GitHub Pages | ⬜ |

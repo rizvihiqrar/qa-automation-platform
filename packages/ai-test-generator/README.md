@@ -93,10 +93,47 @@ The feature descriptions only state behaviour verified on the live site (sort or
 
 | Command | What runs | Count |
 |---|---|---:|
-| `npm test` | Unit tests for the prompt, the API call (with a fake client, no network), output cleanup, argument parsing, every review rule, and the eval scoring | 28 |
+| `npm test` | Unit tests for the prompt, the API call (with a fake client, no network), output cleanup, argument parsing, every review rule, the eval scoring, and the shard check | 38 |
 | `npm run test:e2e` | The reviewed example spec, `examples/output/login.spec.js`, against the live Sauce Demo site | 4 |
+| `npm run test:regression` | The Sauce Demo regression suite, `tests/regression/` (see below) | 43 |
 
 The example spec was generated, then reviewed: the reviewer flagged a CSS class selector, which was changed to `[data-test="inventory-item"]`. The note is in the file header.
+
+---
+
+## Regression Suite, Sharded in CI
+
+The 43 tests from the first eval run passed review, so they became the Sauce Demo regression suite in `tests/regression/`. They are unchanged except for the one fix recorded in [FIXES.md](eval/runs/claude-code-2026-10-16/FIXES.md). The eval run folder keeps the original output.
+
+CI splits the suite across 3 runners:
+
+1. Each `regression (shard N/3)` job runs `playwright test --shard=N/3 --reporter=blob` and uploads its blob report. `fullyParallel` lets a shard take single tests, not whole files, so the split comes out even (15/14/14).
+2. The `regression report` job downloads every blob, merges them into one HTML report (artifact `report-regression`), and runs the shard check.
+
+### The shard check
+
+`src/shardCheck.ts` compares `playwright test --list` with the merged report: every listed test must have run exactly once, and nothing unlisted may have run. It writes a table to the job summary and fails the job otherwise.
+
+It exists because a merged report only shows what it was given, and neither failure below changes Playwright's exit code. Both were reproduced locally with real blob reports:
+
+| What went wrong | What the merged report said | Shard check |
+|---|---|---|
+| One shard's report never reached the merge | 29 passed | Fails: 14 missing, each named |
+| One shard's report merged twice | 58 passed | Fails: 15 ran more than once |
+
+Tests are matched by file, describe and title, not by test ID: when `merge-reports` sees the same test in two blobs, it gives the second copy new IDs, so a check keyed on IDs would see 15 extra tests rather than duplicates. Retries don't count as duplicates; flaky and failed tests are listed but left to the shard jobs to fail on.
+
+### Does sharding pay off here?
+
+Measured on this PR's CI, one run each, so treat the numbers as rough (the browser install alone varied from 17 to 27 seconds between jobs):
+
+| | 1 shard | 3 shards |
+|---|---:|---:|
+| Time to the last regression result | 53 s | 41 s |
+| Test step | 16 s | 6–9 s per shard |
+| Runner time used | 53 s | 110 s |
+
+Three shards cut the wait by about 12 seconds and roughly doubled the runner time, because every shard repeats the ~25 seconds of checkout, `npm ci` and browser install. At 43 tests the suite is too small to need sharding; the setup is here so it scales when the suite grows. The rule of thumb from these numbers: add a shard only when it removes more test time than the ~25 seconds of setup it adds. The other browser jobs (multi-user-flow-patterns, bdd-playwright-demo, a11y-aoda-audit) spend 5–13 seconds testing and over 20 seconds installing a browser, so they stay as single jobs.
 
 ---
 
@@ -110,6 +147,8 @@ The example spec was generated, then reviewed: the reviewer flagged a CSS class 
 │   ├── reviewCli.ts        # CLI: review existing spec files
 │   ├── eval.ts             # CLI: generate and score an eval run
 │   ├── evalReport.ts       # Scoring, report, and fixes checklist
+│   ├── shardCheck.ts       # Did every test run exactly once across shards?
+│   ├── shardCheckCli.ts    # CLI: list.json + merged.json → table, exit code
 │   └── prompts/testPrompt.ts
 ├── eval/
 │   ├── playwright.eval.config.js   # One run, no retries
@@ -117,6 +156,8 @@ The example spec was generated, then reviewed: the reviewer flagged a CSS class 
 ├── examples/
 │   ├── input/              # 10 feature descriptions
 │   └── output/login.spec.js
+├── tests/regression/       # 43 reviewed Sauce Demo tests, sharded in CI
+├── playwright.regression.config.js
 └── test/                   # Unit tests (node:test)
 ```
 
