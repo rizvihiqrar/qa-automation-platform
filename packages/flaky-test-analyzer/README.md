@@ -126,8 +126,10 @@ The 43-test Sauce Demo regression suite, run on a laptop against the live site w
 |---|---:|---:|---:|---:|
 | `--repeat-each=10` | 10 | 430 | 0 | 25.9% |
 | `--repeat-each=59` (12.5 min, 4 workers) | 59 | 2,537 | 0 | 5.0% |
+| Variance workflow on GitHub's runners, 59 repeats ([run](https://github.com/rizvihiqrar/qa-automation-platform/actions/runs/39055503120), ~6 min over 3 shards) | 59 | 2,537 | 0 | 5.0% |
+| Both 59× runs together | 118 | 5,074 | 0 | 2.5% |
 
-No failure in 2,537 runs. What that supports: no test in this suite fails as often as 1 run in 20. What it doesn't: that they never fail. A test failing 1 run in 100 would pass all 59 runs 55% of the time. Full output: [examples/variance/regression-59x-local.md](examples/variance/regression-59x-local.md).
+No failure in 5,074 runs, on a laptop and on CI runners. (Adding the two runs together assumes each test fails at about the same rate in both places.) What that supports: no test in this suite fails as often as 1 run in 20. What it doesn't: that they never fail. A test failing 1 run in 100 would pass all 59 runs 55% of the time. Full output: [examples/variance/regression-59x-local.md](examples/variance/regression-59x-local.md).
 
 ---
 
