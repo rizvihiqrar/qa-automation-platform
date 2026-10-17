@@ -26,6 +26,7 @@ const TECHNIQUES = [
   { prefix: 'BVA', heading: 'Boundary value analysis', file: 'boundaries.spec.ts' },
   { prefix: 'DT', heading: 'Decision tables', file: 'decision-tables.spec.ts' },
   { prefix: 'ST', heading: 'State transitions', file: 'state-transitions.spec.ts' },
+  { prefix: 'AC', heading: 'Access control', file: 'access-control.spec.ts' },
 ];
 
 // "| R-01 | risk | L | I | score | tested by | status |" rows.

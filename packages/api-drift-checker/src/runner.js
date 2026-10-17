@@ -33,9 +33,13 @@ export async function runScenario({ baseUrl, spec, steps, fetchImpl = fetch }) {
   return results;
 }
 
+const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
+
 // Which documented operations the scenario never called.
 export function untestedOperations(spec, results) {
-  const all = Object.entries(spec.paths).flatMap(([template, ops]) => Object.keys(ops).map((m) => ({ method: m.toUpperCase(), template })));
+  // A path item can hold `parameters`, `summary` and so on beside its operations.
+  const all = Object.entries(spec.paths).flatMap(([template, ops]) => Object.keys(ops)
+    .filter((m) => HTTP_METHODS.includes(m)).map((m) => ({ method: m.toUpperCase(), template })));
   return all.filter(({ method, template }) => {
     const re = new RegExp('^' + template.replace(/\{[^}]+\}/g, '[^/]+') + '$');
     return !results.some((r) => r.method === method && re.test(r.path.split('?')[0]));

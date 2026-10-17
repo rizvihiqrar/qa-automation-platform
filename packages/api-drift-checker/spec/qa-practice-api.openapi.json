@@ -15,6 +15,7 @@
     },
     "/auth/register": {
       "post": {
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name","email","password"], "properties": {"name":{"type":"string"},"email":{"type":"string"},"password":{"type":"string"}} }, "example": {"name":"ZAP Scan","email":"zap-scan@example.com","password":"Zap-scan-pass-1!"} } } },
         "responses": {
           "201": { "description": "Registered", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResult" } } } },
           "400": { "description": "Missing fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
@@ -24,6 +25,7 @@
     },
     "/auth/login": {
       "post": {
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email","password"], "properties": {"email":{"type":"string"},"password":{"type":"string"}} }, "example": {"email":"zap-scan@example.com","password":"Zap-scan-pass-1!"} } } },
         "responses": {
           "200": { "description": "Logged in", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResult" } } } },
           "400": { "description": "Missing fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
@@ -50,6 +52,7 @@
       }
     },
     "/users/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }],
       "get": {
         "responses": {
           "200": { "description": "A user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
@@ -65,6 +68,7 @@
         }
       },
       "post": {
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name","category","price"], "properties": {"name":{"type":"string"},"category":{"type":"string"},"price":{"type":"number","minimum":0},"stock":{"type":"integer","minimum":0}} }, "example": {"name":"Backpack","category":"bags","price":29.99,"stock":10} } } },
         "responses": {
           "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
           "400": { "description": "Missing or invalid fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
@@ -74,6 +78,7 @@
       }
     },
     "/products/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }],
       "get": {
         "responses": {
           "200": { "description": "A product", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
@@ -88,6 +93,7 @@
         }
       },
       "post": {
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["items"], "properties": {"items":{"type":"array","minItems":1,"items":{"type":"object","required":["product_id","quantity"],"properties":{"product_id":{"type":"integer"},"quantity":{"type":"integer","minimum":1}}}}} }, "example": {"items":[{"product_id":1,"quantity":1}]} } } },
         "responses": {
           "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
           "400": { "description": "Invalid items or not enough stock", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
@@ -96,6 +102,7 @@
       }
     },
     "/orders/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }],
       "get": {
         "responses": {
           "200": { "description": "An order", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
@@ -104,7 +111,9 @@
       }
     },
     "/orders/{id}/status": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }],
       "patch": {
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "properties": {"status":{"type":"string","enum":["pending","processing","shipped","delivered","cancelled"]}} }, "example": {"status":"processing"} } } },
         "responses": {
           "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
           "400": { "description": "Unknown status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },

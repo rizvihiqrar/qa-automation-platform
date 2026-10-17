@@ -158,7 +158,7 @@ jobs:
           mkdir -p zap-report && chmod 777 zap-report
           cp ../api-drift-checker/spec/qa-practice-api.openapi.json zap/rules.tsv zap-report/
           docker run --rm --network host -v "$PWD/zap-report:/zap/wrk:rw" -e ZAP_AUTH_HEADER_VALUE \
-            ghcr.io/zaproxy/zaproxy:2.16.1 zap-api-scan.py \
+            ghcr.io/zaproxy/zaproxy:2.17.0 zap-api-scan.py \
             -t /zap/wrk/qa-practice-api.openapi.json -f openapi -O http://localhost:4000 -S \
             -c rules.tsv -r index.html -J report.json -w report.md || status=$?
           rm zap-report/qa-practice-api.openapi.json zap-report/rules.tsv

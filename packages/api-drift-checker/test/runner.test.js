@@ -78,6 +78,9 @@ test('untestedOperations lists documented operations the scenario never called',
   assert.ok(untested.includes('GET /health'));
   assert.ok(!untested.includes('GET /products/{id}'));
   assert.ok(!untested.includes('POST /auth/login'));
+  // Path-level `parameters` (on /products/{id} and others) is not an operation.
+  assert.ok(spec.paths['/products/{id}'].parameters);
+  assert.deepEqual(untested.filter((u) => !/^(GET|POST|PUT|PATCH|DELETE) /.test(u)), []);
 });
 
 test('formatResults summarises passes and drift', async () => {
