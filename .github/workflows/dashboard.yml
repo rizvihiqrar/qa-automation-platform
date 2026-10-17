@@ -29,10 +29,22 @@ jobs:
         with:
           node-version: 24
 
-      - name: Build dashboard from the Actions API
+      # The run that triggered this one; a manual run uses the latest CI run on main.
+      - name: Download test reports from the CI run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          [ -n "$RUN_ID" ] || RUN_ID=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --status completed --limit 1 --json databaseId -q '.[0].databaseId')
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -p 'report-*' -D reports-raw || echo "No reports to download"
+
+      # Reports are scanned before publishing: tokens redacted, zipped data with a
+      # token withheld (packages/ci-dashboard/src/reports.js).
+      - name: Build dashboard and reports
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node packages/ci-dashboard/src/build.js --out _site
+        run: node packages/ci-dashboard/src/build.js --out _site --reports reports-raw --reports-run "$RUN_ID"
 
       - uses: actions/upload-pages-artifact@v3
         with:
