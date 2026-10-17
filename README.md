@@ -10,6 +10,11 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 **What it has found so far:** real bugs, not just green ticks. A login that froze every other user for 70 milliseconds, an API that sold more stock than it had, a webhook processed twice, a tool that rejected every rule on Windows, and test reports that would have published live access tokens. Each one is listed in [Bugs Found](#bugs-found-and-fixed-while-building-this) with its fix.
 
+### Two results in numbers
+
+- **A performance bug found by load testing** ([k6-performance](packages/k6-performance)): browsing slowed to 67–84 ms (p95) whenever users logged in, because password hashing blocked Node's main thread. Moving the hashing to a thread pool brought p95 down to 1 ms and logins from 72 to 40 ms. The first threshold (250 ms) had passed the bug, so the limits are now set from measurements.
+- **AI-written tests, reviewed before they count** ([ai-test-generator](packages/ai-test-generator)): 10 of 10 generated specs passed the automated review and 42 of 43 tests passed on their first run. The review caught a test with no assertion that Playwright reported as passing. The 43 tests now run as a regression suite split across 3 CI runners, with a check that no test was lost or run twice.
+
 ### How a change gets tested
 
 ```mermaid
