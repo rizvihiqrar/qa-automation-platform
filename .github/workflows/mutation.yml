@@ -1,0 +1,86 @@
+name: Mutation
+
+# Mutation testing of the AI-written discount code in qa-practice-api (Day 39 of
+# docs/ai-written-code): Stryker changes src/money.ts, src/routes/discounts.ts and
+# src/routes/orders.ts one small way at a time and runs the tests against each
+# change. Two test sets, so the techniques can be compared: the Playwright suite
+# (designed cases and earlier tests) and the fast-check properties. The summary job
+# combines them: a mutant is detected when either set detects it.
+# Manual and weekly, not on pull requests: a full run of the Playwright set reruns the
+# whole suite for each of about 400 mutants, one at a time (about 50 minutes). Later
+# runs reuse earlier results for unchanged code and take minutes.
+on:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Test every mutant again, ignoring earlier results
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  mutate:
+    name: mutate (${{ matrix.tests }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        tests: [designed, properties]
+    defaults:
+      run:
+        working-directory: packages/qa-practice-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/qa-practice-api/package-lock.json
+      - run: npm ci
+      # Incremental mode (stryker.config.mjs): the last run's results, so only mutants
+      # whose code changed are tested again. The file name inside is a hash of the
+      # tests and everything else Stryker can't diff, so a stale file is never used.
+      - name: Restore earlier results
+        uses: actions/cache/restore@v4
+        with:
+          path: packages/qa-practice-api/reports/mutation/incremental
+          key: mutation-${{ matrix.tests }}-${{ github.run_id }}
+          restore-keys: mutation-${{ matrix.tests }}-
+      - name: Stryker
+        env:
+          MUTATION_TESTS: ${{ matrix.tests }}
+        run: npx stryker run ${{ inputs.full && '--force' || '' }}
+      - name: Save results for next time
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: packages/qa-practice-api/reports/mutation/incremental
+          key: mutation-${{ matrix.tests }}-${{ github.run_id }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-${{ matrix.tests }}
+          path: packages/qa-practice-api/reports/mutation/
+          retention-days: 30
+
+  summary:
+    needs: mutate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-*
+          path: mutation
+          merge-multiple: true
+      - name: Scores and survivors
+        run: node packages/qa-practice-api/scoreboard/mutation-summary.mjs mutation | tee -a "$GITHUB_STEP_SUMMARY"
