@@ -130,9 +130,13 @@ function barChart({ title, subtitle, rows }) {
   </figure>`;
 }
 
-function statusOf(p) {
-  if (p.passRate !== null && p.passRate < 100) return { cls: 'critical', icon: '✕', label: 'Has failures' };
+// The status says how a package is now; the pass rate and last failure keep the
+// history. A single failure used to read "Has failures" for the whole window, long
+// after the package had passed run after run.
+export function statusOf(p) {
+  if (p.latest === 'failure') return { cls: 'critical', icon: '✕', label: 'Failing' };
   if (p.flaky > 0) return { cls: 'warning', icon: '!', label: `Flaky (${p.flaky})` };
+  if (p.passRate !== null && p.passRate < 100) return { cls: 'good', icon: '✓', label: 'Recovered' };
   return { cls: 'good', icon: '✓', label: 'Stable' };
 }
 
@@ -142,6 +146,7 @@ export function renderHtml(metrics, { repo, generatedAt, reportsHref = null }) {
     [`CI runs on ${overall.branch}`, String(overall.runs)],
     ['Runs fully green', fmtPct(overall.runPassRate)],
     ['Median run time', overall.medianRunMinutes === null ? '—' : `${overall.medianRunMinutes} min`],
+    ['Failing now', String(overall.failingNow ?? 0)],
     ['Flaky job results', String(overall.flakyJobs)],
   ];
   const passPts = trend.map((t) => ({ y: t.jobPassPct, label: `#${t.number}`, date: day(t.createdAt) }));
@@ -183,7 +188,7 @@ ${PAGE_STYLE}
 
   <section class="card wide">
     <h2>Packages</h2>
-    <p class="sub">Pass rate over the analysed runs on <code>${esc(overall.branch)}</code>, where a failure means something is broken (a failure on a feature branch is usually a change still in progress). Flaky counts jobs on any branch that failed then passed on a re-run, or failed and passed on the same commit.</p>
+    <p class="sub">Pass rate over the analysed runs on <code>${esc(overall.branch)}</code>, where a failure means something is broken (a failure on a feature branch is usually a change still in progress). Flaky counts jobs on any branch that failed then passed on a re-run, or failed and passed on the same commit. Status is the package now: <strong>Failing</strong> if its latest run on <code>${esc(overall.branch)}</code> failed, <strong>Flaky</strong> if it failed and passed on the same commit, <strong>Recovered</strong> if it failed earlier in the window and has passed since, otherwise <strong>Stable</strong>.</p>
     <div class="table-wrap">
     <table>
       <thead><tr><th>Package</th><th>Pass rate</th><th class="num">Results</th><th class="num">Median</th><th class="num">p90</th><th>Status</th><th>Last failure</th></tr></thead>

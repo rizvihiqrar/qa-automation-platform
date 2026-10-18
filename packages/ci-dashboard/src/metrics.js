@@ -27,7 +27,7 @@ export function computeMetrics(runsInput, { branch = 'main' } = {}) {
   const runs = all.filter((r) => r.branch === branch);
   const pkgs = new Map();
   const pkg = (name) => {
-    if (!pkgs.has(name)) pkgs.set(name, { name, results: 0, passed: 0, durations: [], flakyRerun: 0, flakyCommit: 0, lastFailure: null });
+    if (!pkgs.has(name)) pkgs.set(name, { name, results: 0, passed: 0, durations: [], flakyRerun: 0, flakyCommit: 0, lastFailure: null, latest: null, latestAt: null });
     return pkgs.get(name);
   };
 
@@ -39,6 +39,10 @@ export function computeMetrics(runsInput, { branch = 'main' } = {}) {
       if (j.conclusion === 'success') p.passed += 1;
       else p.lastFailure = run.createdAt;
       if (j.seconds !== null) p.durations.push(j.seconds);
+      // Runs are in date order, so this ends as the package's latest result on main:
+      // what its status says now, while the pass rate keeps the history.
+      p.latest = j.conclusion;
+      p.latestAt = run.createdAt;
     }
   }
 
@@ -75,6 +79,8 @@ export function computeMetrics(runsInput, { branch = 'main' } = {}) {
       p90Seconds: quantile(p.durations, 0.9),
       flaky: p.flakyRerun + p.flakyCommit,
       lastFailure: p.lastFailure,
+      latest: p.latest,
+      latestAt: p.latestAt,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -100,6 +106,7 @@ export function computeMetrics(runsInput, { branch = 'main' } = {}) {
       runPassRate: completed.length ? Math.round((completed.filter((r) => r.conclusion === 'success').length / completed.length) * 1000) / 10 : null,
       medianRunMinutes: quantile(trend.map((t) => t.minutes), 0.5),
       flakyJobs: packages.reduce((n, p) => n + p.flaky, 0),
+      failingNow: packages.filter((p) => p.latest === 'failure').length,
       packages: packages.length,
     },
     packages,

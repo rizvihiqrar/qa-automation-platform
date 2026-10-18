@@ -13,9 +13,11 @@ import { fileURLToPath } from 'node:url';
 
 const HOUR = 3600_000;
 
-// Scheduled workflows and how long after their last run they count as overdue.
+// Scheduled workflows (and the Dashboard, rebuilt after every CI run on main, so the
+// public page is never more than a day old) and how long after their last run they
+// count as overdue.
 export const WATCH = [
-  { repo: 'rizvihiqrar/qa-automation-platform', overdueAfterHours: { CI: 26, Mutation: 8 * 24 } },
+  { repo: 'rizvihiqrar/qa-automation-platform', overdueAfterHours: { CI: 26, Dashboard: 26, Mutation: 8 * 24 } },
   { repo: 'rizvihiqrar/cicd-pipeline-demo', overdueAfterHours: {} },
   { repo: 'rizvihiqrar/rizvihiqrar', overdueAfterHours: { 'Refresh screenshots': 8 * 24 } },
 ];
