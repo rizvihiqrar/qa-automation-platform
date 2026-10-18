@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as store from '../db/store.ts';
 import type { Discount } from '../db/store.ts';
 import { requireAuth, requireAdmin } from '../middleware/auth.ts';
+import { toCents, isWholeCents } from '../money.ts';
 
 const router = Router();
 
@@ -10,14 +11,19 @@ const router = Router();
 const CODE_PATTERN = /^[A-Za-z0-9-]{3,20}$/;
 // ISO 8601 date-time with a time zone: Z or an offset like +05:00.
 const DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+const DATE_TIME_PARTS = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/;
 const EDITABLE = ['active', 'expires_at', 'max_uses'];
 
-// Money is worked out in whole cents (DC-R18).
-export const toCents = (amount: number): number => Math.round(amount * 100);
-export const fromCents = (cents: number): number => cents / 100;
-
-const hasAtMostTwoDecimals = (n: number): boolean =>
-  Math.abs(n * 100 - Math.round(n * 100)) < 1e-9;
+// Date.parse rolls an impossible date over instead of refusing it (30 February
+// 2028 is read as 1 March), so the date and time must read back unchanged.
+// Code review finding CR-01: 29 February 2027 and 31 April were accepted.
+function isRealDateTime(v: string): boolean {
+  const parts = (v.match(DATE_TIME_PARTS) ?? []).slice(1).map((p) => Number(p ?? 0));
+  const [y = 0, mo = 0, d = 0, h = 0, mi = 0, s = 0] = parts;
+  const t = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+  const back = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds()];
+  return back.every((n, i) => n === [y, mo, d, h, mi, s][i]);
+}
 
 export const normalizeCode = (code: string): string => code.trim().toUpperCase();
 
@@ -43,7 +49,7 @@ function findByCode(code: string): Discount | null {
 // Each parser returns the parsed value or an error message.
 function parseExpiresAt(v: unknown): string | null | { error: string } {
   if (v === null) return null;
-  if (typeof v !== 'string' || !DATE_TIME_PATTERN.test(v) || Number.isNaN(Date.parse(v))) {
+  if (typeof v !== 'string' || !DATE_TIME_PATTERN.test(v) || Number.isNaN(Date.parse(v)) || !isRealDateTime(v)) {
     return { error: 'expires_at must be an ISO 8601 date-time with a time zone, or null' };
   }
   if (Date.parse(v) <= Date.now()) return { error: 'expires_at must be in the future' };
@@ -93,7 +99,7 @@ router.post('/', (req, res) => {
   if (type === 'percent' && (!Number.isInteger(value) || value < 1 || value > 100)) {
     return res.status(400).json({ error: 'value for a percent code must be a whole number from 1 to 100' });
   }
-  if (type === 'fixed' && (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || !hasAtMostTwoDecimals(value))) {
+  if (type === 'fixed' && (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || !isWholeCents(value))) {
     return res.status(400).json({ error: 'value for a fixed code must be a number above 0 with at most two decimals' });
   }
   // DC-R05
@@ -103,7 +109,7 @@ router.post('/', (req, res) => {
   const maxUses = parseMaxUses(max_uses);
   if (isError(maxUses)) return res.status(400).json(maxUses);
   // DC-R07
-  if (typeof min_subtotal !== 'number' || !Number.isFinite(min_subtotal) || min_subtotal < 0 || !hasAtMostTwoDecimals(min_subtotal)) {
+  if (typeof min_subtotal !== 'number' || !Number.isFinite(min_subtotal) || min_subtotal < 0 || !isWholeCents(min_subtotal)) {
     return res.status(400).json({ error: 'min_subtotal must be a number of at least 0 with at most two decimals' });
   }
   // DC-R08
@@ -128,7 +134,11 @@ router.patch('/:code', (req, res) => {
   const discount = findByCode(String(req.params.code));
   if (!discount) return res.status(404).json({ error: `Discount code ${req.params.code} not found` });
 
-  const body = req.body ?? {};
+  // CR-04: a JSON list has no keys to refuse, so `[]` used to pass as "no changes".
+  if (typeof req.body !== 'object' || req.body === null || Array.isArray(req.body)) {
+    return res.status(400).json({ error: 'Request body must be a JSON object' });
+  }
+  const body: Record<string, unknown> = req.body;
   const unknown = Object.keys(body).filter(k => !EDITABLE.includes(k));
   if (unknown.length) {
     return res.status(400).json({ error: `Only ${EDITABLE.join(', ')} can be changed (got ${unknown.join(', ')})` });

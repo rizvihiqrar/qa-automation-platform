@@ -7,7 +7,7 @@ A small feature for qa-practice-api, discount codes, written by an AI from a spe
 | Day | Step | Status |
 |---:|---|---|
 | 37 | Review the request, write the reviewed spec, have the AI write the feature | ✅ this page |
-| 38 | Code review; boundary-value and decision-table tests against the spec | ⬜ |
+| 38 | Code review; boundary-value and decision-table tests against the spec | ✅ [code review](code-review.md) |
 | 39 | Property-based tests (fast-check) and mutation testing; what the AI got wrong and what caught it | ⬜ |
 
 ## Day 37: the requirement, then the code
@@ -46,6 +46,20 @@ A small feature for qa-practice-api, discount codes, written by an AI from a spe
 
 Typecheck, the 165 existing tests, the drift check and the root tests were all green on the AI's first commit, and none of them ran a line of the discount code (details in the [AI run](ai-run/README.md)). That is the starting point for Day 38: green CI on AI-written code says the code compiles and broke nothing already tested, not that it does what the spec says.
 
+## Day 38: the code review, then designed tests
+
+The [code review](code-review.md) read `d775d20` rule by rule, then 126 designed cases, each naming the rule it checks, were run against it before anything was fixed. 12 failed. They come down to four defects and one gap in the spec:
+
+- **Impossible dates.** `2027-02-29`, `2028-02-30` and `2027-04-31` were accepted as expiry dates, because `Date.parse` rolls them over to the next month instead of refusing them.
+- **A tolerance in a two-decimal check.** To accept 0.29 (0.29 × 100 is 28.999999999999996 in floating point), the AI allowed a tiny difference, which also let in `10.000000000001` and `0.1 + 0.2`. A minimum of `49.999999999999` was stored and shown as such, while orders were checked against 50.00 and the refusal quoted 50.00.
+- **The wrong error first.** A bad `discount_code` was checked before the items, so an unknown product's `404` became a `400` about the code, against the spec's order.
+- **A list as a PATCH body** passed the unknown-field check (a list has no keys) and answered `200`.
+- **The spec gap:** product prices could have more than two decimals. The AI's cents arithmetic was right for whole-cent prices but changed existing totals (three at 0.333: 1.00 before, 0.99 after), and none of the 165 earlier tests noticed.
+
+All five are fixed, and each fix was checked by putting the mistake back: each time, exactly the cases the review lists failed. The AI got the hard parts right: money in whole cents with half-up rounding, the order of the five refusals, the same message for unknown and disabled codes, and uses counted from orders, so ten customers racing for the last use get exactly one. The review also records three risks it didn't fix, including that the last-use guarantee depends on checking and saving in one synchronous step, which a database would break (Day 49).
+
+The drift scenario now calls all four `/discounts` operations: the AI's API document matched all 39 responses. Its request schemas say less than the rules do, and no tool checks request schemas, so each field now states its rule.
+
 ## Keeping it honest
 
 [`scripts/ai-written-code.test.mjs`](../../scripts/ai-written-code.test.mjs) runs with the root tests and fails if:
@@ -55,4 +69,8 @@ Typecheck, the 165 existing tests, the drift check and the root tests were all g
 - the open questions don't match the spec's out-of-scope list;
 - the spec's rule IDs have gaps or repeats;
 - the spec in the prompt differs from the spec in this folder by a single character;
-- the totals on this page don't match the log.
+- the totals on this page don't match the log;
+- a designed discount case has a duplicate or skipped ID, or names a rule the spec doesn't have, or a rule (other than DC-R25, which the drift scenario covers) has no case;
+- the drift scenario stops calling one of the `/discounts` operations;
+- a code review finding is missing a field, isn't tied to the AI's commit, or lists a case that doesn't exist or checks a different rule; a defect has no case;
+- the code review's coverage table, technique counts or totals don't match the case files and the findings.

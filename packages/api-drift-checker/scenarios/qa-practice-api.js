@@ -9,6 +9,7 @@ export const ADMIN = { email: 'admin@drift-check.test', password: 'Drift-admin-1
 export function steps() {
   const email = `drift-${Date.now()}@example.com`;
   const password = 'Str0ng-pass!';
+  const code = `DRIFT-${Date.now().toString(36).toUpperCase()}`;
   return [
     { name: 'health check', method: 'GET', path: '/health', expect: 200 },
     { name: 'register', method: 'POST', path: '/auth/register', body: { name: 'Drift Check', email, password }, expect: 201,
@@ -43,5 +44,22 @@ export function steps() {
     { name: 'list users', method: 'GET', path: '/users', auth: 'adminToken', expect: 200 },
     { name: 'get my user', method: 'GET', path: '/users/{userId}', auth: true, expect: 200 },
     { name: 'get the first user as a customer', method: 'GET', path: '/users/1', auth: true, expect: 403 },
+    // Discount codes (written by an AI, docs/ai-written-code): admin-only, and an
+    // order can carry one.
+    { name: 'create a discount code as a customer', method: 'POST', path: '/discounts', auth: true, body: { code, type: 'percent', value: 10 }, expect: 403 },
+    { name: 'list discount codes without a token', method: 'GET', path: '/discounts', expect: 401 },
+    { name: 'create a discount code', method: 'POST', path: '/discounts', auth: 'adminToken',
+      body: { code: code.toLowerCase(), type: 'percent', value: 10, max_uses: 5, min_subtotal: 10 }, expect: 201, save: (b) => ({ code: b.code }) },
+    { name: 'create the same code in another case', method: 'POST', path: '/discounts', auth: 'adminToken', body: { code, type: 'fixed', value: 5 }, expect: 409 },
+    { name: 'create a code with a percent of 0', method: 'POST', path: '/discounts', auth: 'adminToken', body: { code: `${code}-0`, type: 'percent', value: 0 }, expect: 400 },
+    { name: 'list discount codes', method: 'GET', path: '/discounts', auth: 'adminToken', expect: 200 },
+    { name: 'get the code', method: 'GET', path: '/discounts/{code}', auth: 'adminToken', expect: 200 },
+    { name: 'get a missing code', method: 'GET', path: '/discounts/NO-SUCH-CODE', auth: 'adminToken', expect: 404 },
+    { name: 'change the code\'s limit and expiry', method: 'PATCH', path: '/discounts/{code}', auth: 'adminToken', body: { max_uses: 3, expires_at: '2099-12-31T23:59:59Z' }, expect: 200 },
+    { name: 'change the code\'s value', method: 'PATCH', path: '/discounts/{code}', auth: 'adminToken', body: { value: 50 }, expect: 400 },
+    { name: 'order with the code', method: 'POST', path: '/orders', auth: true,
+      body: (v) => ({ items: [{ product_id: v.productId, quantity: 1 }], discount_code: v.code }), expect: 201 },
+    { name: 'order with the code a second time', method: 'POST', path: '/orders', auth: true,
+      body: (v) => ({ items: [{ product_id: v.productId, quantity: 1 }], discount_code: v.code }), expect: 422 },
   ];
 }

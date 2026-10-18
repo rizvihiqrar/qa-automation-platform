@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as store from '../db/store.ts';
 import { requireAuth, requireAdmin } from '../middleware/auth.ts';
 import { pagination } from './query.ts';
+import { isWholeCents } from '../money.ts';
 
 const router = Router();
 
@@ -11,8 +12,10 @@ const router = Router();
 // Number() then turned "" into 0 and true into 1 (found by equivalence partitioning,
 // docs/test-strategy/test-plan.md).
 function parsePrice(price: unknown): number | string {
-  return typeof price === 'number' && Number.isFinite(price) && price >= 0
-    ? price : 'price must be a non-negative number';
+  if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) return 'price must be a non-negative number';
+  // Orders add prices up in whole cents (src/money.ts), which 19.999 can't be:
+  // three at 0.333 came to 0.99 (code review finding CR-05).
+  return isWholeCents(price) ? price : 'price must be in whole cents (at most two decimals)';
 }
 
 function parseStock(stock: unknown): number | string {

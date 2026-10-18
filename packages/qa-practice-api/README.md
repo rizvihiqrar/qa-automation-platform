@@ -31,7 +31,9 @@ npm run test:smoke     # @smoke tagged tests only
 
 The data lives in memory, so each run starts with an empty store and no state leaks between runs. The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, set in `playwright.config.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
 
-165 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 4 header checks and 4 unit tests of the sign-in limiter. The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
+291 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks and 4 unit tests of the sign-in limiter. The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
+
+The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
 
 `tests/rate-limit.spec.ts` tests the sign-in limiter's window with a fake clock, which the API tests can't wait 15 minutes for. `tests/password.spec.ts` holds two unit tests for password hashing. One checks that hashing eight passwords keeps the event loop free (0–11% busy measured, against 100% for hashing on the main thread), which guards the bug [k6 found](../../docs/rca/01-login-hashing-blocked-the-api.md) in about a second instead of a minute of load.
 
@@ -84,7 +86,7 @@ The data lives in memory, so each run starts with an empty store and no state le
 | POST | `/discounts` | Admin | `{ code, type: "percent\|fixed", value, expires_at?, max_uses?, min_subtotal?, active? }` |
 | PATCH | `/discounts/:code` | Admin | Only `active`, `expires_at`, `max_uses` |
 
-Discount codes were written by an AI from a [reviewed spec](../../docs/ai-written-code/spec.md) and committed unedited, as a case study in [validating AI-written code](../../docs/ai-written-code/README.md). Until that review and its tests are done (Days 38–39), treat this code as untested: the 165 tests above predate it and never send a discount code.
+Discount codes were written by an AI from a [reviewed spec](../../docs/ai-written-code/spec.md) and committed unedited, as a case study in [validating AI-written code](../../docs/ai-written-code/README.md). The [code review](../../docs/ai-written-code/code-review.md) and the 126 cases in `tests/discounts` found four defects in it, all now fixed; Day 39 adds property-based and mutation testing.
 
 ## Documented Edge Cases
 
@@ -102,6 +104,8 @@ These are intentional behaviours worth writing tests for:
 | `POST /orders` with two lines for the same product | Stock is checked against the combined quantity. It used to be checked line by line, so two lines of 6 against a stock of 10 were accepted and left stock at -2. |
 | `PUT /products/:id` with `price: "abc"` or `stock: -7` | `400`, with the same messages as `POST`. Update used to skip these checks and store `price: null` and negative stock. |
 | `POST /products` with `price: ""`, `true` or `"12.5"` | `400`. Prices, stock and quantities must be JSON numbers. `""` used to be stored as 0 and `true` as 1. |
+| `POST /products` or `PUT /products/:id` with `price: 19.999` | `400 { error: "price must be in whole cents (at most two decimals)" }`. Orders add prices up in whole cents; three at 0.333 used to come to 0.99. |
+| `POST /orders` with an unknown product and `discount_code: 5` | `404`, as without a code: item and stock errors come before discount code errors. |
 | `POST /orders` with `quantity: 1.5` or `"2"` | `400`. A fraction used to be accepted (leaving stock at 8.5), and text quantities were joined, so `"2"` + `"3"` was checked as 23. |
 | `POST /orders` with `items: [null]` | `400`. It used to crash the route with a 500 HTML page. |
 | Any request with a malformed JSON body | `400 { error: "Request body is not valid JSON" }`. It used to be an HTML error page. |

@@ -2,7 +2,8 @@ import { Router } from 'express';
 import * as store from '../db/store.ts';
 import type { Request } from 'express';
 import { requireAuth, currentUser, isAdmin } from '../middleware/auth.ts';
-import { checkDiscount, toCents, fromCents } from './discounts.ts';
+import { checkDiscount } from './discounts.ts';
+import { toCents, fromCents } from '../money.ts';
 
 const router = Router();
 
@@ -48,11 +49,6 @@ router.post('/', (req, res) => {
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'items must be a non-empty array' });
   }
-  // DC-R13: omitted or null means no code; anything else must be a non-empty string.
-  if (discount_code !== null && (typeof discount_code !== 'string' || discount_code.trim() === '')) {
-    return res.status(400).json({ error: 'discount_code must be a non-empty string or null' });
-  }
-
   let subtotalCents = 0;
   const resolvedItems: store.OrderItem[] = [];
   // Quantity requested per product across all lines. Stock used to be checked
@@ -79,7 +75,13 @@ router.post('/', (req, res) => {
     resolvedItems.push({ product_id: product.id, name: product.name, price: product.price, quantity });
   }
 
-  // Discount codes are checked after items and stock (DC-R15); a refusal changes nothing.
+  // Discount codes are checked after items and stock, which keep their responses
+  // (DC-R15); a refusal changes nothing. DC-R13: omitted or null means no code;
+  // anything else must be a non-empty string. Code review finding CR-03: this check
+  // used to run before the items, so a bad code hid an unknown product's 404.
+  if (discount_code !== null && (typeof discount_code !== 'string' || discount_code.trim() === '')) {
+    return res.status(400).json({ error: 'discount_code must be a non-empty string or null' });
+  }
   let code: string | null = null;
   let discountCents = 0;
   if (discount_code !== null) {
