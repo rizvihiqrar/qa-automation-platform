@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeMetrics, quantile } from '../src/metrics.js';
 import { normalizeRun, fetchRuns } from '../src/github.js';
-import { renderHtml, esc, niceMax } from '../src/render.js';
+import { renderHtml, esc, niceMax, statusOf } from '../src/render.js';
 
 const job = (name, conclusion, seconds = 10, attempt = 1) => ({ name, conclusion, seconds, attempt });
 const run = (number, sha, conclusion, jobs, seconds = 60) => ({
@@ -67,6 +67,23 @@ test('a feature branch failure counts for nothing but flakiness', () => {
   const html = renderHtml(computeMetrics(mixed), { repo: 'o/r', generatedAt: '2026-10-16T09:00:00Z' });
   assert.match(html, /4 CI runs on <code>main<\/code>/);
   assert.match(html, /2 runs on other branches were checked for flaky jobs only/);
+});
+
+test('status is the package now: failing, flaky, recovered or stable', () => {
+  const history = [
+    run(1, 'a1', 'success', [job('broken', 'success'), job('fixed', 'failure'), job('steady', 'success')]),
+    run(2, 'a2', 'failure', [job('broken', 'failure'), job('fixed', 'success'), job('steady', 'success')]),
+  ];
+  const { packages, overall } = computeMetrics(history);
+  const by = (n) => packages.find((p) => p.name === n);
+  assert.deepEqual([by('broken').latest, by('broken').latestAt], ['failure', '2026-10-12T08:00:00Z']);
+  assert.equal(statusOf(by('broken')).label, 'Failing');
+  assert.equal(statusOf(by('fixed')).label, 'Recovered', 'failed in the window, passing now');
+  assert.equal(statusOf(by('steady')).label, 'Stable');
+  assert.equal(statusOf({ latest: 'success', flaky: 2, passRate: 90 }).label, 'Flaky (2)');
+  assert.equal(statusOf({ latest: 'failure', flaky: 2, passRate: 90 }).label, 'Failing', 'failing outranks flaky');
+  assert.equal(overall.failingNow, 1);
+  assert.match(renderHtml(computeMetrics(history), { repo: 'o/r', generatedAt: '2026-10-16T09:00:00Z' }), /Failing now<\/div><div class="value">1</);
 });
 
 test('overall totals and the run trend are in date order', () => {
