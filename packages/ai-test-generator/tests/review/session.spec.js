@@ -11,7 +11,10 @@ test.describe('Login: review findings', () => {
   for (const user of ['standard_user', 'problem_user', 'performance_glitch_user', 'error_user', 'visual_user']) {
     test(`RV-17: ${user} reaches the products page @regression`, async ({ page }) => {
       await login(page, user);
-      await expect(page).toHaveURL(/inventory\.html/);
+      // The site delays performance_glitch_user's login on purpose: 5.1 to 5.2 s in
+      // 8 of 8 timed runs, just over expect's default 5 s, so this check timed out
+      // now and then (twice in CI). The finding is that the user gets in, not how fast.
+      await expect(page).toHaveURL(/inventory\.html/, { timeout: 15_000 });
       await expect(page.locator('[data-test="title"]')).toHaveText('Products');
     });
   }
