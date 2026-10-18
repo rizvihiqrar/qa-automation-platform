@@ -60,7 +60,7 @@ jobs:
           - { package: pipeline-templates-demo,  browsers: false, command: npm run lint && npm test }
           - { package: mutation-testing-demo,    browsers: false, command: npm test && npm run test:mutation }
           # API
-          - { package: qa-practice-api,          browsers: false, command: npm test }
+          - { package: qa-practice-api,          browsers: false, command: npm test && npm run test:properties }
           - { package: graphql-test-suite,       browsers: false, command: npm test }
           - { package: postman-api-collection,   browsers: false, command: npm test }
           - { package: contract-testing-demo,    browsers: false, command: npm test }

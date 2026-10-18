@@ -9,7 +9,10 @@
     "dev": "node --watch src/server.ts",
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
-    "test:regression": "playwright test"
+    "test:regression": "playwright test",
+    "test:properties": "node --test \"tests/properties/*.property.ts\"",
+    "test:mutation": "stryker run",
+    "scoreboard": "node scoreboard/run.mjs"
   },
   "engines": {
     "node": ">=24"
@@ -20,8 +23,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
+    "@stryker-mutator/core": "^10.0.0",
     "@types/express": "^4.17.25",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.19.2"
+    "@types/node": "^24.19.2",
+    "fast-check": "^4.10.2"
   }
 }

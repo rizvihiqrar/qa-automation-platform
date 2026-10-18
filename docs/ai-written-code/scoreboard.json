@@ -1,0 +1,101 @@
+{
+  "tests": 304,
+  "techniques": {
+    "DC-BVA": "Boundary values",
+    "DC-DT": "Decision tables",
+    "DC-EP": "Equivalence partitioning",
+    "DC-AC": "Access control",
+    "DC-ST": "State transitions",
+    "DC-EX": "Worked examples",
+    "DC-PR": "Property-based"
+  },
+  "putBacks": [
+    {
+      "id": "CR-01",
+      "what": "impossible dates accepted as expires_at (Date.parse rolls them over)",
+      "failed": 5,
+      "by": {
+        "DC-BVA": [
+          "DC-BVA-25",
+          "DC-BVA-26",
+          "DC-BVA-27"
+        ],
+        "DC-EP": [
+          "DC-EP-30"
+        ],
+        "DC-PR": [
+          "DC-PR-11"
+        ]
+      }
+    },
+    {
+      "id": "CR-02",
+      "what": "a tolerance in the two-decimal check let in 10.000000000001",
+      "failed": 5,
+      "by": {
+        "DC-BVA": [
+          "DC-BVA-14",
+          "DC-BVA-15",
+          "DC-BVA-19"
+        ],
+        "DC-PR": [
+          "DC-PR-07",
+          "DC-PR-13"
+        ]
+      }
+    },
+    {
+      "id": "CR-03",
+      "what": "discount_code checked before the items, hiding their errors",
+      "failed": 3,
+      "by": {
+        "DC-DT": [
+          "DC-DT-12",
+          "DC-DT-13",
+          "DC-DT-14"
+        ]
+      }
+    },
+    {
+      "id": "CR-04",
+      "what": "a list as a PATCH body passed as \"no changes\" (200)",
+      "failed": 1,
+      "by": {
+        "DC-EP": [
+          "DC-EP-27"
+        ]
+      }
+    },
+    {
+      "id": "CR-05",
+      "what": "product prices not in whole cents (three at 0.333 came to 0.99)",
+      "failed": 1,
+      "by": {
+        "DC-BVA": [
+          "DC-BVA-43"
+        ]
+      }
+    },
+    {
+      "id": "PM-01",
+      "what": "no limit on an order, so a subtotal past 2^53 cents lost cents",
+      "failed": 1,
+      "by": {
+        "DC-PR": [
+          "DC-PR-09"
+        ]
+      }
+    },
+    {
+      "id": "PM-02",
+      "what": "the same tolerance refused about 9% of valid amounts from 131,072.02 up",
+      "failed": 2,
+      "by": {
+        "DC-PR": [
+          "DC-PR-07",
+          "DC-PR-13"
+        ]
+      }
+    }
+  ]
+}

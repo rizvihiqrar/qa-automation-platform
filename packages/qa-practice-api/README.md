@@ -27,6 +27,9 @@ npm run dev            # with --watch restart
 ```bash
 npm test               # full suite (starts server automatically)
 npm run test:smoke     # @smoke tagged tests only
+npm run test:properties  # 15 fast-check properties, about 10 seconds
+npm run scoreboard     # put each of the AI's mistakes back, record what catches it
+npm run test:mutation  # Stryker; MUTATION_TESTS=designed or properties (see stryker.config.mjs)
 ```
 
 The data lives in memory, so each run starts with an empty store and no state leaks between runs. The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, set in `playwright.config.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
@@ -34,6 +37,8 @@ The data lives in memory, so each run starts with an empty store and no state le
 291 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks and 4 unit tests of the sign-in limiter. The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
 
 The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
+
+`tests/properties` holds 15 [property-based tests](../../docs/ai-written-code/properties-and-mutation.md) (fast-check, run by `node --test`, not Playwright). They import the app and serve it on a free port in their own process, so they make hundreds of requests a second and mutation testing can reach the route code through them. Expected amounts come from BigInt cents read from the amount's text, never from the code's own arithmetic. One found that an order had no upper limit and lost cents past 2^53 (orders above 999,999,999.99 are now refused); [`scoreboard/`](scoreboard) puts each mistake the AI made back and records which tests catch it.
 
 `tests/rate-limit.spec.ts` tests the sign-in limiter's window with a fake clock, which the API tests can't wait 15 minutes for. `tests/password.spec.ts` holds two unit tests for password hashing. One checks that hashing eight passwords keeps the event loop free (0–11% busy measured, against 100% for hashing on the main thread), which guards the bug [k6 found](../../docs/rca/01-login-hashing-blocked-the-api.md) in about a second instead of a minute of load.
 
@@ -86,7 +91,7 @@ The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] �
 | POST | `/discounts` | Admin | `{ code, type: "percent\|fixed", value, expires_at?, max_uses?, min_subtotal?, active? }` |
 | PATCH | `/discounts/:code` | Admin | Only `active`, `expires_at`, `max_uses` |
 
-Discount codes were written by an AI from a [reviewed spec](../../docs/ai-written-code/spec.md) and committed unedited, as a case study in [validating AI-written code](../../docs/ai-written-code/README.md). The [code review](../../docs/ai-written-code/code-review.md) and the 126 cases in `tests/discounts` found four defects in it, all now fixed; Day 39 adds property-based and mutation testing.
+Discount codes were written by an AI from a [reviewed spec](../../docs/ai-written-code/spec.md) and committed unedited, as a case study in [validating AI-written code](../../docs/ai-written-code/README.md). The [code review](../../docs/ai-written-code/code-review.md) and the 126 cases in `tests/discounts` found four defects in it, all now fixed. Property-based tests then found two more problems (a missing order limit, and valid amounts the AI's decimal check refused), and mutation testing showed where the tests checked a status but not the message; the [scoreboard](../../docs/ai-written-code/scoreboard.md) shows which technique caught what.
 
 ## Documented Edge Cases
 
@@ -105,6 +110,7 @@ These are intentional behaviours worth writing tests for:
 | `PUT /products/:id` with `price: "abc"` or `stock: -7` | `400`, with the same messages as `POST`. Update used to skip these checks and store `price: null` and negative stock. |
 | `POST /products` with `price: ""`, `true` or `"12.5"` | `400`. Prices, stock and quantities must be JSON numbers. `""` used to be stored as 0 and `true` as 1. |
 | `POST /products` or `PUT /products/:id` with `price: 19.999` | `400 { error: "price must be in whole cents (at most two decimals)" }`. Orders add prices up in whole cents; three at 0.333 used to come to 0.99. |
+| `POST /orders` with a subtotal above 999,999,999.99 | `400 { error: "Order subtotal must be at most 999999999.99" }`. There was no limit, and past 2^53 cents the subtotal lost cents (141,669,743,892,942.18 came back as …942.2). Found by a property-based test. |
 | `POST /orders` with an unknown product and `discount_code: 5` | `404`, as without a code: item and stock errors come before discount code errors. |
 | `POST /orders` with `quantity: 1.5` or `"2"` | `400`. A fraction used to be accepted (leaving stock at 8.5), and text quantities were joined, so `"2"` + `"3"` was checked as 23. |
 | `POST /orders` with `items: [null]` | `400`. It used to crash the route with a 500 HTML page. |

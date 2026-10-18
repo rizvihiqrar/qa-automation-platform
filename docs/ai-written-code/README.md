@@ -8,7 +8,7 @@ A small feature for qa-practice-api, discount codes, written by an AI from a spe
 |---:|---|---|
 | 37 | Review the request, write the reviewed spec, have the AI write the feature | ✅ this page |
 | 38 | Code review; boundary-value and decision-table tests against the spec | ✅ [code review](code-review.md) |
-| 39 | Property-based tests (fast-check) and mutation testing; what the AI got wrong and what caught it | ⬜ |
+| 39 | Property-based tests (fast-check) and mutation testing; what the AI got wrong and what caught it | ✅ [properties and mutation](properties-and-mutation.md), [scoreboard](scoreboard.md) |
 
 ## Day 37: the requirement, then the code
 
@@ -60,6 +60,14 @@ All five are fixed, and each fix was checked by putting the mistake back: each t
 
 The drift scenario now calls all four `/discounts` operations: the AI's API document matched all 39 responses. Its request schemas say less than the rules do, and no tool checks request schemas, so each field now states its rule.
 
+## Day 39: properties, mutation testing, and the scoreboard
+
+[Property-based tests](properties-and-mutation.md) stated rules for any input and let fast-check try thousands of values. On its first generated case, one found a mistake nothing else had: with no limit on an order, a subtotal of 141,669,743,892,942.18 came back as …942.2, because cents past 2^53 don't fit exactly in a JavaScript number (PM-01; orders are now limited to 999,999,999.99). Putting CR-02 back showed another half of it the review had missed: the AI's tolerance also refused about 9% of valid amounts from 131,072.02 up (PM-02). A model-based test runs random sequences of orders, cancellations and admin changes and checks `uses` against a model after every step.
+
+[Mutation testing](properties-and-mutation.md#mutation-testing) with Stryker broke the AI's code 412 small ways to see which breaks the tests notice. <!-- mutation summary -->
+
+The [scoreboard](scoreboard.md) puts each of the seven mistakes back and runs every test: the 165 tests that existed before caught none, the code review found five, and catching all seven with tests takes four techniques together (boundary values, decision tables, equivalence classes and properties).
+
 ## Keeping it honest
 
 [`scripts/ai-written-code.test.mjs`](../../scripts/ai-written-code.test.mjs) runs with the root tests and fails if:
@@ -73,4 +81,9 @@ The drift scenario now calls all four `/discounts` operations: the AI's API docu
 - a designed discount case has a duplicate or skipped ID, or names a rule the spec doesn't have, or a rule (other than DC-R25, which the drift scenario covers) has no case;
 - the drift scenario stops calling one of the `/discounts` operations;
 - a code review finding is missing a field, isn't tied to the AI's commit, or lists a case that doesn't exist or checks a different rule; a defect has no case;
-- the code review's coverage table, technique counts or totals don't match the case files and the findings.
+- the code review's coverage table, technique counts or totals don't match the case files and the findings;
+- a property test has a duplicate or skipped ID, or names a rule the spec doesn't have;
+- a PM finding is missing a field or lists a property that doesn't exist;
+- the scoreboard doesn't put back every defect and spec gap, a put-back makes no test fail, or a finding's listed test passes with its mistake put back;
+- a row of the scoreboard table differs from the scoreboard run;
+- the lines of `orders.ts` that Stryker mutates are no longer the ones the AI wrote.

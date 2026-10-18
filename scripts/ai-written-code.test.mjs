@@ -228,3 +228,72 @@ test('the technique table and the result totals match the cases and findings', (
   }
   assert.ok(review.includes(`${cases.length} cases were run on \`d775d20\` before any fix: ${failedOnAiCode.length} failed`));
 });
+
+// Day 39: property-based tests (packages/qa-practice-api/tests/properties), each
+// titled 'DC-PR-07 [DC-R16, DC-R17] …', and the mutation testing set-up.
+const PKG = path.join(ROOT, 'packages', 'qa-practice-api');
+const PROPS = path.join(PKG, 'tests', 'properties');
+const properties = fs.readdirSync(PROPS).filter((f) => f.endsWith('.property.ts')).sort().flatMap((file) => {
+  const src = fs.readFileSync(path.join(PROPS, file), 'utf8');
+  return [...src.matchAll(/^test\('(DC-PR-\d{2}) \[([^\]]+)\]/gm)].map(([, id, r]) => ({ id, rules: r.split(', '), file }));
+});
+
+test('property tests: numbered without gaps, each naming real spec rules', () => {
+  assert.ok(properties.length > 0);
+  const ids = properties.map((p) => p.id).sort();
+  assert.deepEqual(ids, ids.map((_, i) => `DC-PR-${String(i + 1).padStart(2, '0')}`));
+  for (const p of properties) for (const r of p.rules) assert.ok(rules.includes(r), `${p.id} names ${r}`);
+});
+
+test('Stryker mutates the lines of POST /orders the AI wrote, and no others', () => {
+  const config = fs.readFileSync(path.join(PKG, 'stryker.config.mjs'), 'utf8');
+  const [, from, to] = config.match(/'src\/routes\/orders\.ts:(\d+)-(\d+)'/).map(Number);
+  const lines = fs.readFileSync(path.join(PKG, 'src', 'routes', 'orders.ts'), 'utf8').split(/\r?\n/);
+  assert.match(lines[from - 1], /subtotalCents \+= toCents\(product\.price\) \* quantity;/, `line ${from}`);
+  assert.match(lines[to - 1], /total: +fromCents\(subtotalCents - discountCents\),/, `line ${to}`);
+});
+
+// The scoreboard (scoreboard.md): one row per mistake the AI made, one column per
+// technique, filled from scoreboard.json, which packages/qa-practice-api/scoreboard/
+// run.mjs writes by putting each mistake back and running every test.
+const board = JSON.parse(read('scoreboard.json'));
+const pm = read('properties-and-mutation.md');
+const pms = findings(pm, 'PM');
+const SCORE_COLUMNS = ['earlier', 'DC-BVA', 'DC-DT', 'DC-EP', 'DC-AC', 'DC-ST', 'DC-EX', 'DC-PR'];
+
+function scoreRow(p, finding) {
+  const read = /^code review/.test(finding.fields['Found by']) ? '✔' : '–';
+  const cells = SCORE_COLUMNS.map((c) => (p.by[c]?.length ? String(p.by[c].length) : '–'));
+  return `| ${p.id} | ${finding.fields.Kind} | ${read} | ${cells.join(' | ')} |`;
+}
+
+test('PM findings: numbered, complete, and every defect or spec gap names a property that exists', () => {
+  assert.ok(pms.length > 0);
+  assert.deepEqual(pms.map((f) => f.id), pms.map((_, i) => `PM-${String(i + 1).padStart(2, '0')}`));
+  for (const f of pms) {
+    assert.deepEqual(Object.keys(f.fields), REVIEW_FIELDS, f.id);
+    assert.ok(REVIEW_KINDS.includes(f.fields.Kind), `${f.id}: kind "${f.fields.Kind}"`);
+    for (const r of listOf(f.fields.Rule)) assert.ok(rules.includes(r), `${f.id} names ${r}`);
+    for (const id of listOf(f.fields.Tests)) assert.ok(properties.some((p) => p.id === id), `${f.id} lists ${id}`);
+  }
+});
+
+test('the scoreboard puts back every defect and spec gap, and each put-back is caught', () => {
+  const mistakes = [...crs, ...pms].filter((f) => f.fields.Kind !== 'risk').map((f) => f.id);
+  assert.deepEqual(board.putBacks.map((p) => p.id), mistakes);
+  for (const p of board.putBacks) {
+    assert.ok(p.failed > 0, `${p.id} put back, and no test failed`);
+    const listed = listOf([...crs, ...pms].find((f) => f.id === p.id).fields.Tests);
+    const failed = Object.values(p.by).flat();
+    for (const id of listed) assert.ok(failed.includes(id), `${p.id} lists ${id}, which passed with the mistake put back`);
+  }
+});
+
+test('the scoreboard table is the scoreboard run, row for row', () => {
+  const md = read('scoreboard.md');
+  for (const p of board.putBacks) {
+    const row = scoreRow(p, [...crs, ...pms].find((f) => f.id === p.id));
+    assert.ok(md.includes(row), `missing or changed row:\n${row}`);
+  }
+  assert.ok(md.includes(`all ${board.tests} tests`), 'test count');
+});

@@ -3,7 +3,7 @@ import * as store from '../db/store.ts';
 import type { Request } from 'express';
 import { requireAuth, currentUser, isAdmin } from '../middleware/auth.ts';
 import { checkDiscount } from './discounts.ts';
-import { toCents, fromCents } from '../money.ts';
+import { toCents, fromCents, MAX_ORDER_CENTS } from '../money.ts';
 
 const router = Router();
 
@@ -73,6 +73,10 @@ router.post('/', (req, res) => {
     requested.set(product.id, { product, quantity: wanted });
     subtotalCents += toCents(product.price) * quantity;
     resolvedItems.push({ product_id: product.id, name: product.name, price: product.price, quantity });
+  }
+  // Finding PM-01: past 2^53 cents the subtotal silently lost cents.
+  if (subtotalCents > MAX_ORDER_CENTS) {
+    return res.status(400).json({ error: `Order subtotal must be at most ${fromCents(MAX_ORDER_CENTS).toFixed(2)}` });
   }
 
   // Discount codes are checked after items and stock, which keep their responses
