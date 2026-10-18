@@ -23,7 +23,7 @@ A dashboard of this repository's CI health: how often each package passes, how l
 1. A job that failed and then passed when the same run was **re-run**.
 2. A job that failed in one run and passed in another run of the **same commit**, so nothing in the code changed.
 
-Only a job's last attempt counts toward its pass rate, and cancelled or skipped jobs are left out.
+Only a job's last attempt counts toward its pass rate, and cancelled or skipped jobs are left out. Pass rates, times, last failures and the trend count runs on `main` only: a failure on a feature branch is usually a change still in progress, and counting those made healthy packages read "Has failures" for days after the work merged green. Flaky detection still reads every branch, since a job that fails and then passes on the same commit is flaky wherever it ran. The default window is the last 80 runs, about half of them on `main`.
 
 ---
 
@@ -43,7 +43,7 @@ The first render used SVG for the bar chart, which scaled its labels up on deskt
 
 ```bash
 npm run build                      # writes site/index.html and site/metrics.json
-node src/build.js --out site --repo owner/name --limit 40
+node src/build.js --out site --repo owner/name --limit 80
 ```
 
 The token comes from `GITHUB_TOKEN` or the signed-in GitHub CLI.
@@ -97,7 +97,7 @@ Checked by putting two fixed bugs back into qa-practice-api (shipped orders coul
 ## Tests
 
 ```bash
-npm test   # 33 tests
+npm test   # 34 tests
 ```
 
 They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail. For the traceability matrix (13 tests): parsing the real plan (18 requirements, 119 cases), Playwright statuses through nested suites, the worst result winning for a duplicated ID, the requirement status rules, unplanned and orphan cases, a missing or corrupt results file, and escaping plan text. Six deliberate breaks (ignoring missing results, best result winning, skipping nested suites, matching an ID anywhere in a title, unknown statuses passing, unescaped text) each made a test fail.

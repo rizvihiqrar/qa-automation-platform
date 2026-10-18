@@ -48,6 +48,27 @@ test('durations: median and p90 per package', () => {
   assert.equal(ui.p90Seconds, 42);
 });
 
+test('a feature branch failure counts for nothing but flakiness', () => {
+  const onBranch = (r) => ({ ...r, branch: 'feature', event: 'pull_request' });
+  const mixed = [
+    ...runs,
+    // A change still in progress fails ui on a branch ...
+    onBranch(run(5, 'ddd', 'failure', [job('api', 'success', 10), job('ui', 'failure', 40)])),
+    // ... and a branch run that failed, then passed on a re-run, is flaky like on main.
+    onBranch(run(6, 'eee', 'success', [job('api', 'failure', 10, 1), job('api', 'success', 11, 2)])),
+  ];
+  const { packages, overall, trend } = computeMetrics(mixed);
+  const ui = packages.find((p) => p.name === 'ui');
+  const api = packages.find((p) => p.name === 'api');
+  assert.deepEqual([ui.results, ui.passRate, ui.lastFailure], [4, 100, null], 'pass rate from main only');
+  assert.deepEqual([api.results, api.flaky], [4, 2], 'flaky counted on every branch');
+  assert.deepEqual([overall.branch, overall.runs, overall.otherRuns], ['main', 4, 2]);
+  assert.deepEqual(trend.map((t) => t.number), [1, 2, 3, 4]);
+  const html = renderHtml(computeMetrics(mixed), { repo: 'o/r', generatedAt: '2026-10-16T09:00:00Z' });
+  assert.match(html, /4 CI runs on <code>main<\/code>/);
+  assert.match(html, /2 runs on other branches were checked for flaky jobs only/);
+});
+
 test('overall totals and the run trend are in date order', () => {
   const { overall, trend } = computeMetrics([...runs].reverse());
   assert.deepEqual([overall.runs, overall.runPassRate, overall.medianRunMinutes], [4, 75, 1.3]);
