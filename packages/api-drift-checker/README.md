@@ -65,7 +65,7 @@ Exit code 1 on any drift, so it can run as a contract gate in CI. The CI job for
 - `spec/qa-practice-api.openapi.json`: the contract, written from the API's routes. Response objects use `additionalProperties: false`, so leaked fields are caught.
 - `src/schema.js`: a small validator for the OpenAPI features used here (types, required, enums, minimums, date-times, `$ref`, nullable). It reports every problem with a JSON path, not just the first.
 - `src/runner.js`: runs scenario steps, saves values like tokens and ids for later steps, checks each response.
-- `scenarios/qa-practice-api.js`: 22 steps, including two that send invalid product data and one that tries an order status move the lifecycle forbids (`409`).
+- `scenarios/qa-practice-api.js`: 39 steps, including two that send invalid product data, one that tries an order status move the lifecycle forbids (`409`), customer attempts at admin-only actions (`403`), and twelve on the AI-written discount codes (every `/discounts` operation, and an order with a code, then the same code again: `422`).
 
 ---
 
