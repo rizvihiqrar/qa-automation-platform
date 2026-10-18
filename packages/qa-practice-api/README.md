@@ -27,7 +27,7 @@ npm run dev            # with --watch restart
 ```bash
 npm test               # full suite (starts server automatically)
 npm run test:smoke     # @smoke tagged tests only
-npm run test:properties  # 15 fast-check properties, about 10 seconds
+npm run test:properties  # 17 fast-check properties, about 10 seconds
 npm run scoreboard     # put each of the AI's mistakes back, record what catches it
 npm run test:mutation  # Stryker; MUTATION_TESTS=designed or properties (see stryker.config.mjs)
 ```
@@ -38,7 +38,7 @@ The data lives in memory, so each run starts with an empty store and no state le
 
 The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
 
-`tests/properties` holds 15 [property-based tests](../../docs/ai-written-code/properties-and-mutation.md) (fast-check, run by `node --test`, not Playwright). They import the app and serve it on a free port in their own process, so they make hundreds of requests a second and mutation testing can reach the route code through them. Expected amounts come from BigInt cents read from the amount's text, never from the code's own arithmetic. One found that an order had no upper limit and lost cents past 2^53 (orders above 999,999,999.99 are now refused); [`scoreboard/`](scoreboard) puts each mistake the AI made back and records which tests catch it.
+`tests/properties` holds 17 [property-based tests](../../docs/ai-written-code/properties-and-mutation.md) (fast-check, run by `node --test`, not Playwright). They import the app and serve it on a free port in their own process, so they make hundreds of requests a second and mutation testing can reach the route code through them. Expected amounts come from BigInt cents read from the amount's text, never from the code's own arithmetic. One found that an order had no upper limit and lost cents past 2^53 (orders above 999,999,999.99 are now refused); [`scoreboard/`](scoreboard) puts each mistake the AI made back and records which tests catch it.
 
 `tests/rate-limit.spec.ts` tests the sign-in limiter's window with a fake clock, which the API tests can't wait 15 minutes for. `tests/password.spec.ts` holds two unit tests for password hashing. One checks that hashing eight passwords keeps the event loop free (0–11% busy measured, against 100% for hashing on the main thread), which guards the bug [k6 found](../../docs/rca/01-login-hashing-blocked-the-api.md) in about a second instead of a minute of load.
 

@@ -1,5 +1,5 @@
 {
-  "tests": 304,
+  "tests": 308,
   "techniques": {
     "DC-BVA": "Boundary values",
     "DC-DT": "Decision tables",

@@ -6,7 +6,7 @@ The end of the [case study](README.md). Every mistake found in the AI's discount
 
 ## How it was measured
 
-[`packages/qa-practice-api/scoreboard/run.mjs`](../../packages/qa-practice-api/scoreboard/run.mjs) (`npm run scoreboard`, about five minutes) runs all 304 tests on the unchanged code first (all must pass), then for each mistake in [`put-backs.mjs`](../../packages/qa-practice-api/scoreboard/put-backs.mjs) changes the code back to the AI's version, runs everything again, records which tests failed, and restores the code. The result is [`scoreboard.json`](scoreboard.json); the table below is checked against it by the root tests, row for row.
+[`packages/qa-practice-api/scoreboard/run.mjs`](../../packages/qa-practice-api/scoreboard/run.mjs) (`npm run scoreboard`, about five minutes) runs all 308 tests on the unchanged code first (all must pass), then for each mistake in [`put-backs.mjs`](../../packages/qa-practice-api/scoreboard/put-backs.mjs) changes the code back to the AI's version, runs everything again, records which tests failed, and restores the code. The result is [`scoreboard.json`](scoreboard.json); the table below is checked against it by the root tests, row for row.
 
 "Code review" is different: it is not a test that runs. It is ticked when the [code review](code-review.md) found the mistake by reading, before any test existed.
 
@@ -39,4 +39,6 @@ What each one was:
 - **Designed cases and properties catch different things.** Boundary values, decision tables and equivalence classes caught all five reviewed mistakes; properties caught two of those and missed three (CR-03 to CR-05): the properties generate valid requests and whole-cent prices, so they never send a bad code with bad items, a list as a body, or a price of 0.333. Properties alone caught PM-01 and PM-02, at values (a trillion-dollar order, a minimum of 131,072.02) that no designed case would pick.
 - **No technique caught everything.** Among the tests, CR-03 was caught only by decision tables, CR-04 only by equivalence classes, CR-05 only by boundary values, and PM-01 and PM-02 only by properties. Catching all seven with tests takes those four techniques together.
 
-<!-- mutation -->
+## And mutation testing
+
+Mutation testing isn't a column above, because it doesn't find mistakes in the code: it finds tests that would miss one. Stryker made 412 small changes to the AI's code and ran every test against each ([details](properties-and-mutation.md#mutation-testing)). The designed cases noticed 85.0% of them and the properties 77.9%; together, 93.9%. The 25 changes nothing notices are 21 that can't alter behaviour, 2 at the exact millisecond of expiry (PM-03, untestable while the code reads the clock itself) and 2 in an error message's wording. Before the last properties were added, it also found refusals whose message no test checked, a value wrapped in a list that would crash the API, and a use count that would stop at 10 without any test noticing.

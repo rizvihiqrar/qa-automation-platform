@@ -79,12 +79,13 @@ const refusedWithMessage = (res: { status: number; body: any }, okStatus: number
   assert.ok(res.body.error.length > 0, `${what}: empty error message`);
 };
 
-// Valid values for each field, a list or object wrapping one, or any JSON value.
+// Usual values for each field (one past expires_at, refused), a list or object
+// wrapping one, or any JSON value.
 const valid: Record<string, unknown[]> = {
   code: ['SUMMER10'],
   type: ['percent', 'fixed'],
   value: [10, 19.99],
-  expires_at: ['2027-01-01T00:00:00Z', null],
+  expires_at: ['2027-01-01T00:00:00Z', '2020-01-01T00:00:00Z', null],
   max_uses: [5, null],
   min_subtotal: [0, 50],
   active: [true, false],
@@ -98,9 +99,11 @@ const anyValueFor = (field: string) => fc.oneof(
 
 test('DC-PR-14 [DC-R01, DC-R03, DC-R04, DC-R05, DC-R06, DC-R07, DC-R08, DC-R10] creating a code with any value in any field: 201, or a refusal with a message', async () => {
   const fields = Object.keys(valid);
-  const body = fc.constantFrom(...fields).chain((field) => anyValueFor(field).map((value) => ({ field, value })));
-  await fc.assert(fc.asyncProperty(body, async ({ field, value }) => {
-    const sent = { code: uniqueCode(), type: 'percent', value: 10, [field]: field === 'code' && typeof value === 'string' ? `${value}${codes}` : value };
+  // Starting from a percent or a fixed code, so both kinds' value checks are reached.
+  const body = fc.tuple(fc.constantFrom('percent', 'fixed'), fc.constantFrom(...fields))
+    .chain(([type, field]) => anyValueFor(field).map((value) => ({ type, field, value })));
+  await fc.assert(fc.asyncProperty(body, async ({ type, field, value }) => {
+    const sent = { code: uniqueCode(), type, value: 10, [field]: field === 'code' && typeof value === 'string' ? `${value}${codes}` : value };
     refusedWithMessage(await api.call('POST', '/discounts', sent, api.admin), 201, `${field} = ${JSON.stringify(value)}`);
   }), { numRuns: 500 });
   // A duplicate, and an unknown code on GET and PATCH.
@@ -123,14 +126,24 @@ test('DC-PR-15 [DC-R11] changing a code with any body: 200, or a refusal with a 
   await fc.assert(fc.asyncProperty(patch, async (body) => {
     // Turn it back on and lift any limit first, so each body starts from the same code.
     await api.call('PATCH', `/discounts/${code}`, { active: true, max_uses: null, expires_at: null }, api.admin);
-    refusedWithMessage(await api.call('PATCH', `/discounts/${code}`, body, api.admin), 200, JSON.stringify(body));
+    const res = await api.call('PATCH', `/discounts/${code}`, body, api.admin);
+    refusedWithMessage(res, 200, JSON.stringify(body));
+    // An accepted change must have stored valid values: a skipped check would store
+    // the error object as the value and still answer 200.
+    if (res.status === 200) {
+      const { active, max_uses, expires_at } = res.body;
+      assert.equal(typeof active, 'boolean', `active ${JSON.stringify(active)} after ${JSON.stringify(body)}`);
+      assert.ok(max_uses === null || (Number.isInteger(max_uses) && max_uses >= 1), `max_uses ${JSON.stringify(max_uses)}`);
+      assert.ok(expires_at === null || Date.parse(expires_at) > Date.now(), `expires_at ${JSON.stringify(expires_at)}`);
+    }
   }), { numRuns: 500 });
 });
 
-// Two more gaps from mutation testing. `uses` counts orders through a store query
+// Another gap from mutation testing: `uses` counts orders through a store query
 // with a page size; dropping it (the store's default page is 10) left every test
-// green, because none used a code more than 10 times. And treating every code with
-// an expiry date as expired went unnoticed: no test ordered with a code that expires.
+// green, because none used a code more than 10 times. DC-PR-17 was written for what
+// looked like a second gap and wasn't (the designed cases catch "every code with an
+// expiry counts as expired"); it stays as a cheap check.
 test('DC-PR-16 [DC-R06, DC-R21] uses keep counting past 10: max_uses of 11 to 14 allows exactly that many orders', async () => {
   const crowd: { id: number; token: string }[] = [];
   for (let i = 0; i < 15; i++) crowd.push(await api.customer());
@@ -214,6 +227,7 @@ class SetMaxUses implements Cmd {
     const res = await api.call('PATCH', `/discounts/${r.code}`, { max_uses: this.to }, api.admin);
     if (this.to !== null && this.to < uses(m)) {
       assert.equal(res.status, 409, this.toString());
+      assert.ok(typeof res.body.error === 'string' && res.body.error.length > 0, `${this}: no error message`);
     } else {
       assert.equal(res.status, 200, `${this}: ${JSON.stringify(res.body)}`);
       m.maxUses = this.to;
