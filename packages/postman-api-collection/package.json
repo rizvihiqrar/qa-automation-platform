@@ -5,6 +5,15 @@
     "newman": "^6.2.1",
     "newman-reporter-htmlextra": "^1.23.1"
   },
+  "//overrides": "Newman and its HTML reporter pin libraries with known issues; these are the fixed releases in the same major. What can't be fixed this way is triaged in scripts/audit-allowlist.json.",
+  "overrides": {
+    "handlebars": "4.7.10",
+    "lodash": "4.18.1",
+    "node-forge": "1.4.0",
+    "qs": "6.16.1",
+    "flatted": "3.4.4",
+    "underscore": "1.13.8"
+  },
   "scripts": {
     "test": "newman run collection/dummyjson-api.postman_collection.json --reporters cli,htmlextra --reporter-htmlextra-export reports/report.html --reporter-htmlextra-skipHeaders \"Authorization,Cookie,Set-Cookie\" --reporter-htmlextra-hideResponseBody \"Login - Valid\"",
     "smoke": "newman run collection/dummyjson-api.postman_collection.json --folder Smoke --reporters cli",

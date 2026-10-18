@@ -8,9 +8,9 @@ Mutation testing with [Stryker](https://stryker-mutator.io/) applied to a shoppi
 
 | File | Mutants | Killed | Survived | Score |
 |---|---|---|---|---|
-| `src/cart.js` | 129 | 117 | 12 | **90.7%** |
+| `src/cart.js` | 130 | 118 | 12 | **90.8%** |
 | `src/validators.js` | 92 | 80 | 12 | **87.0%** |
-| **Total** | **221** | **197** | **24** | **89.1%** |
+| **Total** | **222** | **198** | **24** | **89.2%** |
 
 The suite scores above the **80% high threshold** defined in `stryker.config.mjs`.
 

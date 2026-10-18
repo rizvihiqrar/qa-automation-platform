@@ -1,0 +1,23 @@
+[
+  {
+    "package": "postman-api-collection",
+    "advisory": "GHSA-qxc2-j82w-r537",
+    "library": "@faker-js/faker",
+    "reason": "Faker 5 inside Newman (postman-collection), used only for {{$random...}} variables. The collection has none, and the exploit needs an attacker-written template. The fix is Faker 10, which Newman doesn't support yet.",
+    "review_by": "2027-01-18"
+  },
+  {
+    "package": "postman-api-collection",
+    "advisory": "GHSA-vfj7-8cjw-p6xm",
+    "library": "braces",
+    "reason": "Denial of service on attacker-supplied brace patterns, inside the HTML reporter's template helpers. The reporter only renders our own run results on the CI machine. No fixed braces release exists.",
+    "review_by": "2027-01-18"
+  },
+  {
+    "package": "postman-api-collection",
+    "advisory": "GHSA-86w9-cpqp-85rv",
+    "library": "node-forge",
+    "reason": "RSA PKCS#1 v1.5 signature verification, inside Newman's runtime for certificate and signing auth types. The collection uses neither (one bearer header). 1.4.0, the latest release, is still affected.",
+    "review_by": "2027-01-18"
+  }
+]
