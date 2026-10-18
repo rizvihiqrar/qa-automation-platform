@@ -1,0 +1,56 @@
+name: CI health
+
+# Daily, after the nightly CI run: reads the latest run of every workflow on main
+# in each watched repo (scripts/ci-health.mjs) and keeps one issue (label
+# ci-health) open while anything is failing or a scheduled workflow is overdue.
+# A new comment is added each day it stays that way, so the reminder keeps
+# arriving by email; the issue is closed when everything is green again.
+on:
+  schedule:
+    - cron: '45 9 * * *' # 09:45 UTC, after the 09:00 nightly CI
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: ci-health
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check every workflow
+        id: check
+        continue-on-error: true # a problem is reported through the issue below
+        run: node scripts/ci-health.mjs --out ci-health.md
+
+      - name: Job summary
+        run: cat ci-health.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open, update or close the ci-health issue
+        env:
+          PROBLEMS: ${{ steps.check.outcome == 'failure' }}
+        run: |
+          gh label create ci-health --color B60205 --description "A workflow on main is failing or overdue" --force
+          open=$(gh issue list --label ci-health --state open --json number -q '.[0].number')
+          if [ "$PROBLEMS" = "true" ]; then
+            if [ -z "$open" ]; then
+              gh issue create --title "CI health: a workflow on main needs attention" --label ci-health --body-file ci-health.md
+            else
+              gh issue comment "$open" --body-file ci-health.md
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --comment "$(printf 'All green again.\n\n'; cat ci-health.md)"
+          fi
