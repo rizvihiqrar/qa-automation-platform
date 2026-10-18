@@ -27,6 +27,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Dependency audit (root)
+        run: node scripts/audit.mjs .
       - name: Type-check packages
         run: npm run typecheck -- --install
       - name: Test root scripts
@@ -88,6 +90,10 @@ jobs:
         run: node ../../scripts/test-scope.mjs ${{ matrix.package }}
 
       - run: npm ci
+
+      # Fails on a high or critical advisory not triaged in scripts/audit-allowlist.json.
+      - name: Dependency audit
+        run: node ../../scripts/audit.mjs ${{ matrix.package }}
 
       - name: Install Playwright browser
         if: matrix.browsers
