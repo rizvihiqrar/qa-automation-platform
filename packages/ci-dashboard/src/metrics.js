@@ -17,8 +17,14 @@ function finalJobs(run) {
   return [...latest.values()];
 }
 
-export function computeMetrics(runsInput) {
-  const runs = [...runsInput].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+// Pass rates, durations, last failures and the trend count runs on main only (pushes,
+// the nightly run, manual runs on main): a failure on a feature branch is usually a
+// change still being worked on, not something broken, and counting it made healthy
+// packages read "Has failures". Flaky detection uses every run: a job that fails and
+// then passes on the same commit is flaky whichever branch it ran on.
+export function computeMetrics(runsInput, { branch = 'main' } = {}) {
+  const all = [...runsInput].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  const runs = all.filter((r) => r.branch === branch);
   const pkgs = new Map();
   const pkg = (name) => {
     if (!pkgs.has(name)) pkgs.set(name, { name, results: 0, passed: 0, durations: [], flakyRerun: 0, flakyCommit: 0, lastFailure: null });
@@ -34,6 +40,9 @@ export function computeMetrics(runsInput) {
       else p.lastFailure = run.createdAt;
       if (j.seconds !== null) p.durations.push(j.seconds);
     }
+  }
+
+  for (const run of all) {
     // Flaky on re-run: an earlier attempt failed and the last one passed.
     for (const j of finalJobs(run)) {
       if (j.conclusion === 'success' && run.jobs.some((o) => o.name === j.name && o.attempt < j.attempt && o.conclusion === 'failure')) {
@@ -44,7 +53,7 @@ export function computeMetrics(runsInput) {
 
   // Flaky on the same commit: one run failed and another run of the same commit passed.
   const bySha = new Map();
-  for (const run of runs) {
+  for (const run of all) {
     for (const j of finalJobs(run)) {
       if (!COUNTED.has(j.conclusion)) continue;
       const key = `${run.sha}|${j.name}`;
@@ -84,7 +93,10 @@ export function computeMetrics(runsInput) {
 
   return {
     overall: {
+      branch,
       runs: completed.length,
+      // Runs on other branches, read for flaky jobs only.
+      otherRuns: all.length - runs.length,
       runPassRate: completed.length ? Math.round((completed.filter((r) => r.conclusion === 'success').length / completed.length) * 1000) / 10 : null,
       medianRunMinutes: quantile(trend.map((t) => t.minutes), 0.5),
       flakyJobs: packages.reduce((n, p) => n + p.flaky, 0),

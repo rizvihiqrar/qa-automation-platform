@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds the dashboard: fetch recent CI runs, compute metrics, write HTML + JSON.
-//   node src/build.js --out site [--repo owner/name] [--limit 40]
+//   node src/build.js --out site [--repo owner/name] [--limit 80]
 // Token: GITHUB_TOKEN, or the signed-in GitHub CLI (`gh auth token`).
 
 import fs from 'fs';
@@ -16,7 +16,8 @@ const arg = (flag, def) => { const i = process.argv.indexOf(flag); return i !== 
 
 const repo = arg('--repo', process.env.GITHUB_REPOSITORY || 'rizvihiqrar/qa-automation-platform');
 const out = arg('--out', 'site');
-const limit = Number(arg('--limit', '40'));
+// About half of recent runs are on main, which the pass rates count (metrics.js).
+const limit = Number(arg('--limit', '80'));
 // --reports <dir>: downloaded report-* artifacts of one CI run (--reports-run <id>),
 // published under <out>/reports. See src/reports.js.
 const reportsDir = arg('--reports', null);

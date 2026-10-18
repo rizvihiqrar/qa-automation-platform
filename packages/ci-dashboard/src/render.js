@@ -139,7 +139,7 @@ function statusOf(p) {
 export function renderHtml(metrics, { repo, generatedAt, reportsHref = null }) {
   const { overall, packages, trend } = metrics;
   const tiles = [
-    ['CI runs analysed', String(overall.runs)],
+    [`CI runs on ${overall.branch}`, String(overall.runs)],
     ['Runs fully green', fmtPct(overall.runPassRate)],
     ['Median run time', overall.medianRunMinutes === null ? '—' : `${overall.medianRunMinutes} min`],
     ['Flaky job results', String(overall.flakyJobs)],
@@ -168,7 +168,7 @@ ${PAGE_STYLE}
 <div class="viz-root">
 <div class="wrap">
   <h1>CI Dashboard</h1>
-  <p class="lede">Results of the last ${overall.runs} CI runs of <strong>${esc(repo)}</strong>, across ${overall.packages} packages. Generated ${esc(day(generatedAt))}.${reportsHref ? ` <a href="${esc(reportsHref)}">Test reports from the latest run</a>.` : ''}</p>
+  <p class="lede">Results of the last ${overall.runs} CI runs on <code>${esc(overall.branch)}</code> of <strong>${esc(repo)}</strong>, across ${overall.packages} packages${overall.otherRuns ? `; ${overall.otherRuns} runs on other branches were checked for flaky jobs only` : ''}. Generated ${esc(day(generatedAt))}.${reportsHref ? ` <a href="${esc(reportsHref)}">Test reports from the latest run</a>.` : ''}</p>
 
   <section class="tiles" aria-label="Summary">
     ${tiles.map(([l, v]) => `<div class="tile"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`).join('')}
@@ -183,7 +183,7 @@ ${PAGE_STYLE}
 
   <section class="card wide">
     <h2>Packages</h2>
-    <p class="sub">Pass rate over the analysed runs. Flaky counts jobs that failed then passed on a re-run, or failed and passed on the same commit.</p>
+    <p class="sub">Pass rate over the analysed runs on <code>${esc(overall.branch)}</code>, where a failure means something is broken (a failure on a feature branch is usually a change still in progress). Flaky counts jobs on any branch that failed then passed on a re-run, or failed and passed on the same commit.</p>
     <div class="table-wrap">
     <table>
       <thead><tr><th>Package</th><th>Pass rate</th><th class="num">Results</th><th class="num">Median</th><th class="num">p90</th><th>Status</th><th>Last failure</th></tr></thead>
