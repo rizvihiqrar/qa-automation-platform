@@ -125,6 +125,8 @@ The `zap-baseline` job scans the practice API with OWASP ZAP's passive rules on 
 
 Every package job also audits its dependencies ([`scripts/audit.mjs`](scripts/audit.mjs)): a high or critical advisory fails the job unless it is triaged in [`scripts/audit-allowlist.json`](scripts/audit-allowlist.json) with the reason it can't reach anything here and a date to look again. When the gate was added, eight packages had 3 critical and about 150 high advisories, all in test tooling or reached through express. Upgrades (Jest 30, Stryker 10, Faker 10) and same-major overrides fixed all but three, inside Newman and its HTML reporter, which have no fixed release; those three are the allowlist.
 
+A daily [CI health check](.github/workflows/ci-health.yml) runs after the nightly regression: it reads the latest run of every workflow on `main` in this repo, cicd-pipeline-demo and the profile repo ([`scripts/ci-health.mjs`](scripts/ci-health.mjs)), and keeps one `ci-health` issue open, with a new comment each day, while any of them is failing or a scheduled workflow hasn't run on time (GitHub switches schedules off in a quiet repo without failing anything). The issue closes itself when everything is green.
+
 The `.github/workflows` folders inside `matrix-build-demo` and `pipeline-templates-demo` are example content for those demos. GitHub only runs the root workflow.
 
 ---
