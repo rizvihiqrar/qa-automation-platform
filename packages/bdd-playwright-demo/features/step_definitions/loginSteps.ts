@@ -2,6 +2,7 @@ import { Given, When, Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import { LoginPage } from '../../pageObjects/LoginPage.ts';
 import type { PlaywrightWorld } from '../../support/world.ts';
+import { SAUCEDEMO_PASSWORD } from '../../support/credentials.ts';
 
 Given('I am on the login page', async function (this: PlaywrightWorld) {
   const login = new LoginPage(this.page);
@@ -11,7 +12,7 @@ Given('I am on the login page', async function (this: PlaywrightWorld) {
 When('I enter username {string} and password {string}', async function (this: PlaywrightWorld, username: string, password: string) {
   const login = new LoginPage(this.page);
   await login.enterUsername(username);
-  await login.enterPassword(password);
+  await login.enterPassword(password === '{saucedemo-password}' ? SAUCEDEMO_PASSWORD : password);
 });
 
 When('I click the login button', async function (this: PlaywrightWorld) {

@@ -6,9 +6,10 @@ Feature: User Authentication
   Background:
     Given I am on the login page
 
+  # {saucedemo-password} stands for the Sauce Demo password: SAUCEDEMO_PASSWORD, or the public demo one.
   @smoke
   Scenario: Successful login with valid credentials
-    When I enter username "standard_user" and password "secret_sauce"
+    When I enter username "standard_user" and password "{saucedemo-password}"
     And I click the login button
     Then I should be on the products page
 
@@ -20,7 +21,7 @@ Feature: User Authentication
 
   @regression
   Scenario: Login fails for a locked out user
-    When I enter username "locked_out_user" and password "secret_sauce"
+    When I enter username "locked_out_user" and password "{saucedemo-password}"
     And I click the login button
     Then I should see an error message containing "Sorry, this user has been locked out"
 

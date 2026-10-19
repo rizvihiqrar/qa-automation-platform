@@ -29,6 +29,12 @@ test('buildPrompt embeds the feature text and the selector rules', () => {
   assert.match(prompt, /waitForTimeout/);
 });
 
+test('buildPrompt tells the generator to read the Sauce Demo password from the environment', () => {
+  const prompt = buildPrompt('x');
+  assert.match(prompt, /process\.env\.SAUCEDEMO_PASSWORD/);
+  assert.doesNotMatch(prompt, /password = secret_sauce/);
+});
+
 test('buildPrompt carries the navigation lesson from eval run claude-code-2026-10-16', () => {
   assert.match(buildPrompt('x'), /exists only on the new page/);
 });
