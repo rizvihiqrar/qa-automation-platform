@@ -121,6 +121,67 @@ test('fetchRuns reports API errors clearly', async () => {
   await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl }), /GitHub API returned 403/);
 });
 
+const oneRun = { workflow_runs: [{ id: 7, run_number: 7, created_at: '2026-10-19T08:00:00Z', updated_at: '2026-10-19T08:01:00Z', conclusion: 'success', head_sha: 'a' }] };
+const ok = (body) => ({ ok: true, json: async () => body });
+const status = (code) => ({ ok: false, status: code, json: async () => ({}) });
+const noSleep = { sleep: async () => {}, warn: () => {} };
+
+test('fetchRuns retries a 502 on a jobs request with backoff, then succeeds', async () => {
+  const delays = [];
+  let jobCalls = 0;
+  const fetchImpl = async (url) => {
+    if (url.includes('/workflows/')) return ok(oneRun);
+    return ++jobCalls < 3 ? status(502) : ok({ jobs: [{ name: 'api', conclusion: 'success' }] });
+  };
+  const out = await fetchRuns({ repo: 'o/r', fetchImpl, retryDelayMs: 100, sleep: async (ms) => { delays.push(ms); }, warn: () => {} });
+  assert.equal(jobCalls, 3);
+  assert.deepEqual(delays, [100, 200]);
+  assert.equal(out[0].jobs.length, 1);
+});
+
+test('fetchRuns retries network errors too', async () => {
+  let jobCalls = 0;
+  const fetchImpl = async (url) => {
+    if (url.includes('/workflows/')) return ok(oneRun);
+    if (++jobCalls === 1) throw new TypeError('fetch failed');
+    return ok({ jobs: [] });
+  };
+  const out = await fetchRuns({ repo: 'o/r', fetchImpl, ...noSleep });
+  assert.equal(out.length, 1);
+});
+
+test('fetchRuns skips a run whose jobs keep returning 5xx, with a warning, and keeps the rest', async () => {
+  const two = { workflow_runs: [{ ...oneRun.workflow_runs[0], id: 1 }, { ...oneRun.workflow_runs[0], id: 2 }] };
+  const warnings = [];
+  let badCalls = 0;
+  const fetchImpl = async (url) => {
+    if (url.includes('/workflows/')) return ok(two);
+    if (url.includes('/runs/1/')) { badCalls++; return status(502); }
+    return ok({ jobs: [] });
+  };
+  const out = await fetchRuns({ repo: 'o/r', fetchImpl, retries: 2, sleep: async () => {}, warn: (m) => warnings.push(m) });
+  assert.deepEqual(out.map((r) => r.id), [2]);
+  assert.equal(badCalls, 3, 'first try plus 2 retries');
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /skipping run 1: GitHub API returned 502/);
+});
+
+test('fetchRuns does not retry or skip on a 4xx from a jobs request', async () => {
+  let jobCalls = 0;
+  const fetchImpl = async (url) => {
+    if (url.includes('/workflows/')) return ok(oneRun);
+    jobCalls++;
+    return status(403);
+  };
+  await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl, ...noSleep }), /returned 403/);
+  assert.equal(jobCalls, 1);
+});
+
+test('fetchRuns fails if the run list itself keeps returning 5xx', async () => {
+  const fetchImpl = async () => status(503);
+  await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl, retries: 1, ...noSleep }), /returned 503/);
+});
+
 test('niceMax rounds axis maxima up to clean numbers', () => {
   assert.deepEqual([niceMax(0), niceMax(1.4), niceMax(37), niceMax(56)], [1, 2, 50, 100]);
 });

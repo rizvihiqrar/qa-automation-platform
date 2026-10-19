@@ -34,6 +34,7 @@ Only a job's last attempt counts toward its pass rate, and cancelled or skipped 
 - Every package is listed in a table rather than given its own colour, since 23 colours can't be told apart.
 - Hover and keyboard focus show values; the arrow keys step through runs on the line charts. Everything a tooltip shows is also in a table.
 - Names from the API are escaped, and the embedded chart data can't close its script tag (both tested).
+- An API hiccup doesn't sink the build. The jobs request for a run with many re-run attempts sometimes gets a 502 that clears a few seconds later; four builds on 2026-10-19 failed that way. 5xx and network errors are retried with backoff (2s, 4s, 8s), and a run whose jobs still fail is left out with a warning. A 4xx (bad token, rate limit) still fails the build, since it would hit every run.
 
 The first render used SVG for the bar chart, which scaled its labels up on desktop and down on phones. The bars are now HTML, so text stays at the page's normal size at any width.
 
@@ -97,7 +98,7 @@ Checked by putting two fixed bugs back into qa-practice-api (shipped orders coul
 ## Tests
 
 ```bash
-npm test   # 35 tests
+npm test   # 40 tests
 ```
 
-They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail. For the traceability matrix (13 tests): parsing the real plan (18 requirements, 119 cases), Playwright statuses through nested suites, the worst result winning for a duplicated ID, the requirement status rules, unplanned and orphan cases, a missing or corrupt results file, and escaping plan text. Six deliberate breaks (ignoring missing results, best result winning, skipping nested suites, matching an ID anywhere in a title, unknown statuses passing, unescaped text) each made a test fail.
+They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch` (5xx and network errors retried with backoff, a run that keeps failing skipped, a 4xx failing at once), escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail. For the traceability matrix (13 tests): parsing the real plan (18 requirements, 119 cases), Playwright statuses through nested suites, the worst result winning for a duplicated ID, the requirement status rules, unplanned and orphan cases, a missing or corrupt results file, and escaping plan text. Six deliberate breaks (ignoring missing results, best result winning, skipping nested suites, matching an ID anywhere in a title, unknown statuses passing, unescaped text) each made a test fail.
