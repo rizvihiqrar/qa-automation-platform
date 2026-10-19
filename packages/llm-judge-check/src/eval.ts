@@ -61,6 +61,16 @@ async function promptfoo(config: string): Promise<PromptfooRow[]> {
   return rows;
 }
 
+/**
+ * The link from a test to its trace: the ID the provider returned must be the one
+ * derived here, independently, from the suite, the run, the case and the prompt.
+ */
+export function traceIdProblem(suite: Suite, row: PromptfooRow, promptSha: string): string | null {
+  const want = traceIdFor(suite, row.provider.label!, row.vars.id, promptSha);
+  const got = row.response?.metadata?.traceId;
+  return got === want ? null : `${row.provider.label} ${row.vars.id}: trace ID ${got ?? '(none)'}, expected ${want}`;
+}
+
 export interface Checked {
   config: string;
   suite: Suite;
@@ -87,10 +97,8 @@ async function check(
       problems.push(`${config} ${row.provider.label} ${row.vars.id}: promptfoo rendered a different prompt from the one the judge answered`);
       continue;
     }
-    // The link from a test to its trace: derived here independently of the provider.
-    const want = traceIdFor(suite, row.provider.label!, row.vars.id, recorded);
-    const got = row.response?.metadata?.traceId;
-    if (got !== want) problems.push(`${config} ${row.provider.label} ${row.vars.id}: trace ID ${got ?? '(none)'}, expected ${want}`);
+    const wrong = traceIdProblem(suite, row, recorded);
+    if (wrong) problems.push(`${config} ${wrong}`);
   }
   const configured = new Set(rows.map((r) => r.provider.label));
   for (const run of runs) {

@@ -19,8 +19,8 @@ const job = ci.split('\n  langfuse-traces:\n')[1]?.split(/\n {2}[a-z-]+:\n/)[0] 
 
 test('both Langfuse images are pinned to one release', () => {
   const images = [...compose.matchAll(/image: \S+\/langfuse\/(langfuse(?:-worker)?):(\S+)/g)].map((m) => `${m[1]}:${m[2]}`);
-  assert.deepEqual(images.sort(), ['langfuse-worker:4.51.0', 'langfuse:4.51.0']);
-  assert.match(compose, /blob\/v4\.51\.0\/docker-compose\.yml/);
+  assert.deepEqual(images.sort(), ['langfuse-worker:4.50.0', 'langfuse:4.50.0']);
+  assert.match(compose, /blob\/v4\.50\.0\/docker-compose\.yml/);
 });
 
 test('every other image names a version', () => {

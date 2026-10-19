@@ -1,10 +1,10 @@
 # Self-hosted Langfuse for the Day 42 tracing check (src/traces.ts), used by the
 # langfuse-traces CI job and, optionally, on a machine with Docker.
 #
-# This is Langfuse's own docker-compose.yml from release v4.51.0
-# (https://github.com/langfuse/langfuse/blob/v4.51.0/docker-compose.yml) with three
+# This is Langfuse's own docker-compose.yml from release v4.50.0
+# (https://github.com/langfuse/langfuse/blob/v4.50.0/docker-compose.yml) with three
 # changes, so a run can't change under us and nothing phones home:
-#   - langfuse and langfuse-worker pinned to 4.51.0 (upstream: the floating tag 4)
+#   - langfuse and langfuse-worker pinned to 4.50.0 (upstream: the floating tag 4)
 #   - TELEMETRY_ENABLED defaults to false (upstream: true)
 #   - this comment
 # Every password below is Langfuse's placeholder. The stack is for throwaway local
@@ -17,7 +17,7 @@
 # External connections from other machines will not be able to reach these services directly.
 services:
   langfuse-worker:
-    image: docker.langfuse.com/langfuse/langfuse-worker:4.51.0
+    image: docker.langfuse.com/langfuse/langfuse-worker:4.50.0
     restart: always
     depends_on: &langfuse-depends-on
       postgres:
@@ -119,7 +119,7 @@ services:
       LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION: ${LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION:-}
 
   langfuse-web:
-    image: docker.langfuse.com/langfuse/langfuse:4.51.0
+    image: docker.langfuse.com/langfuse/langfuse:4.50.0
     restart: always
     depends_on: *langfuse-depends-on
     ports:

@@ -5,6 +5,7 @@ import { after, before, test } from 'node:test';
 // @ts-expect-error plain JavaScript module with no type declarations
 import ReplayProvider from '../promptfoo/replay-provider.mjs';
 import { loadRuns } from '../src/record.ts';
+import { traceIdProblem } from '../src/eval.ts';
 import { loadRedRuns } from '../src/redteam-record.ts';
 import { loadItems, render, sha256, template } from '../src/render.ts';
 import {
@@ -122,6 +123,19 @@ test('the replay provider returns the derived trace ID, traced or not', async ()
   const res = await new ReplayProvider({ config: { run: 'haiku-v2-1' } }).callApi(prompt, { vars: { id: item.id } });
   const want = traceIdFor('day40', 'haiku-v2-1', item.id, loadRuns().find((r) => r.name === 'haiku-v2-1')!.prompts[item.id]!);
   assert.deepEqual(res.metadata, { traceId: want, traced: false });
+});
+
+test('the eval refuses a result whose trace ID is missing or not the derived one', () => {
+  const sha = loadRuns().find((r) => r.name === 'haiku-1')!.prompts.J01!;
+  const want = traceIdFor('day40', 'haiku-1', 'J01', sha);
+  const row = (traceId?: string) => ({
+    success: true, prompt: { raw: '' }, vars: { id: 'J01', label: 'covered' }, provider: { id: 'replay:haiku-1', label: 'haiku-1' },
+    response: { metadata: traceId ? { traceId } : {} },
+  });
+  assert.equal(traceIdProblem('day40', row(want), sha), null);
+  assert.match(traceIdProblem('day40', row('0'.repeat(31) + '1'), sha)!, /haiku-1 J01: trace ID 0+1, expected/);
+  assert.match(traceIdProblem('day40', row(), sha)!, /trace ID \(none\)/);
+  assert.match(traceIdProblem('redteam', row(want), sha)!, /expected/); // same case, other suite
 });
 
 function withLangfuse<T>(lf: Fake['lf'], fn: () => T): T {
