@@ -1,4 +1,4 @@
-// Diagnosis of a CI failure on main that a re-run confirmed (.github/workflows/ci-recheck.yml):
+// Diagnosis of a workflow failure on main that a re-run confirmed (.github/workflows/ci-recheck.yml):
 // which jobs failed, the error lines from their logs, the last green run and the commits
 // since it, and a prompt to paste into a Claude Code session to fix it. Nothing here
 // changes code; a person starts the fix and reviews it.
@@ -42,15 +42,16 @@ export function report({ repo, run, failedJobs, lastGreen, commits, commands }) 
     ? [`Last green run on main: [#${lastGreen.number}](${lastGreen.url}) at \`${lastGreen.sha.slice(0, 7)}\`. Commits since:`, '',
       ...(commits.length ? commits.map((c) => `- \`${c.sha.slice(0, 7)}\` ${c.message}`) : ['- none (the same commit passed before: suspect the environment or a live site)'])]
     : ['No green run on main in the recent history.'];
+  const workflow = run.workflow ?? 'CI';
   const prompt = [
-    `Fix the CI failure on main of ${repo}. Read my memory and github-portfolio-notes.md first.`,
+    `Fix the ${workflow} failure on main of ${repo}. Read my memory and github-portfolio-notes.md first.`,
     `Failing run: ${run.url} (it failed again when re-run, so it is not a one-off).`,
     `Failing jobs: ${failedJobs.map((j) => j.name).join(', ')}.`,
     lastGreen ? `Last green run: ${lastGreen.url} at ${lastGreen.sha.slice(0, 7)}; ${commits.length} commit(s) since.` : '',
     'Reproduce it locally with the job\'s CI command, find the root cause (don\'t just retry, raise a timeout or loosen a check without saying why), fix it with a test that fails without the fix, then ship it on a branch and merge on green CI.',
   ].filter(Boolean).join(' ');
   return [
-    `**CI failed on main and failed again when re-run:** [run #${run.number}](${run.url}), \`${run.sha.slice(0, 7)}\`, ${run.event}.`,
+    `**${workflow} failed on main and failed again when re-run:** [run #${run.number}](${run.url}), \`${run.sha.slice(0, 7)}\`, ${run.event}.`,
     '',
     ...jobs.flatMap((j) => [j, '']),
     ...since,
@@ -77,7 +78,7 @@ if (isMain) {
   const repo = arg('--repo', process.env.GITHUB_REPOSITORY ?? 'rizvihiqrar/qa-automation-platform');
   const id = arg('--run');
   const r = await api(`/repos/${repo}/actions/runs/${id}`, token);
-  const run = { number: r.run_number, url: r.html_url, sha: r.head_sha, event: r.event, attempt: r.run_attempt };
+  const run = { workflow: r.name, number: r.run_number, url: r.html_url, sha: r.head_sha, event: r.event, attempt: r.run_attempt };
   const { jobs } = await api(`/repos/${repo}/actions/runs/${id}/attempts/${r.run_attempt}/jobs?per_page=100`, token);
   const failedJobs = [];
   for (const j of jobs.filter((x) => x.conclusion === 'failure')) {

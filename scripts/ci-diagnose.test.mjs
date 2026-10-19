@@ -57,6 +57,16 @@ test('the report names the failure, what changed since green, and a fix prompt',
   assert.match(md, /don't just retry, raise a timeout or loosen a check without saying why/);
 });
 
+test('a failure of another workflow is named as that workflow, in the heading and the prompt', () => {
+  const md = report({
+    repo: 'me/repo', run: { workflow: 'Dashboard', number: 7, url: 'u', sha: 'abcdef1', event: 'workflow_run' },
+    failedJobs: [{ name: 'build', url: 'j', errors: ['GitHub API returned 502'] }], lastGreen: null, commits: [], commands: {},
+  });
+  assert.match(md, /^\*\*Dashboard failed on main and failed again when re-run:\*\*/);
+  assert.match(md, /```text\nFix the Dashboard failure on main of me\/repo\./);
+  assert.ok(!/CI failed/.test(md));
+});
+
 test('with no commits since the last green run, the report points at the environment', () => {
   const md = report({
     repo: 'me/repo', run: { number: 9, url: 'u', sha: 'abcdef1', event: 'schedule' }, failedJobs: [],
