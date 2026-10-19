@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { badCitations } from './attribution.ts';
 import { lf, type KeyEntry } from './build-cases.ts';
 import { loadRuns, type Run } from './record.ts';
 import { loadItems, PKG } from './render.ts';
@@ -166,12 +167,30 @@ function build(): { report: string; summary: string } {
   }
   md.push('');
 
+  // Added on Day 41: answers whose cited test is not in their own case's spec.
+  const bad = badCitations(runs, items);
+  const where = (id: string) => `${(key[id] as KeyEntry).feature} ${(key[id] as KeyEntry).criterion}`;
+  md.push(
+    '## Answers filed under the wrong case',
+    '',
+    `Every answer names the test it judged. ${bad.length} of ${runs.reduce((n, r) => n + r.answers.length, 0)} name a test that is not in their own case's spec. ${bad.filter((b) => b.kind === 'elsewhere').length} of those name a test from another feature's spec: the judge wrote its answer for one case under a neighbouring case's ID. The scores above count each answer under the ID it was filed under, as a pipeline reading the judge's output would. Found by \`src/attribution.ts\` on Day 41.`,
+    '',
+    '| Run | Filed under | Cited test | That test is in |',
+    '|---|---|---|---|',
+  );
+  for (const b of bad) {
+    const features = [...new Set(b.foundIn.map((id) => (key[id] as KeyEntry).feature))];
+    md.push(`| ${b.run} | ${b.id} (${where(b.id)}) | ${b.test} | ${b.kind === 'elsewhere' ? `the ${features.join(', ')} spec` : 'no spec (invented)'} |`);
+  }
+  md.push('');
+
   const summary = JSON.stringify(
     {
       cases: items.length,
       labels: Object.fromEntries(VERDICTS.map((v) => [v, total(v, ids())])),
       judges: rows.map((s) => ({ ...s, kappaCi: s.kappaCi, agreementCi: s.agreementCi })),
       runs: perRun,
+      badCitations: bad.map(({ run, id, test, kind }) => ({ run, id, test, kind })),
     },
     (_, v) => (typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 10000) / 10000 : v),
     2,

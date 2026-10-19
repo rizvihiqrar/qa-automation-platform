@@ -133,3 +133,18 @@ Every case where at least one run disagreed. Verdicts listed per run.
 | J64 | product-details C3 (H06) | partial | haiku-1: missing<br>haiku-2: missing<br>haiku-3: missing<br>haiku-v2-1: partial<br>haiku-v2-2: partial<br>haiku-v2-3: partial<br>sonnet-1: missing<br>sonnet-2: missing<br>sonnet-3: missing<br>sonnet-v2-1: partial<br>sonnet-v2-2: partial<br>sonnet-v2-3: partial | The badge check is wrapped in an if (await badge.isVisible()) guard, so when the badge is absent the test passes without asserting anything. |
 | J65 | checkout-info C2 (H04) | partial | haiku-1: missing<br>haiku-2: missing<br>haiku-3: missing<br>haiku-v2-1: missing<br>haiku-v2-2: missing<br>haiku-v2-3: missing<br>sonnet-1: missing<br>sonnet-2: missing<br>sonnet-3: missing<br>sonnet-v2-1: partial<br>sonnet-v2-2: partial<br>sonnet-v2-3: missing | The test asserts the error is not 'Error: Last Name is required' rather than asserting the named 'Error: First Name is required' message, so it passes whether or not the correct error appears. |
 | J67 | inventory-sort C4 (H05) | missing | haiku-1: missing<br>haiku-2: partial<br>haiku-3: covered<br>haiku-v2-1: missing<br>haiku-v2-2: missing<br>haiku-v2-3: missing<br>sonnet-1: missing<br>sonnet-2: missing<br>sonnet-3: missing<br>sonnet-v2-1: missing<br>sonnet-v2-2: missing<br>sonnet-v2-3: missing | The test selects low-to-high sorting and checks the last item, so the described high-to-low sort is never performed and the first-item outcome is only inferred. |
+
+## Answers filed under the wrong case
+
+Every answer names the test it judged. 8 of 804 name a test that is not in their own case's spec. 8 of those name a test from another feature's spec: the judge wrote its answer for one case under a neighbouring case's ID. The scores above count each answer under the ID it was filed under, as a pipeline reading the judge's output would. Found by `src/attribution.ts` on Day 41.
+
+| Run | Filed under | Cited test | That test is in |
+|---|---|---|---|
+| haiku-v2-3 | J41 (inventory-sort C2) | back home returns to the products page @regression | the checkout-complete spec |
+| haiku-v2-3 | J42 (checkout-complete C4) | login button is visible again after logout @regression | the logout spec |
+| haiku-v2-3 | J43 (logout C2) | name Z to A shows the red T-shirt first @regression | the inventory-sort spec |
+| haiku-v2-3 | J44 (inventory-sort C1) | details page shows the same name and price as the list @regression | the product-details spec |
+| haiku-v2-3 | J45 (product-details C2) | default sort is name A to Z with Sauce Labs Backpack first @smoke | the inventory-sort spec |
+| sonnet-2 | J28 (checkout-overview C1) | adding a product sets the cart badge to 1 @smoke | the cart spec |
+| sonnet-2 | J29 (cart C1) | locked-out user sees a locked-out message @regression | the login spec |
+| sonnet-2 | J30 (login C3) | overview lists the backpack @smoke | the checkout-overview spec |

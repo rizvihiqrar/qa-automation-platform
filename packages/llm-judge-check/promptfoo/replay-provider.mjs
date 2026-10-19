@@ -26,7 +26,7 @@ export default class ReplayProvider {
     const id = context?.vars?.id;
     const answer = this.recorded.answers.find((a) => a.id === id);
     if (!answer) return { error: `${this.run} has no answer for ${id}` };
-    if (false) {
+    if (sha256(prompt) !== this.recorded.prompts[id]) {
       return { error: `${id}: the rendered prompt differs from the one ${this.run} answered` };
     }
     const { verdict, test, reason } = answer;
