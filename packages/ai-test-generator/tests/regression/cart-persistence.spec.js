@@ -13,6 +13,10 @@ test.describe('Cart Persistence', () => {
 
   test('item stays in the cart after opening another product @smoke', async ({ page }) => {
     await page.click('[data-test="item-0-title-link"]');
+    // The second human fix (eval/runs/claude-code-2026-10-16/FIXES.md): without this
+    // wait, the cart link was clicked before the details page had rendered in 5 of 20
+    // runs, so the test didn't always exercise "after opening another product's details".
+    await expect(page.locator('[data-test="back-to-products"]')).toBeVisible();
     await page.click('[data-test="shopping-cart-link"]');
 
     await expect(page.locator('[data-test="inventory-item-name"]')).toHaveText(['Sauce Labs Backpack']);

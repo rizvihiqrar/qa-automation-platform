@@ -19,5 +19,26 @@
     "library": "node-forge",
     "reason": "RSA PKCS#1 v1.5 signature verification, inside Newman's runtime for certificate and signing auth types. The collection uses neither (one bearer header). 1.4.0, the latest release, is still affected.",
     "review_by": "2027-01-18"
+  },
+  {
+    "package": "llm-judge-check",
+    "advisory": "GHSA-86w9-cpqp-85rv",
+    "library": "node-forge",
+    "reason": "Inside promptfoo, through jks-js, which reads Java keystores for client certificates in its HTTP provider. This package runs only a local replay provider: no HTTP provider, no certificates. 1.4.0, the latest release, is still affected.",
+    "review_by": "2027-01-18"
+  },
+  {
+    "package": "llm-judge-check",
+    "advisory": "GHSA-c475-qrg2-pj4r",
+    "library": "basic-ftp",
+    "reason": "Inside promptfoo's proxy support (proxy-agent > pac-proxy-agent > get-uri), reached only when a PAC proxy file is fetched over ftp://. No proxy is configured and the eval makes no network calls. Fixed only in basic-ftp 6, which get-uri 8 does not accept.",
+    "review_by": "2027-01-18"
+  },
+  {
+    "package": "llm-judge-check",
+    "advisory": "GHSA-vfj7-8cjw-p6xm",
+    "library": "braces",
+    "reason": "Inside chokidar 3, the optional file watcher nunjucks loads for template watch mode. promptfoo renders our own prompt template once and never watches it. No fixed braces release exists.",
+    "review_by": "2027-01-18"
   }
 ]

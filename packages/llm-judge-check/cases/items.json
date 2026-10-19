@@ -1,0 +1,404 @@
+[
+  {
+    "id": "J01",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-23.spec.js",
+    "criterion": "Clicking Cancel returns to the cart page"
+  },
+  {
+    "id": "J02",
+    "feature": "features/checkout-overview.txt",
+    "spec": "specs/spec-10.spec.js",
+    "criterion": "Clicking Cancel on the overview returns to the products page"
+  },
+  {
+    "id": "J03",
+    "feature": "features/logout.txt",
+    "spec": "specs/spec-22.spec.js",
+    "criterion": "After logging out, going directly to /inventory.html shows an error containing \"You can only access '/inventory.html' when you are logged in\""
+  },
+  {
+    "id": "J04",
+    "feature": "features/checkout-complete.txt",
+    "spec": "specs/spec-13.spec.js",
+    "criterion": "After finishing, the cart badge is no longer shown"
+  },
+  {
+    "id": "J05",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-18.spec.js",
+    "criterion": "Removing a product decrements the badge count"
+  },
+  {
+    "id": "J06",
+    "feature": "features/reset-app-state.txt",
+    "spec": "specs/spec-11.spec.js",
+    "criterion": "After resetting, the user is still logged in and can see the products page"
+  },
+  {
+    "id": "J07",
+    "feature": "features/product-details.txt",
+    "spec": "specs/spec-06.spec.js",
+    "criterion": "Clicking a product's name opens its details page"
+  },
+  {
+    "id": "J08",
+    "feature": "features/product-details.txt",
+    "spec": "specs/spec-06.spec.js",
+    "criterion": "The details page shows the same name and price as the product list"
+  },
+  {
+    "id": "J09",
+    "feature": "features/logout.txt",
+    "spec": "specs/spec-25.spec.js",
+    "criterion": "After logging out, going directly to /inventory.html shows an error containing \"You can only access '/inventory.html' when you are logged in\""
+  },
+  {
+    "id": "J10",
+    "feature": "features/checkout-overview.txt",
+    "spec": "specs/spec-08.spec.js",
+    "criterion": "The total reads \"Total: $32.39\""
+  },
+  {
+    "id": "J11",
+    "feature": "features/cart-persistence.txt",
+    "spec": "specs/spec-24.spec.js",
+    "criterion": "An item added to the cart is still in the cart after opening another product's details page"
+  },
+  {
+    "id": "J12",
+    "feature": "features/login.txt",
+    "spec": "specs/spec-02.spec.js",
+    "criterion": "Logging in with valid credentials redirects to the products page"
+  },
+  {
+    "id": "J13",
+    "feature": "features/logout.txt",
+    "spec": "specs/spec-20.spec.js",
+    "criterion": "Opening the menu and clicking Logout returns to the login page"
+  },
+  {
+    "id": "J14",
+    "feature": "features/checkout-complete.txt",
+    "spec": "specs/spec-26.spec.js",
+    "criterion": "After finishing, the cart badge is no longer shown"
+  },
+  {
+    "id": "J15",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-19.spec.js",
+    "criterion": "Continuing with a first name but no last name shows \"Error: Last Name is required\""
+  },
+  {
+    "id": "J16",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-15.spec.js",
+    "criterion": "The page shows 6 products after any sort"
+  },
+  {
+    "id": "J17",
+    "feature": "features/login.txt",
+    "spec": "specs/spec-02.spec.js",
+    "criterion": "Submitting the login form without entering any credentials shows \"Username is required\""
+  },
+  {
+    "id": "J18",
+    "feature": "features/checkout-overview.txt",
+    "spec": "specs/spec-10.spec.js",
+    "criterion": "The total reads \"Total: $32.39\""
+  },
+  {
+    "id": "J19",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-09.spec.js",
+    "criterion": "The page shows 6 products after any sort"
+  },
+  {
+    "id": "J20",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-15.spec.js",
+    "criterion": "Sorting by Price (low to high) shows \"Sauce Labs Onesie\" first, priced $7.99"
+  },
+  {
+    "id": "J21",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-19.spec.js",
+    "criterion": "Continuing with no first name shows \"Error: First Name is required\""
+  },
+  {
+    "id": "J22",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-04.spec.js",
+    "criterion": "Sorting by Price (low to high) shows \"Sauce Labs Onesie\" first, priced $7.99"
+  },
+  {
+    "id": "J23",
+    "feature": "features/checkout-overview.txt",
+    "spec": "specs/spec-10.spec.js",
+    "criterion": "The tax reads \"Tax: $2.40\""
+  },
+  {
+    "id": "J24",
+    "feature": "features/login.txt",
+    "spec": "specs/spec-12.spec.js",
+    "criterion": "Submitting the login form without entering any credentials shows \"Username is required\""
+  },
+  {
+    "id": "J25",
+    "feature": "features/reset-app-state.txt",
+    "spec": "specs/spec-11.spec.js",
+    "criterion": "After resetting, the cart page shows no items"
+  },
+  {
+    "id": "J26",
+    "feature": "features/checkout-complete.txt",
+    "spec": "specs/spec-05.spec.js",
+    "criterion": "Clicking Finish on the overview shows the \"Checkout: Complete!\" page"
+  },
+  {
+    "id": "J27",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-16.spec.js",
+    "criterion": "Adding a product increments the cart badge count by 1"
+  },
+  {
+    "id": "J28",
+    "feature": "features/checkout-overview.txt",
+    "spec": "specs/spec-10.spec.js",
+    "criterion": "With only \"Sauce Labs Backpack\" in the cart, the overview lists that item"
+  },
+  {
+    "id": "J29",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-18.spec.js",
+    "criterion": "Adding a product increments the cart badge count by 1"
+  },
+  {
+    "id": "J30",
+    "feature": "features/login.txt",
+    "spec": "specs/spec-02.spec.js",
+    "criterion": "Logging in as a locked-out user shows a message containing \"Sorry, this user has been locked out\""
+  },
+  {
+    "id": "J31",
+    "feature": "features/logout.txt",
+    "spec": "specs/spec-22.spec.js",
+    "criterion": "Opening the menu and clicking Logout returns to the login page"
+  },
+  {
+    "id": "J32",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-18.spec.js",
+    "criterion": "Removing the last item from the cart hides the cart badge entirely"
+  },
+  {
+    "id": "J33",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-19.spec.js",
+    "criterion": "Continuing with all three fields filled opens the \"Checkout: Overview\" step"
+  },
+  {
+    "id": "J34",
+    "feature": "features/cart-persistence.txt",
+    "spec": "specs/spec-24.spec.js",
+    "criterion": "An item added to the cart is still counted in the badge after reloading the products page"
+  },
+  {
+    "id": "J35",
+    "feature": "features/checkout-overview.txt",
+    "spec": "specs/spec-10.spec.js",
+    "criterion": "The item total reads \"Item total: $29.99\""
+  },
+  {
+    "id": "J36",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-19.spec.js",
+    "criterion": "Continuing with first and last name but no postal code shows \"Error: Postal Code is required\""
+  },
+  {
+    "id": "J37",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-19.spec.js",
+    "criterion": "Clicking Cancel returns to the cart page"
+  },
+  {
+    "id": "J38",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-18.spec.js",
+    "criterion": "Adding two different products shows a badge count of 2"
+  },
+  {
+    "id": "J39",
+    "feature": "features/checkout-complete.txt",
+    "spec": "specs/spec-13.spec.js",
+    "criterion": "Clicking Finish on the overview shows the \"Checkout: Complete!\" page"
+  },
+  {
+    "id": "J40",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-18.spec.js",
+    "criterion": "The cart page shows the correct items after navigating to it"
+  },
+  {
+    "id": "J41",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-15.spec.js",
+    "criterion": "Sorting by Name (Z to A) shows \"Test.allTheThings() T-Shirt (Red)\" first"
+  },
+  {
+    "id": "J42",
+    "feature": "features/checkout-complete.txt",
+    "spec": "specs/spec-13.spec.js",
+    "criterion": "Clicking \"Back Home\" returns to the products page"
+  },
+  {
+    "id": "J43",
+    "feature": "features/logout.txt",
+    "spec": "specs/spec-22.spec.js",
+    "criterion": "After logging out, the login button is visible again"
+  },
+  {
+    "id": "J44",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-15.spec.js",
+    "criterion": "The default sort is Name (A to Z), and the first product is \"Sauce Labs Backpack\""
+  },
+  {
+    "id": "J45",
+    "feature": "features/product-details.txt",
+    "spec": "specs/spec-17.spec.js",
+    "criterion": "The details page shows the same name and price as the product list"
+  },
+  {
+    "id": "J46",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-19.spec.js",
+    "criterion": "From the cart, clicking Checkout opens the \"Checkout: Your Information\" step"
+  },
+  {
+    "id": "J47",
+    "feature": "features/login.txt",
+    "spec": "specs/spec-07.spec.js",
+    "criterion": "Logging in with an incorrect password shows an error message containing \"Username and password do not match\""
+  },
+  {
+    "id": "J48",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-03.spec.js",
+    "criterion": "Removing the last item from the cart hides the cart badge entirely"
+  },
+  {
+    "id": "J49",
+    "feature": "features/login.txt",
+    "spec": "specs/spec-02.spec.js",
+    "criterion": "Logging in with an incorrect password shows an error message containing \"Username and password do not match\""
+  },
+  {
+    "id": "J50",
+    "feature": "features/product-details.txt",
+    "spec": "specs/spec-06.spec.js",
+    "criterion": "Clicking \"Back to products\" returns to the products page"
+  },
+  {
+    "id": "J51",
+    "feature": "features/reset-app-state.txt",
+    "spec": "specs/spec-01.spec.js",
+    "criterion": "After resetting, the user is still logged in and can see the products page"
+  },
+  {
+    "id": "J52",
+    "feature": "features/cart-persistence.txt",
+    "spec": "specs/spec-21.spec.js",
+    "criterion": "Items in the cart page match the items that were added"
+  },
+  {
+    "id": "J53",
+    "feature": "features/login.txt",
+    "spec": "specs/spec-02.spec.js",
+    "criterion": "The products page should display at least one product after successful login"
+  },
+  {
+    "id": "J54",
+    "feature": "features/product-details.txt",
+    "spec": "specs/spec-06.spec.js",
+    "criterion": "Adding the product to the cart from the details page shows a cart badge of 1"
+  },
+  {
+    "id": "J55",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-15.spec.js",
+    "criterion": "Sorting by Price (high to low) shows \"Sauce Labs Fleece Jacket\" first, priced $49.99"
+  },
+  {
+    "id": "J56",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-14.spec.js",
+    "criterion": "Continuing with a first name but no last name shows \"Error: Last Name is required\""
+  },
+  {
+    "id": "J57",
+    "feature": "features/cart-persistence.txt",
+    "spec": "specs/spec-24.spec.js",
+    "criterion": "Items in the cart page match the items that were added"
+  },
+  {
+    "id": "J58",
+    "feature": "features/reset-app-state.txt",
+    "spec": "specs/spec-11.spec.js",
+    "criterion": "With items in the cart, choosing \"Reset App State\" from the menu removes the cart badge"
+  },
+  {
+    "id": "J59",
+    "feature": "features/checkout-complete.txt",
+    "spec": "specs/spec-13.spec.js",
+    "criterion": "The page shows the heading \"Thank you for your order!\""
+  },
+  {
+    "id": "J60",
+    "feature": "features/checkout-overview.txt",
+    "spec": "specs/spec-29.spec.js",
+    "criterion": "The tax reads \"Tax: $2.40\""
+  },
+  {
+    "id": "J61",
+    "feature": "features/logout.txt",
+    "spec": "specs/spec-34.spec.js",
+    "criterion": "After logging out, the login button is visible again"
+  },
+  {
+    "id": "J62",
+    "feature": "features/cart.txt",
+    "spec": "specs/spec-33.spec.js",
+    "criterion": "Adding two different products shows a badge count of 2"
+  },
+  {
+    "id": "J63",
+    "feature": "features/reset-app-state.txt",
+    "spec": "specs/spec-28.spec.js",
+    "criterion": "After resetting, the cart page shows no items"
+  },
+  {
+    "id": "J64",
+    "feature": "features/product-details.txt",
+    "spec": "specs/spec-32.spec.js",
+    "criterion": "Adding the product to the cart from the details page shows a cart badge of 1"
+  },
+  {
+    "id": "J65",
+    "feature": "features/checkout-info.txt",
+    "spec": "specs/spec-27.spec.js",
+    "criterion": "Continuing with no first name shows \"Error: First Name is required\""
+  },
+  {
+    "id": "J66",
+    "feature": "features/cart-persistence.txt",
+    "spec": "specs/spec-30.spec.js",
+    "criterion": "An item added to the cart is still counted in the badge after reloading the products page"
+  },
+  {
+    "id": "J67",
+    "feature": "features/inventory-sort.txt",
+    "spec": "specs/spec-31.spec.js",
+    "criterion": "Sorting by Price (high to low) shows \"Sauce Labs Fleece Jacket\" first, priced $49.99"
+  }
+]

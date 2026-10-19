@@ -1,0 +1,12 @@
+Feature: Inventory Sorting
+
+As a logged-in customer,
+I want to sort the product list,
+So that I can find products by name or price.
+
+Acceptance Criteria:
+- The default sort is Name (A to Z), and the first product is "Sauce Labs Backpack"
+- Sorting by Name (Z to A) shows "Test.allTheThings() T-Shirt (Red)" first
+- Sorting by Price (low to high) shows "Sauce Labs Onesie" first, priced $7.99
+- Sorting by Price (high to low) shows "Sauce Labs Fleece Jacket" first, priced $49.99
+- The page shows 6 products after any sort

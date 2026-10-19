@@ -1,0 +1,12 @@
+Feature: Shopping Cart
+
+As a logged-in customer,
+I want to add and remove items from my shopping cart,
+So that I can manage my selections before checking out.
+
+Acceptance Criteria:
+- Adding a product increments the cart badge count by 1
+- Adding two different products shows a badge count of 2
+- Removing a product decrements the badge count
+- Removing the last item from the cart hides the cart badge entirely
+- The cart page shows the correct items after navigating to it

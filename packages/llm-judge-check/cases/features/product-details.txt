@@ -1,0 +1,11 @@
+Feature: Product Details
+
+As a customer,
+I want to open a product's details,
+So that I can read more before I buy.
+
+Acceptance Criteria:
+- Clicking a product's name opens its details page
+- The details page shows the same name and price as the product list
+- Adding the product to the cart from the details page shows a cart badge of 1
+- Clicking "Back to products" returns to the products page

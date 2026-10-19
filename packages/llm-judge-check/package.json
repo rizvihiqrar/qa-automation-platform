@@ -1,0 +1,24 @@
+{
+  "name": "llm-judge-check",
+  "version": "1.0.0",
+  "description": "Checks an LLM-as-judge against human labels: agreement, Cohen's kappa, and where the judge is wrong",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build-cases": "node src/build-cases.ts",
+    "review-sheet": "node src/review-sheet.ts",
+    "record": "node src/record.ts",
+    "report": "node src/report.ts",
+    "eval": "node src/eval.ts",
+    "evidence": "playwright test",
+    "check": "node src/build-cases.ts --check && node src/report.ts --check && node src/eval.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "promptfoo": "^0.124.1"
+  }
+}

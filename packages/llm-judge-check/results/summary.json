@@ -1,0 +1,745 @@
+{
+  "cases": 67,
+  "labels": {
+    "covered": 43,
+    "partial": 15,
+    "missing": 9
+  },
+  "judges": [
+    {
+      "judge": "haiku",
+      "cases": 67,
+      "agree": 57,
+      "agreement": 0.8507,
+      "agreementCi": {
+        "low": 0.7466,
+        "high": 0.9169
+      },
+      "kappa": 0.7089,
+      "kappaCi": {
+        "low": 0.53,
+        "high": 0.8594
+      },
+      "weightedKappa": 0.7538,
+      "flags": {
+        "weak": 24,
+        "caught": 19,
+        "falseAlarms": 3,
+        "recall": 0.7917,
+        "precision": 0.8636,
+        "recallCi": {
+          "low": 0.5953,
+          "high": 0.9076
+        }
+      },
+      "confusion": {
+        "covered": {
+          "covered": 40,
+          "partial": 1,
+          "missing": 2
+        },
+        "partial": {
+          "covered": 5,
+          "partial": 8,
+          "missing": 2
+        },
+        "missing": {
+          "covered": 0,
+          "partial": 0,
+          "missing": 9
+        }
+      },
+      "wrong": [
+        {
+          "id": "J07",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J08",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J11",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J13",
+          "human": "covered",
+          "judge": "missing"
+        },
+        {
+          "id": "J27",
+          "human": "covered",
+          "judge": "partial"
+        },
+        {
+          "id": "J40",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J57",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J62",
+          "human": "covered",
+          "judge": "missing"
+        },
+        {
+          "id": "J64",
+          "human": "partial",
+          "judge": "missing"
+        },
+        {
+          "id": "J65",
+          "human": "partial",
+          "judge": "missing"
+        }
+      ]
+    },
+    {
+      "judge": "haiku-v2",
+      "cases": 67,
+      "agree": 61,
+      "agreement": 0.9104,
+      "agreementCi": {
+        "low": 0.8181,
+        "high": 0.9583
+      },
+      "kappa": 0.8223,
+      "kappaCi": {
+        "low": 0.669,
+        "high": 0.9423
+      },
+      "weightedKappa": 0.8511,
+      "flags": {
+        "weak": 24,
+        "caught": 20,
+        "falseAlarms": 1,
+        "recall": 0.8333,
+        "precision": 0.9524,
+        "recallCi": {
+          "low": 0.6415,
+          "high": 0.9332
+        }
+      },
+      "confusion": {
+        "covered": {
+          "covered": 42,
+          "partial": 0,
+          "missing": 1
+        },
+        "partial": {
+          "covered": 4,
+          "partial": 10,
+          "missing": 1
+        },
+        "missing": {
+          "covered": 0,
+          "partial": 0,
+          "missing": 9
+        }
+      },
+      "wrong": [
+        {
+          "id": "J07",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J11",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J40",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J57",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J62",
+          "human": "covered",
+          "judge": "missing"
+        },
+        {
+          "id": "J65",
+          "human": "partial",
+          "judge": "missing"
+        }
+      ]
+    },
+    {
+      "judge": "sonnet",
+      "cases": 67,
+      "agree": 56,
+      "agreement": 0.8358,
+      "agreementCi": {
+        "low": 0.7294,
+        "high": 0.9058
+      },
+      "kappa": 0.671,
+      "kappaCi": {
+        "low": 0.494,
+        "high": 0.8269
+      },
+      "weightedKappa": 0.726,
+      "flags": {
+        "weak": 24,
+        "caught": 18,
+        "falseAlarms": 2,
+        "recall": 0.75,
+        "precision": 0.9,
+        "recallCi": {
+          "low": 0.551,
+          "high": 0.88
+        }
+      },
+      "confusion": {
+        "covered": {
+          "covered": 41,
+          "partial": 1,
+          "missing": 1
+        },
+        "partial": {
+          "covered": 5,
+          "partial": 7,
+          "missing": 3
+        },
+        "missing": {
+          "covered": 1,
+          "partial": 0,
+          "missing": 8
+        }
+      },
+      "wrong": [
+        {
+          "id": "J07",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J08",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J10",
+          "human": "partial",
+          "judge": "missing"
+        },
+        {
+          "id": "J11",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J27",
+          "human": "covered",
+          "judge": "partial"
+        },
+        {
+          "id": "J40",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J57",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J62",
+          "human": "covered",
+          "judge": "missing"
+        },
+        {
+          "id": "J63",
+          "human": "missing",
+          "judge": "covered"
+        },
+        {
+          "id": "J64",
+          "human": "partial",
+          "judge": "missing"
+        },
+        {
+          "id": "J65",
+          "human": "partial",
+          "judge": "missing"
+        }
+      ]
+    },
+    {
+      "judge": "sonnet-v2",
+      "cases": 67,
+      "agree": 61,
+      "agreement": 0.9104,
+      "agreementCi": {
+        "low": 0.8181,
+        "high": 0.9583
+      },
+      "kappa": 0.824,
+      "kappaCi": {
+        "low": 0.6697,
+        "high": 0.9419
+      },
+      "weightedKappa": 0.8496,
+      "flags": {
+        "weak": 24,
+        "caught": 20,
+        "falseAlarms": 2,
+        "recall": 0.8333,
+        "precision": 0.9091,
+        "recallCi": {
+          "low": 0.6415,
+          "high": 0.9332
+        }
+      },
+      "confusion": {
+        "covered": {
+          "covered": 41,
+          "partial": 1,
+          "missing": 1
+        },
+        "partial": {
+          "covered": 4,
+          "partial": 11,
+          "missing": 0
+        },
+        "missing": {
+          "covered": 0,
+          "partial": 0,
+          "missing": 9
+        }
+      },
+      "wrong": [
+        {
+          "id": "J07",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J11",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J27",
+          "human": "covered",
+          "judge": "partial"
+        },
+        {
+          "id": "J40",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J57",
+          "human": "partial",
+          "judge": "covered"
+        },
+        {
+          "id": "J62",
+          "human": "covered",
+          "judge": "missing"
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "run": "haiku-1",
+      "judge": "haiku",
+      "set": "All cases",
+      "agree": 57,
+      "cases": 67,
+      "kappa": 0.7089
+    },
+    {
+      "run": "haiku-2",
+      "judge": "haiku",
+      "set": "All cases",
+      "agree": 56,
+      "cases": 67,
+      "kappa": 0.679
+    },
+    {
+      "run": "haiku-3",
+      "judge": "haiku",
+      "set": "All cases",
+      "agree": 56,
+      "cases": 67,
+      "kappa": 0.675
+    },
+    {
+      "run": "haiku-v2-1",
+      "judge": "haiku-v2",
+      "set": "All cases",
+      "agree": 61,
+      "cases": 67,
+      "kappa": 0.8223
+    },
+    {
+      "run": "haiku-v2-2",
+      "judge": "haiku-v2",
+      "set": "All cases",
+      "agree": 60,
+      "cases": 67,
+      "kappa": 0.7957
+    },
+    {
+      "run": "haiku-v2-3",
+      "judge": "haiku-v2",
+      "set": "All cases",
+      "agree": 58,
+      "cases": 67,
+      "kappa": 0.7301
+    },
+    {
+      "run": "sonnet-1",
+      "judge": "sonnet",
+      "set": "All cases",
+      "agree": 56,
+      "cases": 67,
+      "kappa": 0.671
+    },
+    {
+      "run": "sonnet-2",
+      "judge": "sonnet",
+      "set": "All cases",
+      "agree": 56,
+      "cases": 67,
+      "kappa": 0.675
+    },
+    {
+      "run": "sonnet-3",
+      "judge": "sonnet",
+      "set": "All cases",
+      "agree": 56,
+      "cases": 67,
+      "kappa": 0.671
+    },
+    {
+      "run": "sonnet-v2-1",
+      "judge": "sonnet-v2",
+      "set": "All cases",
+      "agree": 62,
+      "cases": 67,
+      "kappa": 0.8511
+    },
+    {
+      "run": "sonnet-v2-2",
+      "judge": "sonnet-v2",
+      "set": "All cases",
+      "agree": 56,
+      "cases": 67,
+      "kappa": 0.6733
+    },
+    {
+      "run": "sonnet-v2-3",
+      "judge": "sonnet-v2",
+      "set": "All cases",
+      "agree": 59,
+      "cases": 67,
+      "kappa": 0.763
+    },
+    {
+      "run": "haiku-1",
+      "judge": "haiku",
+      "set": "Round 1 (59 cases)",
+      "agree": 52,
+      "cases": 59,
+      "kappa": 0.7316
+    },
+    {
+      "run": "haiku-2",
+      "judge": "haiku",
+      "set": "Round 1 (59 cases)",
+      "agree": 52,
+      "cases": 59,
+      "kappa": 0.7316
+    },
+    {
+      "run": "haiku-3",
+      "judge": "haiku",
+      "set": "Round 1 (59 cases)",
+      "agree": 52,
+      "cases": 59,
+      "kappa": 0.7316
+    },
+    {
+      "run": "haiku-v2-1",
+      "judge": "haiku-v2",
+      "set": "Round 1 (59 cases)",
+      "agree": 55,
+      "cases": 59,
+      "kappa": 0.8431
+    },
+    {
+      "run": "haiku-v2-2",
+      "judge": "haiku-v2",
+      "set": "Round 1 (59 cases)",
+      "agree": 54,
+      "cases": 59,
+      "kappa": 0.8083
+    },
+    {
+      "run": "haiku-v2-3",
+      "judge": "haiku-v2",
+      "set": "Round 1 (59 cases)",
+      "agree": 52,
+      "cases": 59,
+      "kappa": 0.72
+    },
+    {
+      "run": "sonnet-1",
+      "judge": "sonnet",
+      "set": "Round 1 (59 cases)",
+      "agree": 52,
+      "cases": 59,
+      "kappa": 0.7265
+    },
+    {
+      "run": "sonnet-2",
+      "judge": "sonnet",
+      "set": "Round 1 (59 cases)",
+      "agree": 52,
+      "cases": 59,
+      "kappa": 0.7316
+    },
+    {
+      "run": "sonnet-3",
+      "judge": "sonnet",
+      "set": "Round 1 (59 cases)",
+      "agree": 52,
+      "cases": 59,
+      "kappa": 0.7265
+    },
+    {
+      "run": "sonnet-v2-1",
+      "judge": "sonnet-v2",
+      "set": "Round 1 (59 cases)",
+      "agree": 55,
+      "cases": 59,
+      "kappa": 0.8431
+    },
+    {
+      "run": "sonnet-v2-2",
+      "judge": "sonnet-v2",
+      "set": "Round 1 (59 cases)",
+      "agree": 50,
+      "cases": 59,
+      "kappa": 0.6483
+    },
+    {
+      "run": "sonnet-v2-3",
+      "judge": "sonnet-v2",
+      "set": "Round 1 (59 cases)",
+      "agree": 53,
+      "cases": 59,
+      "kappa": 0.7646
+    },
+    {
+      "run": "haiku-1",
+      "judge": "haiku",
+      "set": "Round 2 (subtler variants)",
+      "agree": 5,
+      "cases": 8,
+      "kappa": 0.4146
+    },
+    {
+      "run": "haiku-2",
+      "judge": "haiku",
+      "set": "Round 2 (subtler variants)",
+      "agree": 4,
+      "cases": 8,
+      "kappa": 0.2195
+    },
+    {
+      "run": "haiku-3",
+      "judge": "haiku",
+      "set": "Round 2 (subtler variants)",
+      "agree": 4,
+      "cases": 8,
+      "kappa": 0.2381
+    },
+    {
+      "run": "haiku-v2-1",
+      "judge": "haiku-v2",
+      "set": "Round 2 (subtler variants)",
+      "agree": 6,
+      "cases": 8,
+      "kappa": 0.6098
+    },
+    {
+      "run": "haiku-v2-2",
+      "judge": "haiku-v2",
+      "set": "Round 2 (subtler variants)",
+      "agree": 6,
+      "cases": 8,
+      "kappa": 0.6098
+    },
+    {
+      "run": "haiku-v2-3",
+      "judge": "haiku-v2",
+      "set": "Round 2 (subtler variants)",
+      "agree": 6,
+      "cases": 8,
+      "kappa": 0.6098
+    },
+    {
+      "run": "sonnet-1",
+      "judge": "sonnet",
+      "set": "Round 2 (subtler variants)",
+      "agree": 4,
+      "cases": 8,
+      "kappa": 0.2381
+    },
+    {
+      "run": "sonnet-2",
+      "judge": "sonnet",
+      "set": "Round 2 (subtler variants)",
+      "agree": 4,
+      "cases": 8,
+      "kappa": 0.2381
+    },
+    {
+      "run": "sonnet-3",
+      "judge": "sonnet",
+      "set": "Round 2 (subtler variants)",
+      "agree": 4,
+      "cases": 8,
+      "kappa": 0.2381
+    },
+    {
+      "run": "sonnet-v2-1",
+      "judge": "sonnet-v2",
+      "set": "Round 2 (subtler variants)",
+      "agree": 7,
+      "cases": 8,
+      "kappa": 0.8049
+    },
+    {
+      "run": "sonnet-v2-2",
+      "judge": "sonnet-v2",
+      "set": "Round 2 (subtler variants)",
+      "agree": 6,
+      "cases": 8,
+      "kappa": 0.6098
+    },
+    {
+      "run": "sonnet-v2-3",
+      "judge": "sonnet-v2",
+      "set": "Round 2 (subtler variants)",
+      "agree": 6,
+      "cases": 8,
+      "kappa": 0.6098
+    },
+    {
+      "run": "haiku-1",
+      "judge": "haiku",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.2561
+    },
+    {
+      "run": "haiku-2",
+      "judge": "haiku",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.2561
+    },
+    {
+      "run": "haiku-3",
+      "judge": "haiku",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.2561
+    },
+    {
+      "run": "haiku-v2-1",
+      "judge": "haiku-v2",
+      "set": "Real criteria only",
+      "agree": 39,
+      "cases": 43,
+      "kappa": 0.4625
+    },
+    {
+      "run": "haiku-v2-2",
+      "judge": "haiku-v2",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.3978
+    },
+    {
+      "run": "haiku-v2-3",
+      "judge": "haiku-v2",
+      "set": "Real criteria only",
+      "agree": 37,
+      "cases": 43,
+      "kappa": 0.2086
+    },
+    {
+      "run": "sonnet-1",
+      "judge": "sonnet",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.2561
+    },
+    {
+      "run": "sonnet-2",
+      "judge": "sonnet",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.2561
+    },
+    {
+      "run": "sonnet-3",
+      "judge": "sonnet",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.2561
+    },
+    {
+      "run": "sonnet-v2-1",
+      "judge": "sonnet-v2",
+      "set": "Real criteria only",
+      "agree": 39,
+      "cases": 43,
+      "kappa": 0.4625
+    },
+    {
+      "run": "sonnet-v2-2",
+      "judge": "sonnet-v2",
+      "set": "Real criteria only",
+      "agree": 37,
+      "cases": 43,
+      "kappa": 0.1937
+    },
+    {
+      "run": "sonnet-v2-3",
+      "judge": "sonnet-v2",
+      "set": "Real criteria only",
+      "agree": 38,
+      "cases": 43,
+      "kappa": 0.2561
+    }
+  ]
+}

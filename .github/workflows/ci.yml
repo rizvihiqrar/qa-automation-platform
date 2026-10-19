@@ -70,6 +70,8 @@ jobs:
           - { package: multi-user-flow-patterns, browsers: true,  command: npm test, smoke: npm run smoke }
           - { package: bdd-playwright-demo,      browsers: true,  command: npm run test:guard && npm test, smoke: npm run test:guard && npm run smoke }
           - { package: ai-test-generator,        browsers: true,  command: npm test && npm run review && npm run test:e2e && npm run test:review, smoke: npm test && npm run review && npm run test:e2e -- --grep @smoke && npm run test:review -- --grep @smoke }
+          # Recorded judge runs replayed through promptfoo (no model calls); the browser runs the label evidence
+          - { package: llm-judge-check,          browsers: true,  command: npm test && npm run check && npm run evidence }
     defaults:
       run:
         working-directory: packages/${{ matrix.package }}
