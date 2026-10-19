@@ -1,0 +1,79 @@
+name: CI recheck
+
+# When CI fails on main, find out whether it is real before anyone is told:
+#   attempt 1 failed  -> re-run only the failed jobs, once
+#   re-run passed     -> nothing to do; the dashboard counts it as flaky (it is never hidden)
+#   re-run failed too -> a confirmed failure: scripts/ci-diagnose.mjs writes which jobs
+#                        failed, their error lines, the commits since the last green run and
+#                        a prompt to paste into a Claude Code session, on the ci-health issue
+# Each re-run finishing also rebuilds the dashboard (dashboard.yml runs after every CI
+# run on main), and the daily CI health check closes the issue once all is green.
+# Never more than one re-run: re-running until green would hide real failures.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: A failed CI run to diagnose
+        required: true
+      post:
+        description: Post the diagnosis on the ci-health issue (otherwise job summary only)
+        type: boolean
+        default: false
+
+permissions:
+  actions: write   # re-run failed jobs
+  contents: read
+  issues: write
+
+concurrency:
+  group: ci-recheck-${{ github.event.workflow_run.id || inputs.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  rerun:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Re-run the failed jobs once
+        run: |
+          gh run rerun ${{ github.event.workflow_run.id }} --failed -R "$GITHUB_REPOSITORY"
+          echo "CI run ${{ github.event.workflow_run.id }} failed; failed jobs re-run once to tell a real failure from a flaky one." >> "$GITHUB_STEP_SUMMARY"
+
+  diagnose:
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt > 1)
+      || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+      POST: ${{ github.event_name == 'workflow_run' || inputs.post }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Diagnose
+        run: |
+          node scripts/ci-diagnose.mjs --run "$RUN_ID" --out diagnosis.md
+          cat diagnosis.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post on the ci-health issue
+        if: env.POST == 'true'
+        run: |
+          gh label create ci-health --color B60205 --description "A workflow on main is failing or overdue" --force
+          open=$(gh issue list --label ci-health --state open --json number -q '.[0].number')
+          if [ -z "$open" ]; then
+            gh issue create --title "CI health: a workflow on main needs attention" --label ci-health --body-file diagnosis.md
+          else
+            gh issue comment "$open" --body-file diagnosis.md
+          fi
