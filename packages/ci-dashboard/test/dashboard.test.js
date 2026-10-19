@@ -112,13 +112,69 @@ test('fetchRuns asks for completed runs and all job attempts, with the token', a
   const out = await fetchRuns({ repo: 'o/r', token: 't', limit: 5, fetchImpl });
   assert.equal(out.length, 1);
   assert.match(calls[0].url, /\/repos\/o\/r\/actions\/workflows\/ci\.yml\/runs\?status=completed&per_page=5$/);
-  assert.match(calls[1].url, /\/runs\/1\/jobs\?filter=all&per_page=100$/);
+  assert.match(calls[1].url, /\/runs\/1\/jobs\?filter=all&per_page=50&page=1$/);
   assert.equal(calls[0].auth, 'Bearer t');
 });
 
 test('fetchRuns reports API errors clearly', async () => {
   const fetchImpl = async () => ({ ok: false, status: 403, json: async () => ({}) });
   await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl }), /GitHub API returned 403/);
+});
+
+// A fake GitHub: `runs` run IDs, `jobsOf(id, page)` answers each jobs page (a status
+// number means that response fails).
+const fakeGitHub = (ids, jobsOf) => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.includes('/workflows/')) {
+      return { ok: true, json: async () => ({ workflow_runs: ids.map((id) => ({ id, run_number: id, conclusion: 'success', head_sha: 'a' })) }) };
+    }
+    const [, id, page] = url.match(/\/runs\/(\d+)\/jobs\?.*page=(\d+)/) ?? [];
+    const answer = jobsOf(Number(id), Number(page), calls.length);
+    if (typeof answer === 'number') return { ok: false, status: answer, json: async () => ({}) };
+    return { ok: true, json: async () => answer };
+  };
+  return { fetchImpl, calls };
+};
+const noSleep = async () => {};
+const jobs = (n, from = 0) => Array.from({ length: n }, (_, i) => ({ name: `job ${from + i}`, conclusion: 'success' }));
+
+test('fetchRuns reads every page of jobs (93 jobs: 50 + 43)', async () => {
+  const { fetchImpl, calls } = fakeGitHub([1], (_id, page) => ({ total_count: 93, jobs: page === 1 ? jobs(50) : jobs(43, 50) }));
+  const [run] = await fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep });
+  assert.equal(run.jobs.length, 93);
+  assert.equal(calls.filter((u) => u.includes('/jobs')).length, 2);
+});
+
+test('fetchRuns retries a 502 and succeeds', async () => {
+  let failures = 2;
+  const waits = [];
+  const { fetchImpl } = fakeGitHub([1], () => (failures-- > 0 ? 502 : { total_count: 1, jobs: jobs(1) }));
+  const [run] = await fetchRuns({ repo: 'o/r', fetchImpl, sleep: async (ms) => { waits.push(ms); } });
+  assert.equal(run.jobs.length, 1);
+  assert.deepEqual(waits, [2000, 4000]);
+});
+
+test('fetchRuns leaves out one run that keeps failing with 5xx, and says so', async () => {
+  const warnings = [];
+  const { fetchImpl } = fakeGitHub([1, 2, 3], (id) => (id === 2 ? 502 : { total_count: 1, jobs: jobs(1) }));
+  const out = await fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep, warn: (m) => warnings.push(m) });
+  assert.deepEqual(out.map((r) => r.id), [1, 3]);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /::warning::Left out CI run 2: GitHub API returned 502 .* after 3 tries/);
+});
+
+test('fetchRuns does not retry or skip a 4xx: it fails at once', async () => {
+  let jobCalls = 0;
+  const { fetchImpl } = fakeGitHub([1, 2], () => { jobCalls++; return 404; });
+  await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep }), /GitHub API returned 404/);
+  assert.equal(jobCalls, 1);
+});
+
+test('fetchRuns fails when no run at all could be read', async () => {
+  const { fetchImpl } = fakeGitHub([1, 2], () => 503);
+  await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep, warn: () => {} }), /failed for every run/);
 });
 
 test('niceMax rounds axis maxima up to clean numbers', () => {

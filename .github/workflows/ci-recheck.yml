@@ -1,6 +1,9 @@
 name: CI recheck
 
-# When CI fails on main, find out whether it is real before anyone is told:
+# When a workflow fails on main, find out whether it is real before anyone is told.
+# Covers every workflow that runs by itself on main (CI, and the ones that run after it or
+# on a schedule); Release and Variance are started by hand, so whoever ran them sees the
+# result. Until 2026-10-19 this covered CI only, and the Dashboard failed for hours unnoticed.
 #   attempt 1 failed  -> re-run only the failed jobs, once
 #   re-run passed     -> nothing to do; the dashboard counts it as flaky (it is never hidden)
 #   re-run failed too -> a confirmed failure: scripts/ci-diagnose.mjs writes which jobs
@@ -11,13 +14,13 @@ name: CI recheck
 # Never more than one re-run: re-running until green would hide real failures.
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Dashboard, Flaky tests, Mutation, CI health]
     types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
       run_id:
-        description: A failed CI run to diagnose
+        description: A failed run (any workflow) to diagnose
         required: true
       post:
         description: Post the diagnosis on the ci-health issue (otherwise job summary only)
@@ -44,7 +47,7 @@ jobs:
       - name: Re-run the failed jobs once
         run: |
           gh run rerun ${{ github.event.workflow_run.id }} --failed -R "$GITHUB_REPOSITORY"
-          echo "CI run ${{ github.event.workflow_run.id }} failed; failed jobs re-run once to tell a real failure from a flaky one." >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ github.event.workflow_run.name }} run ${{ github.event.workflow_run.id }} failed; failed jobs re-run once to tell a real failure from a flaky one." >> "$GITHUB_STEP_SUMMARY"
 
   diagnose:
     if: >-
