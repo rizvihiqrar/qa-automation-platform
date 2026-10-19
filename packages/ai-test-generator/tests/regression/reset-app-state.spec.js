@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
 
 const BASE_URL = 'https://www.saucedemo.com';
+// Public saucedemo test account (published on the site's login page); override with SAUCEDEMO_PASSWORD.
+const PASSWORD = process.env.SAUCEDEMO_PASSWORD || 'secret_sauce';
 
 test.describe('Reset App State', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(BASE_URL);
     await page.fill('[data-test="username"]', 'standard_user');
-    await page.fill('[data-test="password"]', 'secret_sauce');
+    await page.fill('[data-test="password"]', PASSWORD);
     await page.click('[data-test="login-button"]');
     await page.click('[data-test="add-to-cart-sauce-labs-backpack"]');
     await page.click('[data-test="add-to-cart-sauce-labs-bike-light"]');

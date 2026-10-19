@@ -4,11 +4,14 @@
 // are refused (403).
 
 // The server is seeded with this admin (src/live.js starts it with these values).
-export const ADMIN = { email: 'admin@drift-check.test', password: 'Drift-admin-1!' };
+// The fallbacks are throwaway test accounts on the local qa-practice-api server,
+// not real credentials; set DRIFT_ADMIN_PASSWORD / DRIFT_USER_PASSWORD to override.
+export const ADMIN = { email: 'admin@drift-check.test', password: process.env.DRIFT_ADMIN_PASSWORD || 'Drift-admin-1!' };
+const USER_PASSWORD = process.env.DRIFT_USER_PASSWORD || 'Str0ng-pass!';
 
 export function steps() {
   const email = `drift-${Date.now()}@example.com`;
-  const password = 'Str0ng-pass!';
+  const password = USER_PASSWORD;
   const code = `DRIFT-${Date.now().toString(36).toUpperCase()}`;
   return [
     { name: 'health check', method: 'GET', path: '/health', expect: 200 },

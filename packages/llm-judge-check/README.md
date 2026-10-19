@@ -76,6 +76,8 @@ To judge again: `node src/render.ts <folder> v2`, have a fresh session answer th
 - promptfoo and the report must reach the same count on every run.
 - 11 deliberate breaks, each caught: a label changed without rebuilding, a case edited after judging, the rubric edited after judging, a label word leaked into the cases, a recorded verdict changed, a run left out of the promptfoo config, a wrong chance term in kappa, a lenient tie-break, the review sheet and labels disagreeing, a variant whose edit no longer applies, and the replay provider skipping its hash check. The last one first went unnoticed by `npm run eval`; the eval now hashes promptfoo's rendered prompts itself.
 
+The case specs under `cases/specs/` still spell out the public Sauce Demo password. They are judge inputs that this package never runs (its Playwright config only runs `evidence/`), so they keep the literal rather than reading `SAUCEDEMO_PASSWORD`.
+
 ## Limits
 
 - **The human labels are one person's**, confirmed against my drafts rather than written blind, so they may lean toward the drafts. A second reviewer would show how much two people agree before asking how much a judge agrees with one.

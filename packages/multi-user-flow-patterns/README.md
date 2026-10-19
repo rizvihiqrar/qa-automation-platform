@@ -28,7 +28,7 @@ npm test            # all tests
 npm run smoke       # @smoke only
 ```
 
-Set `BASE_URL` to point the suite at another copy of the app.
+Set `BASE_URL` to point the suite at another copy of the app. The tests sign in with Sauce Demo's public test accounts. Set `SAUCEDEMO_PASSWORD` to override the password; unset, it falls back to the public demo one (see `.env.example`).
 
 ---
 

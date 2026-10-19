@@ -18,8 +18,9 @@ RULES:
 
 TARGET APP: saucedemo.com
   - Base URL: https://www.saucedemo.com
-  - Valid credentials: username = standard_user, password = secret_sauce
-  - Locked-out user: locked_out_user / secret_sauce
+  - Valid credentials: username = standard_user, password = process.env.SAUCEDEMO_PASSWORD || 'secret_sauce'
+    (write that expression, never the bare password; the env var overrides the public demo password)
+  - Locked-out user: locked_out_user, with the same password expression
   - Key selectors: [data-test="username"], [data-test="password"], [data-test="login-button"],
     [data-test="error"], [data-test="shopping-cart-link"], [data-test="shopping-cart-badge"],
     [data-test="add-to-cart-<slug>"], [data-test="inventory-item"], [data-test="inventory-item-name"]

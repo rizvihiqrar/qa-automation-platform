@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import app from '../../src/app.ts';
 import { seedAdmin } from '../../src/db/seed.ts';
-import { ADMIN } from '../admin.ts';
+import { ADMIN, PASSWORD } from '../admin.ts';
 
 export interface Api {
   call: (method: string, path: string, body?: unknown, token?: string) => Promise<{ status: number; body: any }>;
@@ -45,7 +45,7 @@ export async function startApi(): Promise<Api> {
     // Sign-up gives a token straight away, so no sign-in limit applies.
     async customer() {
       const n = ++customers;
-      const res = await call('POST', '/auth/register', { name: `Shopper ${n}`, email: `shopper${n}-${process.pid}@example.test`, password: 'Shopper-pass-1!' });
+      const res = await call('POST', '/auth/register', { name: `Shopper ${n}`, email: `shopper${n}-${process.pid}@example.test`, password: PASSWORD });
       if (res.status !== 201) throw new Error(`sign-up failed: ${res.status} ${JSON.stringify(res.body)}`);
       return { id: res.body.user.id, token: res.body.token };
     },

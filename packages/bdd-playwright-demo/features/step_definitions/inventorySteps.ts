@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 import { LoginPage } from '../../pageObjects/LoginPage.ts';
 import { InventoryPage, type SortOption } from '../../pageObjects/InventoryPage.ts';
 import type { PlaywrightWorld } from '../../support/world.ts';
+import { SAUCEDEMO_PASSWORD } from '../../support/credentials.ts';
 
 const SORT_OPTIONS: readonly string[] = ['az', 'za', 'lohi', 'hilo'] satisfies SortOption[];
 
@@ -10,7 +11,7 @@ Given('I am logged in as {string}', async function (this: PlaywrightWorld, usern
   const login = new LoginPage(this.page);
   await login.navigate();
   await login.enterUsername(username);
-  await login.enterPassword('secret_sauce');
+  await login.enterPassword(SAUCEDEMO_PASSWORD);
   await login.clickLogin();
   await this.page.waitForURL(/inventory/, { timeout: 15000 });
 });

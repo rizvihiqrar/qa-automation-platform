@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { adminAuth } from './admin.ts';
+import { adminAuth, PASSWORD } from './admin.ts';
 
 test.describe.configure({ mode: 'serial' });
 
 const ts       = Date.now();
-const testUser = { name: 'Orders Tester', email: `orders.${ts}@example.com`, password: 'Pass123!' };
+const testUser = { name: 'Orders Tester', email: `orders.${ts}@example.com`, password: PASSWORD };
 
 let token: string;
 let productId: number;

@@ -100,6 +100,8 @@ The feature descriptions only state behaviour verified on the live site (sort or
 | `npm run test:regression` | The Sauce Demo regression suite, `tests/regression/` (see below) | 43 |
 | `npm run test:review` | Tests written during the [requirement review](../../docs/requirement-review/README.md) of the feature files, `tests/review/` (see below) | 42 (8 are expected to fail) |
 
+The regression and review suites read the Sauce Demo password from `SAUCEDEMO_PASSWORD` and fall back to the site's public demo password when it isn't set (see `.env.example`). The example spec and the saved eval runs keep the generator's output as it was written.
+
 The example spec was generated, then reviewed: the reviewer flagged a CSS class selector, which was changed to `[data-test="inventory-item"]`. The note is in the file header.
 
 ---
