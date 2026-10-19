@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Replays the recorded judge runs (runs/*.json) through promptfoo and asserts each
+# verdict against the human label. No model is called: see promptfoo/replay-provider.mjs.
+# Each provider gets only the rubric its run answered (v1: judge/prompt.md, v2:
+# judge/prompt-v2.md). To try a live judge instead, add a provider such as
+# anthropic:messages:<model> (needs ANTHROPIC_API_KEY); prompts and assertions stay the same.
+description: LLM judge vs human labels
+prompts:
+  - { id: file://judge/prompt.md, label: v1 }
+  - { id: file://judge/prompt-v2.md, label: v2 }
+providers:
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-1, prompts: [v1], config: { run: haiku-1 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-2, prompts: [v1], config: { run: haiku-2 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-3, prompts: [v1], config: { run: haiku-3 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-1, prompts: [v1], config: { run: sonnet-1 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-2, prompts: [v1], config: { run: sonnet-2 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-3, prompts: [v1], config: { run: sonnet-3 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-v2-1, prompts: [v2], config: { run: haiku-v2-1 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-v2-2, prompts: [v2], config: { run: haiku-v2-2 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-v2-3, prompts: [v2], config: { run: haiku-v2-3 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-v2-1, prompts: [v2], config: { run: sonnet-v2-1 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-v2-2, prompts: [v2], config: { run: sonnet-v2-2 } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-v2-3, prompts: [v2], config: { run: sonnet-v2-3 } }
+tests: file://promptfoo/tests.mjs

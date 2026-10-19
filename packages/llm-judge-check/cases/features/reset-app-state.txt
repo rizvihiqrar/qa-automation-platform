@@ -1,0 +1,10 @@
+Feature: Reset App State
+
+As a customer,
+I want to reset the app,
+So that I can start over with an empty cart.
+
+Acceptance Criteria:
+- With items in the cart, choosing "Reset App State" from the menu removes the cart badge
+- After resetting, the cart page shows no items
+- After resetting, the user is still logged in and can see the products page

@@ -1,0 +1,12 @@
+Feature: User Login
+
+As a registered user of the saucedemo online store,
+I want to be able to log in with my username and password,
+So that I can access my account and browse products.
+
+Acceptance Criteria:
+- Logging in with valid credentials redirects to the products page
+- Logging in with an incorrect password shows an error message containing "Username and password do not match"
+- Logging in as a locked-out user shows a message containing "Sorry, this user has been locked out"
+- Submitting the login form without entering any credentials shows "Username is required"
+- The products page should display at least one product after successful login

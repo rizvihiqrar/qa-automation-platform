@@ -25,6 +25,7 @@ export const PACKAGES = [
   'a11y-aoda-audit',
   'k6-performance',
   'ci-dashboard',
+  'llm-judge-check',
   // CI demos: plain JavaScript checked with checkJs (they exist to show CI patterns)
   'contract-testing-demo',
   'mutation-testing-demo',

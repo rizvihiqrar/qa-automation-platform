@@ -1,0 +1,484 @@
+{
+  "name": "haiku-v2-3",
+  "model": "claude-haiku-5-5",
+  "rubric": "v2",
+  "how": "Each session: a fresh Claude Code subagent that could read only the rendered prompts (one file per case), answered them in order and wrote its answers to a file. No API key; nothing else in its context.",
+  "sessions": [
+    {
+      "cases": "J01–J67"
+    }
+  ],
+  "prompts": {
+    "J01": "59d8f2eab28395fd5c5e7b1897a33679b45d36a710570467084c47571a97701d",
+    "J02": "bc0729694b036dc1b90b357ccfe0fdb433f6eb850e65c74a4172dc3b3635afa0",
+    "J03": "c5f178e2ae8473653aa87641394070d1cdf6f7de57bf2371878864010c6fcf2c",
+    "J04": "2e73a49edcd80cb87126bcfba32a83aa056c8cdecbf5c5a8c1f4b710413005b4",
+    "J05": "8e023a5023244837f039524fa81402a2ad10edbcae77824d534d71ce5da8c1ab",
+    "J06": "63ee82d950b907b43f5af5673fee19085cefd978f0f5621629f53ade248795ff",
+    "J07": "e71d596b929975ad0cadde5198662faafa6459f5ad69d50559b34d62d84846e1",
+    "J08": "235982a0b18aa0d8dcadb339c61666384713fb6b594a96057769b0af522c9fef",
+    "J09": "d1c7c4a32248b2dccef7ea6646d789ca19c9e0c42d904d8b8c5a0f7b5dca284a",
+    "J10": "4bd5bebf000c5c19c197ea19e81d64ad9eca31b521c8b44879c2be9df7b00719",
+    "J11": "26a1a6c1378693104d9cc9c5782ab1ed0695ba650a7e1252b0e76deaa5fba56d",
+    "J12": "42d39e499eceb6e8b86ba536c3fa67c12337968658af254d8563c5b7d29cf8e7",
+    "J13": "81294ff1a5494f71e2314c0af2476530bb67b8a1f12d45cb17331fb055be897e",
+    "J14": "1fad565bf22c0a1130f859cd0b2bd4a3ab92214d5b974a76d2bcfeff18db4366",
+    "J15": "6b7e16db200825b9647bf53ce46a1d317b8df21ee442cbeef190a4420df614bc",
+    "J16": "ee172404ef1e0c1a1906651c9dd73a9d80d30dcda82b9150d3a6b77f8b665f6f",
+    "J17": "23078b9431fd0fae65ba5337ce7ba03fa9b5da2847b6e6b7784a7b2d9b159c75",
+    "J18": "43d4b7c7186aa2238e3bb583f80d5cadc6ec796a66c223697891d23cdaf174e5",
+    "J19": "382b196fbacf034bed951f87cd3a5411d7f5d4a55faf813a463be0d36b632184",
+    "J20": "19b9c075b95493fe258b4823ff3119d0eae6223d16217b136da1bd94b581815f",
+    "J21": "b5ef6b446cb9d404c50c383cb0fd44e6abe9285e3df71d2797bdd02157e7e572",
+    "J22": "98832d0c141d13d4b7730d245bdb316b70e3cdc34fa167affab8a6789e909e27",
+    "J23": "3ad18f6059a36919219a124908fb99ec4618f8848984f7a4bc2e8d7d8047661e",
+    "J24": "1359db6e7bfeed8c0ea7d9b5107b75ab3450717078532fd54c6255a54643aa1a",
+    "J25": "8bc678e6235b02e4ce72d20e9927132efe87a962bb2835260a74edea3bb34c3e",
+    "J26": "bd5b675412044f58c3436de9e81b0fde2a26be1549657f220a639f890fdfd167",
+    "J27": "a5b3982d526523e2cb4a013408c4e753338d72f3ed1019274daa9b8151bf370b",
+    "J28": "4fdb5518b541b144587045ceeff57ed028da7f754ba07d2ceadbae30525c108e",
+    "J29": "1cf5e9d4488e8b7042d9015a924da4fb93a11499e8af5ab681205b2011fda135",
+    "J30": "f6043dd9f1814b789338538649f89c084df135f4a9cc8ad56bf1950214c53d34",
+    "J31": "8085d50e869fede407db03fb52b6dbc7280262651071640932aa23b5a2e39e49",
+    "J32": "55c0768019cd60d0eb2fa17107c50be815a4832c00cb1bdf99eb51d996aeacf9",
+    "J33": "eb53d6bff16be87949f01ec9d4e814dcc5ea508ba534e2499e3c3bdb6299631b",
+    "J34": "00bc4abe0dea67de2532e59ddba9efde7f193dec685411b514d6f3659443b770",
+    "J35": "98fc08642c8ee45b448dd73e53c3458bdb4edb1f2bb5a21756486eb31dca9e88",
+    "J36": "3807a841c4f8ea52842697f59bce6ce4df29e2945e1b024d50d336494f48ce7d",
+    "J37": "a1156e2464dfd44e9520beb5420051fd5e1a9a6c47a4d9fe2938843cc9494131",
+    "J38": "751678a62d5de7b9bf9aae559936e235a8d5187a4899a36c7d507de71d1440e7",
+    "J39": "bb9cdb4bf4df3afe441145d0e6908427c97c4f260882d5c1f4e1822e398b3c89",
+    "J40": "94d01f1dfec66c8df7363f630a2091b33af4f936612ee0f3841800e534cb681b",
+    "J41": "02aaac89a7a644aa6298d4113184149511bca391fd2be321a54f3ff7ec91842d",
+    "J42": "61c785a1b1dd069583ae102450d628a3cdba9d2ea12bfcc880aba28ae164ede3",
+    "J43": "f9dbdebc4eb8a6d044da3df1d5b50181d50bfb48f3a91486f9dfde9aef97f5d4",
+    "J44": "936076d3e00f2d5d1baaa3630d5522f0f6a7ced8bb63e9579ca13a20107e3c8a",
+    "J45": "8edf20d074c44f5c9f24e81e9895025a271c01baef2d3495b1b7fcd15ddafd74",
+    "J46": "d2b386818dbdb8b26aff50b6703b5c82af03b7aca050954926608448df2ae99e",
+    "J47": "64bbb7a312a2b433a8f7d6440bf9dc2a85ff924d9b0f740b2e8ece4c823687d0",
+    "J48": "bc709ea299fa8d94809c4cb43381b9b273fdd58d38ce9a4aede6b2ad0d570be2",
+    "J49": "b319bea585fe4bc7fa1240ac5d16d08dc66e7b84eaa701ccf227a8b1867c6806",
+    "J50": "60709fd689b132e65aef9dccf7b6a1564a279dfb77536c85e3d85d0c082f616e",
+    "J51": "956cbb0660dcd57052a6a943f5e7bca83cf348e64cecd6d069939e29c0e5b443",
+    "J52": "6a1d2c5cc62dc7a0bbff52bcb6cdd3135696dee0a15a4fa0df25967939594d34",
+    "J53": "d9a392c7b04131293b85629a8e29818769fb928701a7c787d7ff8a8c2863f605",
+    "J54": "e11a2d486358b36db8e14c5c2e09580d57df2f9f73690f4704c6ed12afdef04b",
+    "J55": "f341e3abaf8c657dd61d653d2889352a6922b39691177fd28f57b731ad161ae9",
+    "J56": "cd78cff21960c6197722c14dc20f2c0b947a29d8d281d6f8816f29f6991f2dfb",
+    "J57": "e11172e13efcfdd5658b3b2e614e240e1a1412919ceb2a32f248a90c626d88d4",
+    "J58": "aa5ff42ae77edd9f52ddd6893e8e1dd8ae66308b3f4336a6e151898c5e12fffd",
+    "J59": "a603719d8e069a8a72fe1013566ca5e66d40b49fe983842396abaaea180fa091",
+    "J60": "4870f8ff1931c2c239275905f848f3ac0b2448350c4cf228821ce07459005ef0",
+    "J61": "4577145f8e949494a78e6d272a664659941487dcc2e5e236533350c42106bb48",
+    "J62": "57ca7b4a2d7796284c6819393a99c6a35ad898f1282391a9d7d8f8c60927ddf4",
+    "J63": "98f3b7cc4d673dc86413b5b7befe1b97abf2bfa0eac4cd6b45ed375226accae4",
+    "J64": "a0e3bff8f18bd4d91de9103106d8fe4c76d24efa5b7d10fce47a0369de65176a",
+    "J65": "ac6f209c758d0b1e2a6f941aa3b8cb899d43f40877f1eb1bdd7298932701fb3e",
+    "J66": "2ffb33e3d01304a42de6ba4d4f93b0393a1367f87224a26423f81fb9d258633b",
+    "J67": "441fdeaad0bd0382f46e639b559300656b51faf344c829343740661cbd915a9f"
+  },
+  "answers": [
+    {
+      "id": "J01",
+      "verdict": "missing",
+      "test": "cancel returns to the cart @regression",
+      "reason": "The only assertion checks the URL before Cancel is clicked and nothing checks where Cancel leads, so a wrong destination passes."
+    },
+    {
+      "id": "J02",
+      "verdict": "covered",
+      "test": "cancel returns to the products page @regression",
+      "reason": "After clicking Cancel on the overview the URL is asserted to match inventory.html, so Cancel going to the cart or elsewhere would fail."
+    },
+    {
+      "id": "J03",
+      "verdict": "covered",
+      "test": "inventory is blocked after logout @regression",
+      "reason": "Going directly to /inventory.html after logout and checking the error text would fail if the message were wrong or missing."
+    },
+    {
+      "id": "J04",
+      "verdict": "covered",
+      "test": "cart badge is cleared after finishing @regression",
+      "reason": "The badge count is asserted to be zero after finishing, so a badge still showing would fail."
+    },
+    {
+      "id": "J05",
+      "verdict": "covered",
+      "test": "removing a product decrements the badge @regression",
+      "reason": "Removing one of two items and asserting the badge reads 1 would fail if the decrement were wrong or missing."
+    },
+    {
+      "id": "J06",
+      "verdict": "covered",
+      "test": "user stays logged in on the products page after reset @regression",
+      "reason": "After reset the test asserts the URL is inventory.html and the Products title, so a logout or wrong page would fail."
+    },
+    {
+      "id": "J07",
+      "verdict": "covered",
+      "test": "clicking a product name opens its details page @smoke",
+      "reason": "Clicking the product link and asserting the URL matches inventory-item.html?id=4 would fail if the name link did not open the details page."
+    },
+    {
+      "id": "J08",
+      "verdict": "covered",
+      "test": "details page shows the same name and price as the list @regression",
+      "reason": "The details page name and price are asserted equal to the list values, so a wrong name or price would fail."
+    },
+    {
+      "id": "J09",
+      "verdict": "partial",
+      "test": "inventory is blocked after logout @regression",
+      "reason": "It only asserts the error is visible, so a missing error fails but an error with the wrong message passes."
+    },
+    {
+      "id": "J10",
+      "verdict": "partial",
+      "test": "total is $32.39 @regression",
+      "reason": "The total check only asserts the label contains 'Total: $', so a wrong total amount passes."
+    },
+    {
+      "id": "J11",
+      "verdict": "covered",
+      "test": "item stays in the cart after opening another product @smoke",
+      "reason": "After opening another product's details page and then the cart, the backpack is asserted to be listed, so an emptied cart would fail."
+    },
+    {
+      "id": "J12",
+      "verdict": "covered",
+      "test": "valid credentials redirect to the products page @smoke",
+      "reason": "A valid login is asserted to land on inventory.html, so a failed or wrong redirect would fail."
+    },
+    {
+      "id": "J13",
+      "verdict": "covered",
+      "test": "login button is visible again after logout @regression",
+      "reason": "After logout the login button must be visible, which only holds on the login page, so a logout that does not return there would fail."
+    },
+    {
+      "id": "J14",
+      "verdict": "missing",
+      "test": "cart badge is cleared after finishing @regression",
+      "reason": "The only test for the badge after finishing is test.skip, so it never runs and no other test checks the badge."
+    },
+    {
+      "id": "J15",
+      "verdict": "covered",
+      "test": "missing last name shows an error @regression",
+      "reason": "The exact text 'Error: Last Name is required' is asserted after filling only the first name, so a wrong or missing message would fail."
+    },
+    {
+      "id": "J16",
+      "verdict": "partial",
+      "test": "six products are shown after sorting @regression",
+      "reason": "Only the High to Low sort is tried for the six-product count, so a broken count under the other sorts would pass."
+    },
+    {
+      "id": "J17",
+      "verdict": "covered",
+      "test": "submitting an empty form shows username required @regression",
+      "reason": "The error text containing 'Username is required' is asserted after an empty login, so a missing or different message would fail."
+    },
+    {
+      "id": "J18",
+      "verdict": "covered",
+      "test": "total is $32.39 @regression",
+      "reason": "The total label is asserted to read exactly 'Total: $32.39', so a wrong amount would fail."
+    },
+    {
+      "id": "J19",
+      "verdict": "missing",
+      "test": "six products are shown after sorting @regression",
+      "reason": "The six-product assertion was replaced by a count that is always at least 0, so it can never fail."
+    },
+    {
+      "id": "J20",
+      "verdict": "covered",
+      "test": "price low to high shows the Onesie first at $7.99 @regression",
+      "reason": "The first product name and its price are asserted for the low-to-high sort, so a wrong first product or price would fail."
+    },
+    {
+      "id": "J21",
+      "verdict": "covered",
+      "test": "missing first name shows an error @regression",
+      "reason": "The exact text 'Error: First Name is required' is asserted after clicking Continue with empty fields."
+    },
+    {
+      "id": "J22",
+      "verdict": "partial",
+      "test": "price low to high shows the Onesie first at $7.99 @regression",
+      "reason": "The first product name is checked for the low-to-high sort but the $7.99 price is not asserted in this test, so a wrong price would pass."
+    },
+    {
+      "id": "J23",
+      "verdict": "covered",
+      "test": "tax is $2.40 @regression",
+      "reason": "The tax label is asserted to read exactly 'Tax: $2.40'."
+    },
+    {
+      "id": "J24",
+      "verdict": "covered",
+      "test": "submitting an empty form shows username required @regression",
+      "reason": "The login error is asserted to contain 'Username is required' after submitting an empty form."
+    },
+    {
+      "id": "J25",
+      "verdict": "covered",
+      "test": "cart page is empty after reset @regression",
+      "reason": "After reset the cart page is asserted to have zero inventory items, so leftover items would fail."
+    },
+    {
+      "id": "J26",
+      "verdict": "covered",
+      "test": "finishing shows the Checkout: Complete! page @smoke",
+      "reason": "The URL and the 'Checkout: Complete!' text are asserted after Finish, so a wrong page would fail."
+    },
+    {
+      "id": "J27",
+      "verdict": "covered",
+      "test": "adding two different products shows a badge of 2 @regression",
+      "reason": "The single-add test only checks visibility, but the two-product test asserts an exact badge count of 2, which would catch a wrong increment."
+    },
+    {
+      "id": "J28",
+      "verdict": "covered",
+      "test": "overview lists the backpack @smoke",
+      "reason": "The overview item names are asserted to be exactly the backpack, so a wrong or missing item would fail."
+    },
+    {
+      "id": "J29",
+      "verdict": "covered",
+      "test": "adding a product sets the cart badge to 1 @smoke",
+      "reason": "The badge is asserted to read exactly '1' after adding one product."
+    },
+    {
+      "id": "J30",
+      "verdict": "covered",
+      "test": "locked-out user sees a locked-out message @regression",
+      "reason": "The error is asserted to contain the exact locked-out message."
+    },
+    {
+      "id": "J31",
+      "verdict": "covered",
+      "test": "logout returns to the login page @smoke",
+      "reason": "After logout the URL is asserted to equal the base login URL, so a different landing page would fail."
+    },
+    {
+      "id": "J32",
+      "verdict": "covered",
+      "test": "removing the last item hides the badge @regression",
+      "reason": "After removing the only item the badge is asserted to have a count of zero, so a visible badge would fail."
+    },
+    {
+      "id": "J33",
+      "verdict": "covered",
+      "test": "all fields filled continues to the overview @regression",
+      "reason": "Filling all fields and asserting the title reads 'Checkout: Overview' would fail if Continue did not advance."
+    },
+    {
+      "id": "J34",
+      "verdict": "covered",
+      "test": "badge still counts the item after reloading @regression",
+      "reason": "After reloading the products page the badge is asserted to read 1, so losing the count would fail."
+    },
+    {
+      "id": "J35",
+      "verdict": "covered",
+      "test": "item total is $29.99 @regression",
+      "reason": "The item total label is asserted to read exactly 'Item total: $29.99'."
+    },
+    {
+      "id": "J36",
+      "verdict": "covered",
+      "test": "missing postal code shows an error @regression",
+      "reason": "The postal code error is asserted to read exactly 'Error: Postal Code is required'."
+    },
+    {
+      "id": "J37",
+      "verdict": "covered",
+      "test": "cancel returns to the cart @regression",
+      "reason": "Clicking Cancel and asserting the URL matches cart.html checks the named cart page."
+    },
+    {
+      "id": "J38",
+      "verdict": "covered",
+      "test": "adding two different products shows a badge of 2 @regression",
+      "reason": "Adding two products and asserting the badge reads exactly 2 would fail for a wrong count."
+    },
+    {
+      "id": "J39",
+      "verdict": "covered",
+      "test": "finishing shows the Checkout: Complete! page @smoke",
+      "reason": "The URL and the Checkout Complete text are asserted after Finish, so a wrong page would fail."
+    },
+    {
+      "id": "J40",
+      "verdict": "covered",
+      "test": "cart page lists the items that were added @regression",
+      "reason": "The cart item names are asserted to equal the two added products exactly."
+    },
+    {
+      "id": "J41",
+      "verdict": "covered",
+      "test": "back home returns to the products page @regression",
+      "reason": "After clicking Back Home the URL is asserted to match inventory.html, which names the products page."
+    },
+    {
+      "id": "J42",
+      "verdict": "covered",
+      "test": "login button is visible again after logout @regression",
+      "reason": "The login button is asserted visible after logout, which only holds if the user is back on the login page."
+    },
+    {
+      "id": "J43",
+      "verdict": "covered",
+      "test": "name Z to A shows the red T-shirt first @regression",
+      "reason": "The first product under Z to A is asserted to be the red T-shirt by exact name."
+    },
+    {
+      "id": "J44",
+      "verdict": "missing",
+      "test": "details page shows the same name and price as the list @regression",
+      "reason": "The details page is never asserted: the test only checks the list values are truthy and the click has no following assertion."
+    },
+    {
+      "id": "J45",
+      "verdict": "covered",
+      "test": "default sort is name A to Z with Sauce Labs Backpack first @smoke",
+      "reason": "The sort dropdown value and the first product name are asserted for the default sort."
+    },
+    {
+      "id": "J46",
+      "verdict": "covered",
+      "test": "checkout opens the Your Information step @smoke",
+      "reason": "The title is asserted to read exactly 'Checkout: Your Information' after clicking Checkout."
+    },
+    {
+      "id": "J47",
+      "verdict": "missing",
+      "test": "incorrect password shows a credential mismatch error @regression",
+      "reason": "The incorrect-password test clicks login and has no assertion, so no outcome is checked."
+    },
+    {
+      "id": "J48",
+      "verdict": "missing",
+      "test": "removing the last item hides the badge @regression",
+      "reason": "The test removing the last item asserts the page title is Products instead of the badge, so the badge is never checked."
+    },
+    {
+      "id": "J49",
+      "verdict": "covered",
+      "test": "incorrect password shows a credential mismatch error @regression",
+      "reason": "The error text containing 'Username and password do not match' is asserted after a wrong password."
+    },
+    {
+      "id": "J50",
+      "verdict": "covered",
+      "test": "back to products returns to the products page @regression",
+      "reason": "After Back to products the URL is asserted to match inventory.html, which names the products page."
+    },
+    {
+      "id": "J51",
+      "verdict": "partial",
+      "test": "user stays logged in on the products page after reset @regression",
+      "reason": "It checks the menu button is visible but not the products page URL or title, so a reset that lands on another logged-in page would pass."
+    },
+    {
+      "id": "J52",
+      "verdict": "partial",
+      "test": "cart page matches the items that were added @regression",
+      "reason": "The two-item cart test asserts only the count of 2, not the item names, so a wrong second item would pass."
+    },
+    {
+      "id": "J53",
+      "verdict": "covered",
+      "test": "products page displays at least one product after login @regression",
+      "reason": "The first product in the list is asserted visible after login, so an empty products page would fail."
+    },
+    {
+      "id": "J54",
+      "verdict": "covered",
+      "test": "adding from the details page sets the cart badge to 1 @regression",
+      "reason": "The badge is asserted to read exactly '1' after adding from the details page."
+    },
+    {
+      "id": "J55",
+      "verdict": "covered",
+      "test": "price high to low shows the Fleece Jacket first at $49.99 @regression",
+      "reason": "The first product name and its price are asserted for the high-to-low sort."
+    },
+    {
+      "id": "J56",
+      "verdict": "partial",
+      "test": "missing last name shows an error @regression",
+      "reason": "It asserts only that the error contains the word required, so a wrong message such as the first-name error would pass."
+    },
+    {
+      "id": "J57",
+      "verdict": "covered",
+      "test": "cart page matches the items that were added @regression",
+      "reason": "The cart item names are asserted to equal the two added products exactly."
+    },
+    {
+      "id": "J58",
+      "verdict": "covered",
+      "test": "reset removes the cart badge @smoke",
+      "reason": "The cart badge is asserted to have a count of zero after reset."
+    },
+    {
+      "id": "J59",
+      "verdict": "covered",
+      "test": "thank-you heading is shown @regression",
+      "reason": "The complete header text is asserted to read exactly 'Thank you for your order!'."
+    },
+    {
+      "id": "J60",
+      "verdict": "partial",
+      "test": "tax is $2.40 @regression",
+      "reason": "The check uses the unanchored regex /2.4/, so a near-miss amount such as 2.41 or 2.45 would pass while a missing label would fail."
+    },
+    {
+      "id": "J61",
+      "verdict": "missing",
+      "test": "login button is visible again after logout @regression",
+      "reason": "The login-button assertion sits in a try/catch that only logs, so it can never fail."
+    },
+    {
+      "id": "J62",
+      "verdict": "missing",
+      "test": "adding two different products shows a badge of 2 @regression",
+      "reason": "The badge assertion is not awaited, so the test finishes without waiting on it and a wrong count would not reliably fail."
+    },
+    {
+      "id": "J63",
+      "verdict": "missing",
+      "test": "cart page is empty after reset @regression",
+      "reason": "It counts a cart-item data-test selector that does not exist on saucedemo, so it always reads zero and passes whether or not items remain."
+    },
+    {
+      "id": "J64",
+      "verdict": "partial",
+      "test": "adding from the details page sets the cart badge to 1 @regression",
+      "reason": "The badge check runs only if the badge is already visible, so a missing badge would pass while a wrong count would fail."
+    },
+    {
+      "id": "J65",
+      "verdict": "missing",
+      "test": "missing first name shows an error @regression",
+      "reason": "The assertion only checks the error is not the last-name message, which passes for almost any wrong outcome."
+    },
+    {
+      "id": "J66",
+      "verdict": "covered",
+      "test": "badge still counts the item after reloading @regression",
+      "reason": "The test navigates back to the products page and asserts the badge reads 1, so losing the cart count on a fresh load would fail."
+    },
+    {
+      "id": "J67",
+      "verdict": "missing",
+      "test": "price high to low shows the Fleece Jacket first at $49.99 @regression",
+      "reason": "The high-to-low criterion is tested by selecting Low to High and checking the last item, and the six-product test checks only the count, so a broken high-to-low sort would pass."
+    }
+  ]
+}
