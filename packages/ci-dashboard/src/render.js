@@ -140,7 +140,7 @@ export function statusOf(p) {
   return { cls: 'good', icon: '✓', label: 'Stable' };
 }
 
-export function renderHtml(metrics, { repo, generatedAt, reportsHref = null }) {
+export function renderHtml(metrics, { repo, generatedAt, reportsHref = null, tracesHref = null }) {
   const { overall, packages, trend } = metrics;
   const tiles = [
     [`CI runs on ${overall.branch}`, String(overall.runs)],
@@ -173,7 +173,7 @@ ${PAGE_STYLE}
 <div class="viz-root">
 <div class="wrap">
   <h1>CI Dashboard</h1>
-  <p class="lede">Results of the last ${overall.runs} CI runs on <code>${esc(overall.branch)}</code> of <strong>${esc(repo)}</strong>, across ${overall.packages} packages${overall.otherRuns ? `; ${overall.otherRuns} runs on other branches were checked for flaky jobs only` : ''}. Generated ${esc(day(generatedAt))}.${reportsHref ? ` <a href="${esc(reportsHref)}">Test reports from the latest run</a>.` : ''}</p>
+  <p class="lede">Results of the last ${overall.runs} CI runs on <code>${esc(overall.branch)}</code> of <strong>${esc(repo)}</strong>, across ${overall.packages} packages${overall.otherRuns ? `; ${overall.otherRuns} runs on other branches were checked for flaky jobs only` : ''}. Generated ${esc(day(generatedAt))}.${reportsHref ? ` <a href="${esc(reportsHref)}">Test reports from the latest run</a>.` : ''}${tracesHref ? ` <a href="${esc(tracesHref)}">Every AI test with its Langfuse trace</a>.` : ''}</p>
 
   <section class="tiles" aria-label="Summary">
     ${tiles.map(([l, v]) => `<div class="tile"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`).join('')}

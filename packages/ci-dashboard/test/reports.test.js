@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
-import { redact, findSecrets, unzipTexts, embeddedZip, findEntry, resultFor, buildReports, renderReportsPage } from '../src/reports.js';
+import { redact, findSecrets, unzipTexts, embeddedZip, findEntry, resultFor, buildReports, renderReportsPage, tracesEntry } from '../src/reports.js';
 
 // Shaped like real tokens, but made up.
 const JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJpZCI6MSwidXNlciI6ImRlbW8ifQ.c2lnbmF0dXJlLXZhbHVl';
@@ -157,4 +157,15 @@ test('renderReportsPage links published reports, explains withheld ones and esca
   assert.equal((html.match(/>Open</g) ?? []).length, 2);
   assert.match(html, /actions\/runs\/99">#7<\/a> \(schedule, 2026-10-17, success\)/);
   assert.match(renderReportsPage([], { repo: 'o/r', run: null, generatedAt: '' }), /No reports were uploaded/);
+});
+
+test('the Langfuse traces report gets its own link, but only once it is published', () => {
+  const meta = { repo: 'o/r', run: null, generatedAt: '' };
+  const traces = { name: 'langfuse-traces', entry: 'index.html', result: 'success', redactions: 0, withheld: null };
+  assert.equal(tracesEntry([traces]), 'langfuse-traces/index.html');
+  assert.match(renderReportsPage([traces], meta), /<a href="langfuse-traces\/index\.html">LLM judge traces<\/a>/);
+  assert.equal(tracesEntry([{ ...traces, withheld: 'index.html contains JWT' }]), null);
+  assert.equal(tracesEntry([{ ...traces, entry: null }]), null);
+  assert.equal(tracesEntry([{ ...traces, name: 'llm-judge-check' }]), null);
+  assert.doesNotMatch(renderReportsPage([{ ...traces, withheld: 'x' }], meta), /LLM judge traces/);
 });

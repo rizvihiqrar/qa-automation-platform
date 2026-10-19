@@ -186,6 +186,18 @@ export function buildReports({ rawDir, outDir, jobs = [] }) {
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** The report from the langfuse-traces job: every AI test in llm-judge-check linked to its trace. */
+export const TRACES_SUITE = 'langfuse-traces';
+
+/**
+ * Where the traces report was published, relative to the reports page; null if it wasn't.
+ * @param {ReportRow[]} rows
+ */
+export function tracesEntry(rows) {
+  const r = rows.find((x) => x.name === TRACES_SUITE);
+  return r?.entry && !r.withheld ? `${TRACES_SUITE}/${r.entry}` : null;
+}
+
 const RESULT = /** @type {Record<string, { cls: string, icon: string, label: string }>} */ ({
   success: { cls: 'good', icon: '✓', label: 'Passed' },
   failure: { cls: 'critical', icon: '✕', label: 'Failed' },
@@ -218,6 +230,7 @@ export function renderReportsPage(rows, { repo, run, generatedAt, traceabilityHr
   <h1>Test Reports</h1>
   <p class="lede">The HTML reports from ${runText} on main, one per suite. <a href="../">Back to the CI dashboard</a>. Generated ${esc(day(generatedAt))}.</p>
   ${traceabilityHref ? `<p class="lede">Requirement by requirement: the <a href="${esc(traceabilityHref)}">traceability matrix</a> shows each qa-practice-api requirement, the test cases that check it, and their results in this run.</p>` : ''}
+  ${tracesEntry(rows) ? `<p class="lede">AI test by AI test: the <a href="${esc(encodeURI(tracesEntry(rows) ?? ''))}">LLM judge traces</a> link each of llm-judge-check's AI tests to its trace in a self-hosted Langfuse, as Langfuse stored it.</p>` : ''}
   <section class="card wide">
     <h2>Reports</h2>
     <p class="sub">Updated after every CI run on main. Tokens are redacted before publishing; a report whose zipped data contains one is withheld.</p>

@@ -183,6 +183,55 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Langfuse tracing for the AI tests in llm-judge-check. Starts a self-hosted
+  # Langfuse (its own compose file, pinned; packages/llm-judge-check/langfuse), replays
+  # both promptfoo evals with tracing on (no model is called), then reads every
+  # observation back and fails unless each of the 900 AI tests has exactly one trace
+  # holding its prompt, its reply and promptfoo's result, and no trace is unexplained.
+  # The traces, as Langfuse stored them, are published with the other reports.
+  langfuse-traces:
+    name: langfuse-traces
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/llm-judge-check
+    env:
+      LANGFUSE_BASE_URL: http://localhost:3000
+      # The throwaway project's keys from langfuse/local.env (public on purpose)
+      LANGFUSE_PUBLIC_KEY: pk-lf-local-only
+      LANGFUSE_SECRET_KEY: sk-lf-local-only
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/llm-judge-check/package-lock.json
+
+      - name: Start Langfuse
+        run: docker compose -f langfuse/docker-compose.yml --env-file langfuse/local.env up -d --quiet-pull
+
+      - run: npm ci
+
+      # src/traces.ts waits for Langfuse's health endpoint before it starts.
+      - name: Trace every AI test and check the traces
+        run: npm run traces -- --out traces-report
+
+      - name: Langfuse logs
+        if: failure()
+        run: docker compose -f langfuse/docker-compose.yml --env-file langfuse/local.env logs --tail 200 langfuse-web langfuse-worker
+
+      - name: Upload the traces report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-langfuse-traces
+          path: packages/llm-judge-check/traces-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Sauce Demo regression (43 AI-generated tests, ai-test-generator/tests/regression),
   # split across runners. Each shard uploads a blob report; regression-report merges
   # them into one HTML report and checks every listed test ran exactly once.
