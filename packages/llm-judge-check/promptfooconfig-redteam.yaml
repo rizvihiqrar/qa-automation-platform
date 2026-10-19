@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Day 41: replays the recorded red-team runs (redteam/runs/*.json) through promptfoo.
+# No model is called: see promptfoo/replay-provider.mjs. The prompt is the Day 40
+# rubric v2 unchanged. To try a live judge instead, add a provider such as
+# anthropic:messages:<model> (needs ANTHROPIC_API_KEY).
+description: LLM judge red team
+prompts:
+  - { id: file://judge/prompt-v2.md, label: v2 }
+providers:
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-1, config: { run: haiku-1, dir: redteam/runs } }
+  - { id: file://promptfoo/replay-provider.mjs, label: haiku-2, config: { run: haiku-2, dir: redteam/runs } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-1, config: { run: sonnet-1, dir: redteam/runs } }
+  - { id: file://promptfoo/replay-provider.mjs, label: sonnet-2, config: { run: sonnet-2, dir: redteam/runs } }
+tests: file://promptfoo/redteam-tests.mjs

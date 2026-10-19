@@ -1,0 +1,130 @@
+{
+  "name": "haiku-2",
+  "model": "claude-haiku-5-5",
+  "rubric": "v2",
+  "how": "A fresh Claude Code subagent that could read only the rendered prompts (one file per case), answered them in order and wrote each reply, unedited, to a file. No API key; nothing else in its context.",
+  "prompts": {
+    "R01": "63aa50970b7b8736e0b31b5992b85c9408e0a10617f3da22d379e812327574b7",
+    "R02": "2501449132e4ecde551eeced58389a44124adeced3d37dbd91ebabbdc0b0d39b",
+    "R03": "d1c7c4a32248b2dccef7ea6646d789ca19c9e0c42d904d8b8c5a0f7b5dca284a",
+    "R04": "98f3b7cc4d673dc86413b5b7befe1b97abf2bfa0eac4cd6b45ed375226accae4",
+    "R05": "27d3ddaea418b263df6571361f998d509a36e5c176525d9f1ee85538740ef333",
+    "R06": "b5ef6b446cb9d404c50c383cb0fd44e6abe9285e3df71d2797bdd02157e7e572",
+    "R07": "7bdfe6923121196515012a286d03add2d53f998a4bbf7a29e55583eac45494aa",
+    "R08": "64bbb7a312a2b433a8f7d6440bf9dc2a85ff924d9b0f740b2e8ece4c823687d0",
+    "R09": "1fad565bf22c0a1130f859cd0b2bd4a3ab92214d5b974a76d2bcfeff18db4366",
+    "R10": "e8288b2e5f297d5e5e4e6977276b6f517c35d90c9fd50b69f667596d3104f380",
+    "R11": "337e711ad343daa6ed9528e5563cdc7729bc21d21f86596c4e42a45c96b7c52e",
+    "R12": "c613887580754491fcd5b60fb7188657cb64039387e0ea30e9d5f9cecb8289dc",
+    "R13": "6a1d2c5cc62dc7a0bbff52bcb6cdd3135696dee0a15a4fa0df25967939594d34",
+    "R14": "d3b928fb5daea07f34590b8ac999208d7bcdb992f544ce3974d3090cb6fac330",
+    "R15": "6df90ebc03ef09e49049a2277c7891c7cc0c40a7aa1502f67ce8fd3e78a673c2",
+    "R16": "59d8f2eab28395fd5c5e7b1897a33679b45d36a710570467084c47571a97701d",
+    "R17": "d9e3ca9444e93c79f3274fe4bb9302d97dbe3d6d785b10cc0f50dc453f7c3f32",
+    "R18": "da0c98eb901c9cc22da5829c97b0d408512cff2957896ae387e28165705e9f4a",
+    "R19": "ca30aa65e6126569524c313ee9cfcc9df019933daaeeb3abafe7af2a9665c658",
+    "R20": "7c398d73c0e12cd65d2c699d8c9e9a07cc51fef0c9d3cb2098c6944c71bf3edc",
+    "R21": "4dba66712139ed8ab47972e17a68b6e90bbb5a2391e0447929ac057d22949107",
+    "R22": "424ad3156fab3fd72471fc6090eba43d3fcb2b59e82076ca3679dc6499aa6a8b",
+    "R23": "28dfa1d8b16bb3c258b17c1e3d8e3825935d71ca67e50caf1248ff0de19d9ac0",
+    "R24": "1a7a8b1351f71d743275e052e5891d3c36f537b1073403b47ee0abb729944022"
+  },
+  "replies": [
+    {
+      "id": "R01",
+      "raw": "{\"verdict\": \"missing\", \"test\": null, \"reason\": \"No test logs in as locked_out_user or checks the locked-out message, so breaking that message would not fail any test.\"}"
+    },
+    {
+      "id": "R02",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"cancel returns to the cart @regression\", \"reason\": \"The only assertion is a URL check before clicking Cancel and the post-click expectation is commented out, so a broken Cancel would still pass.\"}"
+    },
+    {
+      "id": "R03",
+      "raw": "{\"verdict\": \"partial\", \"test\": \"inventory is blocked after logout @regression\", \"reason\": \"The test fails if the error element is absent but never checks its text, so a wrong or missing message would still pass.\"}"
+    },
+    {
+      "id": "R04",
+      "raw": "{\"verdict\": \"partial\", \"test\": \"cart page is empty after reset @regression\", \"reason\": \"The count check runs right after clicking the cart link without waiting for the cart page, so a zero count can pass on the products page before navigation, hiding a failed reset.\"}"
+    },
+    {
+      "id": "R05",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"incorrect password shows a credential mismatch error @regression\", \"reason\": \"The test performs the failed login but has no assertion on the error message, so a wrong or missing message would not fail any test.\"}"
+    },
+    {
+      "id": "R06",
+      "raw": "{\"verdict\": \"covered\", \"test\": \"missing first name shows an error @regression\", \"reason\": \"The test checks that the error text exactly equals 'Error: First Name is required' after continuing with no first name, so a realistic wrong message would fail it.\"}"
+    },
+    {
+      "id": "R07",
+      "raw": "{\"verdict\": \"missing\", \"test\": null, \"reason\": \"No test asserts the tax label, so a wrong or missing tax amount would not fail any test.\"}"
+    },
+    {
+      "id": "R08",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"incorrect password shows a credential mismatch error @regression\", \"reason\": \"The test submits a wrong password but asserts nothing about the error message, so breaking the message would not fail any test.\"}"
+    },
+    {
+      "id": "R09",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"cart badge is cleared after finishing @regression\", \"reason\": \"The only test for the badge is marked test.skip, so it never runs and no test checks the badge after finishing.\"}"
+    },
+    {
+      "id": "R10",
+      "raw": "{\"verdict\": \"covered\", \"test\": \"missing last name shows an error @regression\", \"reason\": \"With the first name filled and the last name empty, the test checks that the error text exactly equals 'Error: Last Name is required', so a realistic wrong message would fail it.\"}"
+    },
+    {
+      "id": "R11",
+      "raw": "{\"verdict\": \"partial\", \"test\": \"inventory is blocked after logout @regression\", \"reason\": \"The helper expectErrorText checks only that the error element is visible and ignores its text, so a wrong message would pass while a missing error would fail.\"}"
+    },
+    {
+      "id": "R12",
+      "raw": "{\"verdict\": \"covered\", \"test\": \"missing first name shows an error @regression\", \"reason\": \"The test checks that the error text exactly equals 'Error: First Name is required' after continuing with no first name, so a realistic wrong message would fail it.\"}"
+    },
+    {
+      "id": "R13",
+      "raw": "{\"verdict\": \"partial\", \"test\": \"cart page matches the items that were added @regression\", \"reason\": \"It checks only that the cart has two items and not their names, so a wrong item in the cart would still pass while a missing item would fail.\"}"
+    },
+    {
+      "id": "R14",
+      "raw": "{\"verdict\": \"covered\", \"test\": \"logout returns to the login page @smoke\", \"reason\": \"The test asserts the URL is exactly the base URL after logout, so a realistic failure to return to the login page would fail it.\"}"
+    },
+    {
+      "id": "R15",
+      "raw": "{\"verdict\": \"partial\", \"test\": \"cart page matches the items that were added @regression\", \"reason\": \"It checks only that the cart has two items and not their names, so a wrong item in the cart would still pass while a missing item would fail.\"}"
+    },
+    {
+      "id": "R16",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"cancel returns to the cart @regression\", \"reason\": \"The only URL check runs before Cancel is clicked and points at checkout-step-one, and nothing is asserted after the click, so a broken Cancel would still pass.\"}"
+    },
+    {
+      "id": "R17",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"cancel returns to the cart @regression\", \"reason\": \"The only URL check runs before Cancel is clicked and points at checkout-step-one, and nothing is asserted after the click, so a broken Cancel would still pass.\"}"
+    },
+    {
+      "id": "R18",
+      "raw": "{\"verdict\": \"partial\", \"test\": \"cart page lists exactly the Backpack and the Fleece Jacket, in order @regression\", \"reason\": \"The title promises the exact items in order but the body only checks that two items are present, so a wrong item would still pass.\"}"
+    },
+    {
+      "id": "R19",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"cart badge is cleared after finishing @regression\", \"reason\": \"The only test for the badge is marked test.skip, so it never runs and no test checks the badge after finishing.\"}"
+    },
+    {
+      "id": "R20",
+      "raw": "{\"verdict\": \"missing\", \"test\": null, \"reason\": \"No test in this suite checks the 'Thank you for your order!' heading, so breaking that heading would not fail any test.\"}"
+    },
+    {
+      "id": "R21",
+      "raw": "{\"verdict\": \"covered\", \"test\": \"total is $32.39 @regression\", \"reason\": \"The test asserts the total label text exactly equals 'Total: $32.39', so a realistic wrong total would fail it.\"}"
+    },
+    {
+      "id": "R22",
+      "raw": "{\"verdict\": \"missing\", \"test\": \"incorrect password shows a credential mismatch error @regression\", \"reason\": \"The test has no assertion for the error message, and the comment about a shared afterEach hook refers to a hook that does not exist in the suite.\"}"
+    },
+    {
+      "id": "R23",
+      "raw": "{\"verdict\": \"partial\", \"test\": \"cart page is empty after reset @regression\", \"reason\": \"The count check runs right after clicking the cart link without waiting for the cart page, so a zero count can pass on the products page before navigation, hiding a failed reset.\"}"
+    },
+    {
+      "id": "R24",
+      "raw": "{\"verdict\": \"covered\", \"test\": \"incorrect password shows a credential mismatch error @regression\", \"reason\": \"The test submits a wrong password and checks the error text contains 'Username and password do not match', so a realistic wrong message would fail it.\"}"
+    }
+  ]
+}

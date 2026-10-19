@@ -45,7 +45,7 @@ export function criteriaOf(featureText: string): string[] {
 }
 
 // mulberry32: small, seeded, good enough for shuffling
-function random(seed: number): () => number {
+export function random(seed: number): () => number {
   let a = seed;
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -55,7 +55,7 @@ function random(seed: number): () => number {
   };
 }
 
-function shuffle<T>(list: T[], rand: () => number): T[] {
+export function shuffle<T>(list: T[], rand: () => number): T[] {
   const out = [...list];
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));

@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { badCitations } from './attribution.ts';
 import { isVerdict, type Verdict } from './stats.ts';
 import { loadItems, PKG, render, RUBRICS, sha256, template, type Rubric } from './render.ts';
 import { loadKey } from './review-sheet.ts';
@@ -80,6 +81,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     prompts: { ...previous?.prompts, ...Object.fromEntries(items.map((item) => [item.id, sha256(render(item, tpl))])) },
     answers: [...(previous?.answers ?? []), ...answers].sort((a, b) => a.id.localeCompare(b.id)),
   };
+  // Recorded as answered (a pipeline would score it that way), but said out loud.
+  for (const b of badCitations([{ name, answers }], items)) {
+    console.warn(`warning: ${b.id} cites "${b.test}", which is ${b.kind === 'elsewhere' ? `a test in ${b.foundIn.join(', ')}, not in ${b.id}` : 'not a test in any spec'}`);
+  }
   fs.mkdirSync(path.join(PKG, 'runs'), { recursive: true });
   fs.writeFileSync(out, JSON.stringify(run, null, 2) + '\n');
   console.log(`recorded ${answers.length} answers (rubric ${rubric}, cases ${casesArg}) in runs/${name}.json (${run.answers.length} in all)`);

@@ -741,5 +741,55 @@
       "cases": 43,
       "kappa": 0.2561
     }
+  ],
+  "badCitations": [
+    {
+      "run": "haiku-v2-3",
+      "id": "J41",
+      "test": "back home returns to the products page @regression",
+      "kind": "elsewhere"
+    },
+    {
+      "run": "haiku-v2-3",
+      "id": "J42",
+      "test": "login button is visible again after logout @regression",
+      "kind": "elsewhere"
+    },
+    {
+      "run": "haiku-v2-3",
+      "id": "J43",
+      "test": "name Z to A shows the red T-shirt first @regression",
+      "kind": "elsewhere"
+    },
+    {
+      "run": "haiku-v2-3",
+      "id": "J44",
+      "test": "details page shows the same name and price as the list @regression",
+      "kind": "elsewhere"
+    },
+    {
+      "run": "haiku-v2-3",
+      "id": "J45",
+      "test": "default sort is name A to Z with Sauce Labs Backpack first @smoke",
+      "kind": "elsewhere"
+    },
+    {
+      "run": "sonnet-2",
+      "id": "J28",
+      "test": "adding a product sets the cart badge to 1 @smoke",
+      "kind": "elsewhere"
+    },
+    {
+      "run": "sonnet-2",
+      "id": "J29",
+      "test": "locked-out user sees a locked-out message @regression",
+      "kind": "elsewhere"
+    },
+    {
+      "run": "sonnet-2",
+      "id": "J30",
+      "test": "overview lists the backpack @smoke",
+      "kind": "elsewhere"
+    }
   ]
 }

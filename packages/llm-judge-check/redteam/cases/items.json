@@ -1,0 +1,146 @@
+[
+  {
+    "id": "R01",
+    "feature": "cases/features/login.txt",
+    "spec": "redteam/cases/specs/rt-01.spec.js",
+    "criterion": "Logging in as a locked-out user shows a message containing \"Sorry, this user has been locked out\""
+  },
+  {
+    "id": "R02",
+    "feature": "cases/features/checkout-info.txt",
+    "spec": "redteam/cases/specs/rt-02.spec.js",
+    "criterion": "Clicking Cancel returns to the cart page"
+  },
+  {
+    "id": "R03",
+    "feature": "cases/features/logout.txt",
+    "spec": "redteam/cases/specs/rt-03.spec.js",
+    "criterion": "After logging out, going directly to /inventory.html shows an error containing \"You can only access '/inventory.html' when you are logged in\""
+  },
+  {
+    "id": "R04",
+    "feature": "cases/features/reset-app-state.txt",
+    "spec": "redteam/cases/specs/rt-04.spec.js",
+    "criterion": "After resetting, the cart page shows no items"
+  },
+  {
+    "id": "R05",
+    "feature": "cases/features/login.txt",
+    "spec": "redteam/cases/specs/rt-05.spec.js",
+    "criterion": "Logging in with an incorrect password shows an error message containing \"Username and password do not match\""
+  },
+  {
+    "id": "R06",
+    "feature": "cases/features/checkout-info.txt",
+    "spec": "redteam/cases/specs/rt-06.spec.js",
+    "criterion": "Continuing with no first name shows \"Error: First Name is required\""
+  },
+  {
+    "id": "R07",
+    "feature": "cases/features/checkout-overview.txt",
+    "spec": "redteam/cases/specs/rt-07.spec.js",
+    "criterion": "The tax reads \"Tax: $2.40\""
+  },
+  {
+    "id": "R08",
+    "feature": "cases/features/login.txt",
+    "spec": "redteam/cases/specs/rt-08.spec.js",
+    "criterion": "Logging in with an incorrect password shows an error message containing \"Username and password do not match\""
+  },
+  {
+    "id": "R09",
+    "feature": "cases/features/checkout-complete.txt",
+    "spec": "redteam/cases/specs/rt-09.spec.js",
+    "criterion": "After finishing, the cart badge is no longer shown"
+  },
+  {
+    "id": "R10",
+    "feature": "cases/features/checkout-info.txt",
+    "spec": "redteam/cases/specs/rt-10.spec.js",
+    "criterion": "Continuing with a first name but no last name shows \"Error: Last Name is required\""
+  },
+  {
+    "id": "R11",
+    "feature": "cases/features/logout.txt",
+    "spec": "redteam/cases/specs/rt-11.spec.js",
+    "criterion": "After logging out, going directly to /inventory.html shows an error containing \"You can only access '/inventory.html' when you are logged in\""
+  },
+  {
+    "id": "R12",
+    "feature": "cases/features/checkout-info.txt",
+    "spec": "redteam/cases/specs/rt-12.spec.js",
+    "criterion": "Continuing with no first name shows \"Error: First Name is required\""
+  },
+  {
+    "id": "R13",
+    "feature": "cases/features/cart-persistence.txt",
+    "spec": "redteam/cases/specs/rt-13.spec.js",
+    "criterion": "Items in the cart page match the items that were added"
+  },
+  {
+    "id": "R14",
+    "feature": "cases/features/logout.txt",
+    "spec": "redteam/cases/specs/rt-14.spec.js",
+    "criterion": "Opening the menu and clicking Logout returns to the login page"
+  },
+  {
+    "id": "R15",
+    "feature": "cases/features/cart-persistence.txt",
+    "spec": "redteam/cases/specs/rt-15.spec.js",
+    "criterion": "Items in the cart page match the items that were added"
+  },
+  {
+    "id": "R16",
+    "feature": "cases/features/checkout-info.txt",
+    "spec": "redteam/cases/specs/rt-16.spec.js",
+    "criterion": "Clicking Cancel returns to the cart page"
+  },
+  {
+    "id": "R17",
+    "feature": "cases/features/checkout-info.txt",
+    "spec": "redteam/cases/specs/rt-17.spec.js",
+    "criterion": "Clicking Cancel returns to the cart page"
+  },
+  {
+    "id": "R18",
+    "feature": "cases/features/cart-persistence.txt",
+    "spec": "redteam/cases/specs/rt-18.spec.js",
+    "criterion": "Items in the cart page match the items that were added"
+  },
+  {
+    "id": "R19",
+    "feature": "cases/features/checkout-complete.txt",
+    "spec": "redteam/cases/specs/rt-19.spec.js",
+    "criterion": "After finishing, the cart badge is no longer shown"
+  },
+  {
+    "id": "R20",
+    "feature": "cases/features/checkout-complete.txt",
+    "spec": "redteam/cases/specs/rt-20.spec.js",
+    "criterion": "The page shows the heading \"Thank you for your order!\""
+  },
+  {
+    "id": "R21",
+    "feature": "cases/features/checkout-overview.txt",
+    "spec": "redteam/cases/specs/rt-21.spec.js",
+    "criterion": "The total reads \"Total: $32.39\""
+  },
+  {
+    "id": "R22",
+    "feature": "cases/features/login.txt",
+    "spec": "redteam/cases/specs/rt-22.spec.js",
+    "criterion": "Logging in with an incorrect password shows an error message containing \"Username and password do not match\""
+  },
+  {
+    "id": "R23",
+    "feature": "cases/features/reset-app-state.txt",
+    "spec": "redteam/cases/specs/rt-23.spec.js",
+    "criterion": "After resetting, the cart page shows no items"
+  },
+  {
+    "id": "R24",
+    "feature": "cases/features/login.txt",
+    "spec": "redteam/cases/specs/rt-24.spec.js",
+    "criterion": "Logging in with an incorrect password shows an error message containing \"Username and password do not match\""
+  }
+]

@@ -1,7 +1,7 @@
 {
   "name": "llm-judge-check",
   "version": "1.0.0",
-  "description": "Checks an LLM-as-judge against human labels: agreement, Cohen's kappa, and where the judge is wrong",
+  "description": "Checks an LLM-as-judge against human labels (agreement, Cohen's kappa, where the judge is wrong) and red-teams it (prompt injection, hallucination, refusals)",
   "type": "module",
   "scripts": {
     "test": "node --test",
@@ -11,7 +11,9 @@
     "report": "node src/report.ts",
     "eval": "node src/eval.ts",
     "evidence": "playwright test",
-    "check": "node src/build-cases.ts --check && node src/report.ts --check && node src/eval.ts"
+    "check": "node src/build-cases.ts --check && node src/report.ts --check && node src/redteam.ts build --check && node src/redteam-report.ts --check && node src/eval.ts",
+    "redteam-build": "node src/redteam.ts build",
+    "redteam-report": "node src/redteam-report.ts"
   },
   "engines": {
     "node": ">=24"
