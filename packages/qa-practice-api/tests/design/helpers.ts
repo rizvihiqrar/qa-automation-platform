@@ -2,7 +2,7 @@
 // (TC-EP-01 and so on); docs/test-strategy/test-plan.md lists every ID with its
 // technique and requirement, and scripts/test-plan.test.mjs checks the two match.
 import type { APIRequestContext } from '@playwright/test';
-import { adminAuth, adminId } from '../admin.ts';
+import { adminAuth, adminId, PASSWORD } from '../admin.ts';
 
 export interface Account {
   id: number;
@@ -19,7 +19,7 @@ export interface Product {
 let count = 0;
 const unique = () => `${process.pid}.${Date.now()}.${count++}`;
 
-export const PASSWORD = 'Pass123!';
+export { PASSWORD };
 
 export async function signUp(request: APIRequestContext): Promise<Account> {
   const email = `design.${unique()}@example.com`;

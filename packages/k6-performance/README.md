@@ -62,6 +62,8 @@ node src/run.js load --url http://localhost:4000      # an API that's already ru
 LOGIN_EVERY=0 node src/run.js load                    # load without logins
 ```
 
+The seeded admin comes from `ADMIN_EMAIL` and `ADMIN_PASSWORD`, and the users the scripts register get `K6_USER_PASSWORD`; all have throwaway test-only defaults (see `.env.example`). Against `--url`, start that server with the same `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+
 Needs [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) on the PATH, or `K6_BIN` pointing at it. Results go to `results/` (`REPORT.md` plus k6's JSON per test). In GitHub Actions the report is added to the job summary. Exit code 1 if any threshold fails.
 
 ---

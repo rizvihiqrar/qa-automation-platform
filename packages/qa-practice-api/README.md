@@ -32,7 +32,7 @@ npm run scoreboard     # put each of the AI's mistakes back, record what catches
 npm run test:mutation  # Stryker; MUTATION_TESTS=designed or properties (see stryker.config.mjs)
 ```
 
-The data lives in memory, so each run starts with an empty store and no state leaks between runs. The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, set in `playwright.config.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
+The data lives in memory, so each run starts with an empty store and no state leaks between runs. The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
 
 291 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks and 4 unit tests of the sign-in limiter. The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
 
@@ -133,6 +133,8 @@ These are intentional behaviours worth writing tests for:
 | `PORT` | `4000` | Server port |
 | `JWT_SECRET` | random, per start | Set it to keep tokens valid across restarts (pointless here, since the data doesn't survive one). It used to default to a fixed string written in this file, so anyone could sign a token |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | none | Both set: the server creates this admin at start-up. Neither set: there is no admin |
+
+The tests read two more, both with throwaway test-only defaults in `tests/admin.ts` (see `.env.example`): `QA_PRACTICE_ADMIN_PASSWORD`, the admin password the test server is seeded with, and `QA_PRACTICE_PASSWORD`, for the customer accounts the tests register.
 
 ## Security
 

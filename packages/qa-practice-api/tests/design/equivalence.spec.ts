@@ -1,7 +1,7 @@
 // Equivalence partitioning: one case per class of input, valid and invalid.
 // Classes and the reasoning behind them: docs/test-strategy/test-plan.md.
 import { test, expect } from '@playwright/test';
-import { signUp, admin, makeProduct, stockOf, type Account } from './helpers.ts';
+import { signUp, admin, makeProduct, stockOf, PASSWORD, type Account } from './helpers.ts';
 
 let account: Account;
 test.beforeAll(async ({ request }) => { account = await signUp(request); });
@@ -91,7 +91,7 @@ test.describe('request body classes', () => {
 
   const auth: [id: string, path: string, label: string, body: Record<string, unknown>][] = [
     ['TC-EP-18', '/auth/register', 'a numeric password', { name: 'N', email: 'ep18@example.com', password: 12345 }],
-    ['TC-EP-19', '/auth/register', 'an object email',    { name: 'N', email: { $ne: '' }, password: 'Pass123!' }],
+    ['TC-EP-19', '/auth/register', 'an object email',    { name: 'N', email: { $ne: '' }, password: PASSWORD }],
     ['TC-EP-20', '/auth/login',    'a numeric password', { email: 'ep20@example.com', password: 12345 }],
   ];
   for (const [id, path, label, body] of auth) {

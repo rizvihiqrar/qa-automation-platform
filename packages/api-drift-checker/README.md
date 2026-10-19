@@ -56,6 +56,8 @@ node src/live.js --url http://localhost:4000   # an API that's already running
 node src/live.js --json contract.json          # also write { passed, summary } for the release gate
 ```
 
+The scenario's admin and customer passwords come from `DRIFT_ADMIN_PASSWORD` and `DRIFT_USER_PASSWORD`, with throwaway test-only defaults (see `.env.example`). Against `--url`, seed that server's `ADMIN_PASSWORD` with the same value.
+
 Exit code 1 on any drift, so it can run as a contract gate in CI. The CI job for this package does exactly that against the real API.
 
 ---

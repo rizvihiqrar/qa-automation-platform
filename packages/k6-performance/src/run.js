@@ -19,6 +19,8 @@ const TESTS = ['smoke', 'load', 'spike'];
 // The admin the started server is seeded with; the k6 setup signs in as it to create
 // products. With --url, start that server with the same ADMIN_EMAIL and ADMIN_PASSWORD.
 const ADMIN = { email: process.env.ADMIN_EMAIL || 'admin@k6.test', password: process.env.ADMIN_PASSWORD || 'K6-admin-pass-1!' };
+// Password for the users the k6 scripts register (k6 reads __ENV, not process.env).
+const USER_PASSWORD = process.env.K6_USER_PASSWORD || 'Load-test-1!';
 
 const freePort = () => new Promise((resolve) => {
   const srv = net.createServer().listen(0, '127.0.0.1', () => {
@@ -56,7 +58,7 @@ try {
 
   const summaries = [];
   for (const test of tests) {
-    const res = spawnSync(K6, ['run', '--quiet', '-e', `BASE_URL=${baseUrl}`, '-e', `ADMIN_EMAIL=${ADMIN.email}`, '-e', `ADMIN_PASSWORD=${ADMIN.password}`, path.join('k6', `${test}.js`)], { cwd: ROOT, encoding: 'utf8' });
+    const res = spawnSync(K6, ['run', '--quiet', '-e', `BASE_URL=${baseUrl}`, '-e', `ADMIN_EMAIL=${ADMIN.email}`, '-e', `ADMIN_PASSWORD=${ADMIN.password}`, '-e', `K6_USER_PASSWORD=${USER_PASSWORD}`, path.join('k6', `${test}.js`)], { cwd: ROOT, encoding: 'utf8' });
     if (res.error) throw new Error(`Could not run k6 (${K6}): ${res.error.message}. Install k6 or set K6_BIN.`);
     const file = path.join(ROOT, 'results', `${test}.json`);
     if (!fs.existsSync(file)) throw new Error(`k6 ${test} wrote no summary:\n${res.stderr || res.stdout}`);

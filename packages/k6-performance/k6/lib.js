@@ -10,7 +10,8 @@ export const authHeaders = (token) => ({ ...JSON_HEADERS, Authorization: `Bearer
 
 export function register(tag) {
   const email = `k6-${tag}-${Date.now()}-${Math.floor(Math.random() * 1e9)}@example.com`;
-  const password = 'Load-test-1!';
+  // Throwaway account on the local qa-practice-api server; src/run.js passes K6_USER_PASSWORD through.
+  const password = __ENV.K6_USER_PASSWORD || 'Load-test-1!';
   const res = http.post(`${BASE_URL}/auth/register`, JSON.stringify({ name: 'k6 user', email, password }), { headers: JSON_HEADERS, tags: { name: 'register' } });
   check(res, { 'register 201': (r) => r.status === 201 });
   return { email, password, token: res.json('token') };

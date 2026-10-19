@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 export const BASE_URL = 'https://www.saucedemo.com';
-export const PASSWORD = 'secret_sauce';
+// Public saucedemo test account (published on the site's login page); override with SAUCEDEMO_PASSWORD.
+export const PASSWORD = process.env.SAUCEDEMO_PASSWORD || 'secret_sauce';
 
 // The six products, in the page's default (Name A to Z) order, with the id the
 // site uses in /inventory-item.html?id= and in its cart-contents storage key.

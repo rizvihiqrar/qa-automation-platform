@@ -4,13 +4,16 @@ import { LoginPage } from '../../pageObjects/LoginPage.ts';
 import { InventoryPage, type SortOption } from '../../pageObjects/InventoryPage.ts';
 import type { PlaywrightWorld } from '../../support/world.ts';
 
+// Public saucedemo test account (published on the site's login page); override with SAUCEDEMO_PASSWORD.
+const PASSWORD = process.env.SAUCEDEMO_PASSWORD || 'secret_sauce';
+
 const SORT_OPTIONS: readonly string[] = ['az', 'za', 'lohi', 'hilo'] satisfies SortOption[];
 
 Given('I am logged in as {string}', async function (this: PlaywrightWorld, username: string) {
   const login = new LoginPage(this.page);
   await login.navigate();
   await login.enterUsername(username);
-  await login.enterPassword('secret_sauce');
+  await login.enterPassword(PASSWORD);
   await login.clickLogin();
   await this.page.waitForURL(/inventory/, { timeout: 15000 });
 });

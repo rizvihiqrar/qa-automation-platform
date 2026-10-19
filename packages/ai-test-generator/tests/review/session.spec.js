@@ -1,7 +1,7 @@
 // Review findings for feature-login.txt, feature-logout.txt and
 // feature-reset-app-state.txt. See docs/requirement-review.
 import { test, expect } from '@playwright/test';
-import { PRODUCTS, BASE_URL, defect, login, loginAndWait, logout, addToCart } from './helpers.js';
+import { PRODUCTS, BASE_URL, PASSWORD, defect, login, loginAndWait, logout, addToCart } from './helpers.js';
 
 const [backpack, bikeLight] = PRODUCTS;
 const error = (page) => page.locator('[data-test="error"]');
@@ -43,7 +43,7 @@ test.describe('Login: review findings', () => {
 
   test('RV-19: a password without a username asks for the username @regression', async ({ page }) => {
     await page.goto(BASE_URL);
-    await page.fill('[data-test="password"]', 'secret_sauce');
+    await page.fill('[data-test="password"]', PASSWORD);
     await page.click('[data-test="login-button"]');
     await expect(error(page)).toContainText('Username is required');
   });

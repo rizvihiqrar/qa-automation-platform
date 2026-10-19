@@ -3,7 +3,7 @@
 // token that should no longer work). The matrix is in docs/test-strategy/test-plan.md.
 import { test, expect } from '@playwright/test';
 import jwt from 'jsonwebtoken';
-import { signUp, admin, makeProduct, stockOf, type Account } from './helpers.ts';
+import { signUp, admin, makeProduct, stockOf, PASSWORD, type Account } from './helpers.ts';
 import { adminId } from '../admin.ts';
 
 const product = { name: 'AC Widget', category: 'design', price: 10, stock: 10 };
@@ -181,7 +181,7 @@ test.describe('tokens and roles', () => {
 
   test('TC-AC-21 signing up with role admin creates a customer @regression', async ({ request }) => {
     const email = `ac21.${Date.now()}.${Math.random()}@example.com`;
-    const res = await request.post('/auth/register', { data: { name: 'Climber', email, password: 'Pass123!', role: 'admin' } });
+    const res = await request.post('/auth/register', { data: { name: 'Climber', email, password: PASSWORD, role: 'admin' } });
     expect(res.status()).toBe(201);
     const body = await res.json();
     expect(body.user.role).toBe('user');
