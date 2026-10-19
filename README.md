@@ -127,6 +127,8 @@ Every package job also audits its dependencies ([`scripts/audit.mjs`](scripts/au
 
 A daily [CI health check](.github/workflows/ci-health.yml) runs after the nightly regression: it reads the latest run of every workflow on `main` in this repo, cicd-pipeline-demo and the profile repo ([`scripts/ci-health.mjs`](scripts/ci-health.mjs)), and keeps one `ci-health` issue open, with a new comment each day, while any of them is failing or a scheduled workflow hasn't run on time (GitHub switches schedules off in a quiet repo without failing anything). The issue closes itself when everything is green.
 
+When CI fails on `main`, a [recheck](.github/workflows/ci-recheck.yml) re-runs the failed jobs once. If they pass, nothing is reported as broken, and the dashboard counts the job as flaky rather than hiding it. If they fail again, [`scripts/ci-diagnose.mjs`](scripts/ci-diagnose.mjs) posts the failing jobs, their error lines, the commits since the last green run and a prompt to paste into a Claude Code session on the `ci-health` issue. A person makes and reviews the fix; nothing is re-run more than once, since re-running until green would hide real failures.
+
 The `.github/workflows` folders inside `matrix-build-demo` and `pipeline-templates-demo` are example content for those demos. GitHub only runs the root workflow.
 
 ---
