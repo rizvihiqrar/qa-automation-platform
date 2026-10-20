@@ -40,3 +40,17 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
 
 CREATE INDEX IF NOT EXISTS ledger_entries_by_account ON ledger_entries (account_id, id);
 CREATE INDEX IF NOT EXISTS ledger_entries_by_transfer ON ledger_entries (transfer_id);
+
+-- Idempotency keys (BK-R19 to BK-R23). A keyed request claims its key first
+-- (transfer_id NULL: in flight), and the key is linked to its transfer in the same
+-- transaction that writes the transfer: a key never points at a transfer that wasn't
+-- written, and UNIQUE stops one transfer answering for two keys. A refused request
+-- deletes its claim. Keys are deleted 24 hours after first use.
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  key         TEXT    PRIMARY KEY,
+  fingerprint TEXT    NOT NULL,  -- what was asked: route, accounts, amount, currency
+  transfer_id INTEGER UNIQUE REFERENCES transfers (id),
+  created_at  TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idempotency_keys_by_age ON idempotency_keys (created_at);

@@ -131,7 +131,7 @@ The full description of each package, with its check count. The [overview](READM
 | [k6-performance](packages/k6-performance) | Load and spike tests with per-endpoint limits; found that each login froze every other request for ~70 ms, now fixed (browsing p95 67 ms → 1 ms) | 5 + 3 k6 tests |
 | [contract-testing-demo](packages/contract-testing-demo) | Checks that a live API still returns what the app that uses it expects | 4 |
 | [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with its own API test suite and 119 cases designed from a written [test strategy](docs/test-strategy/README.md) (equivalence classes, boundaries, decision tables, state transitions, an access-control matrix), plus a passive [OWASP ZAP scan](packages/qa-practice-api/README.md#security-scan) of every operation in CI. Its discount codes were written by an AI from a reviewed spec, then reviewed and tested like code from an unknown author: 126 designed cases found 4 defects that passed every check the AI was given, and property-based tests found 2 more nobody had picked a value for; mutation testing then showed which checks the tests didn't really make, and a [scoreboard](docs/ai-written-code/scoreboard.md) shows which technique caught each mistake ([validating AI-written code](docs/ai-written-code/README.md)) | 291 + 17 properties + ZAP scan |
-| [banking-api](packages/banking-api) | A small banking API built to be tested: accounts in CAD, USD, JPY and KWD (2, 2, 0 and 3 decimals), deposits, withdrawals and transfers on a double-entry SQLite ledger (`node:sqlite`, no runtime dependencies). Amounts travel as strings and are held as BigInt minor units, exact above 2^53. 18 written [rules](packages/banking-api/SPEC.md) are checked by 127 designed cases and 8 fast-check properties, one a model of the bank over random sequences of moves; 20 deliberate mistakes were each caught. Putting them back showed the model missed an off-by-one in the funds check and a disabled limit until it generated boundary amounts, and that only an injected database failure proves the transaction is there. The base for Days 44–46 | 130 + 8 properties |
+| [banking-api](packages/banking-api) | A small banking API built to be tested: accounts in CAD, USD, JPY and KWD (2, 2, 0 and 3 decimals), deposits, withdrawals and transfers on a double-entry SQLite ledger (`node:sqlite`, no runtime dependencies). Amounts travel as strings and are held as BigInt minor units, exact above 2^53. Day 44 added `Idempotency-Key` on every movement (replay, `422` on a reused key, `409` while in flight, 24-hour expiry, the key linked to its transfer in the same transaction) and real races: two server processes on one SQLite file, and a slow screening step awaited before each movement. 25 written [rules](packages/banking-api/SPEC.md) are checked by 158 designed cases and 8 fast-check properties, one a model of the bank over random sequences of moves; 34 deliberate mistakes were each caught. Putting them back showed the model missed an off-by-one in the funds check and a disabled limit until it generated boundary amounts, that only an injected database failure proves the transaction is there, and that a deferred `BEGIN` deadlocks in SQLite where Postgres would overdraw. The base for Days 45–46 | 161 + 8 properties |
 | [a11y-aoda-audit](packages/a11y-aoda-audit) | Audits a demo store against the WCAG 2.0 AA standard Ontario's AODA requires, before and after fixes; also catches two issues axe misses | 16 |
 | [multi-user-flow-patterns](packages/multi-user-flow-patterns) | Runs several users at once to catch bugs that only appear when people share a system | 9 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios + 4 |
@@ -147,7 +147,7 @@ The full description of each package, with its check count. The [overview](READM
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 
-26 packages, about 1,270 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
+26 packages, about 1,300 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
 
 ## Running locally
 
@@ -170,7 +170,8 @@ There is no central config file: each package keeps its own `package.json`. Thes
 |---|---|---|
 | `BASE_URL` | `https://www.saucedemo.com` (browser suites); the local server (qa-practice-api) | Where the browser or API tests point |
 | `PORT` | `4000` (qa-practice-api), `4100` (banking-api), `3002` (pipeline-templates-demo) | Port a local server listens on |
-| `DATABASE_PATH` | none: the ledger is in memory | A SQLite file for banking-api to keep its ledger in |
+| `DATABASE_PATH` | none: the ledger is in memory | A SQLite file for banking-api to keep its ledger in; several servers can share one |
+| `SCREENING_DELAY_MS` | `0` | banking-api: how long the screening before each movement takes, so requests overlap (the race tests use it) |
 | `JWT_SECRET` | A random secret per start | Signs qa-practice-api tokens; set it only to keep tokens valid across restarts |
 | `AI_MODEL` | `mock-model-1.0` (qa-for-ai-features); the generator's default model (ai-test-generator) | Model name sent to the AI client |
 | `ANTHROPIC_API_KEY` | none | Repository secret; only the manual [AI generator eval](.github/workflows/ai-eval.yml) uses it |
@@ -196,7 +197,7 @@ The first `checkJs` pass found 19 errors. Two were real: code assumed `server.ad
 
 ## Bugs found and fixed while building this
 
-Bringing these projects together surfaced real defects. Each fix is described in the package README; five have full [root-cause write-ups](docs/rca/README.md) (symptom, cause in the code, fix, regression tests, prevention). Of the last nine rows, five came from designing cases for the practice API with named techniques, described in its [test strategy](docs/test-strategy/README.md), and four from testing who may do what in it and scanning it with OWASP ZAP.
+Bringing these projects together surfaced real defects. Each fix is described in the package README; five have full [root-cause write-ups](docs/rca/README.md) (symptom, cause in the code, fix, regression tests, prevention). Nine of the qa-practice-api rows came from it being tested on purpose: five from designing cases for the practice API with named techniques, described in its [test strategy](docs/test-strategy/README.md), and four from testing who may do what in it and scanning it with OWASP ZAP.
 
 | Package | Problem | Fix |
 |---|---|---|
@@ -302,3 +303,4 @@ See [ROADMAP.md](ROADMAP.md): one module a day for 30 days, each through its own
 
 - Live checks run against public demo services (DummyJSON, Sauce Demo). When those services change, tests can fail for reasons outside this repo. Several fixes above came from exactly that.
 - No employer code or data is included. Everything here targets public demo apps or local mock services.
+| banking-api | Two server processes on one database file: 1 to 4 of 60 simultaneous withdrawals answered `500 database is locked`, because SQLite's default busy timeout is zero, found by the first real race test | A 5 second busy timeout on every connection; `503 busy` with `Retry-After` if it runs out |

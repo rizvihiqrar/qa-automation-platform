@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 26 packages, about 1,270 automated tests and checks, all run by one CI workflow
+- 26 packages, about 1,300 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -59,7 +59,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | Package | What it does | Checks |
 |---|---|---:|
 | [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with 119 cases designed from a written [test strategy](docs/test-strategy/README.md) and a passive OWASP ZAP scan in CI | 291 + 17 properties + ZAP scan |
-| [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths | 130 + 8 properties |
+| [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, and requests at the same time can't overdraw an account | 161 + 8 properties |
 | [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 27-step live check |
 | [webhook-harness](packages/webhook-harness) | Proves a webhook receiver rejects forged or replayed messages and processes each one only once | 21 |
 | [graphql-test-suite](packages/graphql-test-suite) | Tests a GraphQL API: queries, errors, and partial results | 33 |
@@ -136,7 +136,7 @@ Each number links to where it comes from. Figures are as of 2026-10-20.
 | Mutation score, shopping cart module | 89.2% (198 of 222 changes caught) | [mutation-testing-demo](packages/mutation-testing-demo/README.md) |
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |
-| Money mistakes put back on purpose and caught, banking API | 20 of 20 | [banking-api](packages/banking-api/README.md#deliberate-breaks) |
+| Money and race mistakes put back on purpose and caught, banking API | 34 of 34 | [banking-api](packages/banking-api/README.md#deliberate-breaks) |
 | Requirements traced to passing tests | 18 of 18, 119 of 119 cases | [traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/) |
 | AI tests with a matching trace | 900 of 900 | [Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/) |
 | Bugs found and fixed | Real ones, each with its fix | [full list](TECHNICAL.md#bugs-found-and-fixed-while-building-this) |
