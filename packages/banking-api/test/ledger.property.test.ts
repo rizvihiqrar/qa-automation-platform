@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import fc from 'fast-check';
 import { Ledger } from '../src/ledger.ts';
 import { MAX_MINOR, type Currency } from '../src/money.ts';
+import { failed, loadChecks, runChecks } from '../src/checks.ts';
 
 // A model of the bank: random sequences of deposits, withdrawals and transfers between
 // accounts in three currencies, run against the real ledger and against a few lines of
@@ -37,9 +38,11 @@ const move: fc.Arbitrary<Move> = fc.oneof(
   { weight: 3, arbitrary: fc.record({ kind: fc.constant('transfer' as const), from: account, to: account, amount, currency: fc.constantFrom('own' as const, 'other' as const) }) },
 );
 
+const checks = loadChecks();
+
 const otherCurrency = (c: Currency): Currency => (c === 'CAD' ? 'JPY' : 'CAD');
 
-test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 any sequence of moves: the ledger matches the model and holds together', () => {
+test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK-R27 BK-R28 any sequence of moves: the ledger matches the model and holds together', () => {
   // size 'max': fast-check's default keeps arrays short, and short sequences rarely
   // reach the limit.
   fc.assert(fc.property(fc.array(move, { minLength: 1, maxLength: 40, size: 'max' }), (moves) => {
@@ -97,17 +100,12 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 any seque
         });
       }
 
-      // The ledger holds together (BK-R13, BK-R14): one transfer per accepted move, two
-      // entries each, equal and opposite, in the transfer's currency; every currency
-      // sums to zero; nothing in a currency passes the limit (BK-R06).
+      // The ledger holds together (BK-R13, BK-R14): one transfer per accepted move, and
+      // every SQL ledger check passes on what the moves left (BK-R26 to BK-R28). Then
+      // each currency's customer balances add up to what the model says was issued.
       const q = (sql: string) => { const s = ledger.db.prepare(sql); s.setReadBigInts(true); return s.all(); };
       assert.equal(Number(q('SELECT COUNT(*) AS n FROM transfers')[0]!.n), moved);
-      assert.deepEqual(q(`
-        SELECT t.id FROM transfers t LEFT JOIN ledger_entries e ON e.transfer_id = t.id
-        GROUP BY t.id
-        HAVING COUNT(e.id) <> 2 OR SUM(e.amount) <> 0 OR MIN(e.amount) <> -t.amount OR MAX(e.amount) <> t.amount
-            OR SUM(e.currency <> t.currency) > 0`), []);
-      assert.deepEqual(q('SELECT currency FROM ledger_entries GROUP BY currency HAVING SUM(amount) <> 0'), []);
+      assert.deepEqual(runChecks(ledger.db, checks).filter(failed), []);
       for (const [c, total] of Object.entries(issued)) {
         assert.ok(total <= MAX_MINOR);
         const held = q(`SELECT COALESCE(SUM(e.amount), 0) AS total FROM ledger_entries e JOIN accounts a ON a.id = e.account_id

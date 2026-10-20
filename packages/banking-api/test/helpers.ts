@@ -1,4 +1,3 @@
-import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -6,6 +5,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { createApp, type Screen } from '../src/app.ts';
 import { Ledger } from '../src/ledger.ts';
+import { spawnServers, type Running } from '../src/servers.ts';
 
 export interface Reply {
   status: number;
@@ -63,40 +63,19 @@ export interface Servers {
   get(base: string, path: string): Promise<Reply>;
 }
 
-// Real server processes (`node src/server.ts`) sharing one SQLite file in a fresh temp
-// folder: the setup in which two requests really run at the same time, since each
-// process has its own connection. Started one after another, so only one creates the
-// schema. Stopped, and the folder removed, after the file's tests; until then a test
-// can open dbPath and look at what the race left (Day 45 runs its SQL checks on it).
+// Real server processes sharing one SQLite file in a fresh temp folder (see
+// spawnServers). Stopped, and the folder removed, after the file's tests; until then a
+// test can open dbPath and run the SQL ledger checks on what the race left.
 export async function startServers(count: number, env: Record<string, string> = {}): Promise<Servers> {
   const dir = mkdtempSync(join(tmpdir(), 'banking-api-'));
   const dbPath = join(dir, 'ledger.db');
-  const children: ChildProcess[] = [];
-  const bases: string[] = [];
+  let running: Running | undefined;
   after(async () => {
-    await Promise.all(children.map((child) => new Promise<void>((resolve) => {
-      if (child.exitCode !== null) return resolve();
-      child.once('exit', () => resolve());
-      child.kill();
-    })));
+    await running?.stop();
     rmSync(dir, { recursive: true, force: true });
   });
-
-  for (let i = 0; i < count; i++) {
-    const child = spawn(process.execPath, ['src/server.ts'], {
-      cwd: new URL('..', import.meta.url),
-      env: { ...process.env, ...env, PORT: '0', DATABASE_PATH: dbPath },
-      stdio: ['ignore', 'pipe', 'inherit'],
-    });
-    children.push(child);
-    bases.push(await new Promise<string>((resolve, reject) => {
-      child.once('exit', (code) => reject(new Error(`server ${i} exited with ${code}`)));
-      child.stdout!.on('data', (chunk: Buffer) => {
-        const port = /listening on http:\/\/localhost:(\d+)/.exec(chunk.toString())?.[1];
-        if (port) resolve(`http://127.0.0.1:${port}`);
-      });
-    }));
-  }
+  running = await spawnServers(count, dbPath, env);
+  const { bases } = running;
 
   const request = async (base: string, method: string, path: string, body?: unknown, headers: Record<string, string> = {}): Promise<Reply> => {
     const init: RequestInit = { method, headers };
