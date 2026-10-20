@@ -16,9 +16,14 @@ Software teams change their product every day, and each change can break somethi
 
 Each folder under `packages/` is a small project that either tests something (a website, an API, a database, an AI feature) or helps testers do their job (finding unreliable tests, checking bug reports, generating test data). [The packages](#the-packages) says what each one does.
 
-[![The CI dashboard: 39 CI runs on main, 100% fully green, median run time 1.3 minutes, 0 failing, with charts of jobs passed per run and run duration](docs/assets/dashboard.png)](docs/assets/dashboard.png)
+<a href="docs/assets/dashboard.png">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/dashboard-dark.png">
+    <img src="docs/assets/dashboard.png" alt="The CI dashboard: 39 CI runs on main, 100% fully green, median run time 1.3 minutes, 0 failing, with charts of jobs passed per run and run duration">
+  </picture>
+</a>
 
-*The live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/): pass rate, run time and flaky jobs, rebuilt after every run on main.*
+*The live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/): pass rate, run time and flaky jobs, rebuilt after every run on main. Shown in the viewer's light or dark theme.*
 
 ## At a glance
 
