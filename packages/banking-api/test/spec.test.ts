@@ -12,8 +12,8 @@ const tests = readdirSync(here).filter((f) => f.endsWith('.test.ts') && f !== 's
   .map((f) => readFileSync(new URL(f, here), 'utf8')).join('\n');
 const cited = new Set([...tests.matchAll(/BK-R\d\d/g)].map((m) => m[0]));
 
-test('SPEC.md has its 18 rules, numbered without gaps', () => {
-  assert.deepEqual([...rules], Array.from({ length: 18 }, (_, i) => `BK-R${String(i + 1).padStart(2, '0')}`));
+test('SPEC.md has its 25 rules, numbered without gaps', () => {
+  assert.deepEqual([...rules], Array.from({ length: 25 }, (_, i) => `BK-R${String(i + 1).padStart(2, '0')}`));
 });
 
 test('every rule in SPEC.md is checked by a test', () => {

@@ -38,13 +38,25 @@ The rules the API must follow. Every test names the rules it checks (`BK-R05`), 
 
 | Rule | What must hold |
 |---|---|
-| BK-R16 | Refusals have a JSON body `{ "error", "code" }`, and the status says what kind: `400` for a request that can't be read (body, currency, amount, ids, owner), `404` for an unknown account, transfer or route, `405` for the wrong method (with `Allow`), `413` for a body over 16 KB, `415` for a POST that isn't JSON, `422` for a rule of the bank (`same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`). Checks run in that order: the request first, then whether the accounts exist, then the bank's rules. Nothing a client sends gets a `500`. |
+| BK-R16 | Refusals have a JSON body `{ "error", "code" }`, and the status says what kind: `400` for a request that can't be read (body, currency, amount, ids, owner, idempotency key), `404` for an unknown account, transfer or route, `405` for the wrong method (with `Allow`), `409` for a key whose first request is still running, `413` for a body over 16 KB, `415` for a POST that isn't JSON, `422` for a key reused for another request or a rule of the bank (`same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`), `503` for a database busy too long. Checks run in that order: the request first, then the idempotency key, then whether the accounts exist, then the bank's rules. Nothing a client sends gets a `500`. |
 | BK-R17 | Ids in paths are positive whole numbers; any other path is `404`. Ids in a body are JSON whole numbers of 1 or more (`400 invalid_account_id` otherwise). |
 | BK-R18 | Every response is `application/json`, with `Cache-Control: no-store` (balances must not be cached) and `X-Content-Type-Options: nosniff`. |
+
+## Retries and races
+
+| Rule | What must hold |
+|---|---|
+| BK-R19 | A deposit, withdrawal or transfer may carry an `Idempotency-Key` header of 1 to 255 visible ASCII characters (`400 invalid_idempotency_key` otherwise). Keys are global, not per account. Without a key, every request is a new movement; other routes ignore the header. |
+| BK-R20 | A key that completed a movement replays it: the same request with the same key answers `201` with the same body as the first time and `Idempotent-Replayed: true`, and writes nothing. The same request means the same route, accounts, amount and currency, with amounts compared in minor units (`"5"` and `"5.00"` CAD are the same). |
+| BK-R21 | A key reused for a different request is `422 idempotency_key_mismatch`. A key whose first request is still running, in this process or another, is `409 idempotency_key_in_use`. Neither writes anything. |
+| BK-R22 | Only a written movement keeps its key: a refused or failed request leaves no key, so the same key can be tried again. A key is linked to its transfer in the transaction that writes the transfer, so no key points at a transfer that wasn't written and no transfer answers for two keys. |
+| BK-R23 | A key is kept for 24 hours from its first use. From then on it is forgotten, and a request with it is a new movement. |
+| BK-R24 | Movements at the same time, in one server process or in several on one database file, can't overdraw an account or pass the currency limit: the bank's rules are checked again inside the transaction that writes, after any wait (such as the screening before a movement). The outcome is the same as running them one after another. |
+| BK-R25 | A server waits up to 5 seconds for another process's write to finish instead of failing. A database that stays locked longer answers `503 busy` with `Retry-After: 1`, never `500`, and nothing is written. |
 
 ## Out of scope today
 
 - **Who may move money.** There is no sign-in: anyone can move money between any accounts. Access control is tested on [qa-practice-api](../qa-practice-api/README.md) (Day 36); here the subject is the money.
-- **Retries and races** are [Day 44](../../ROADMAP.md): idempotency keys, and two transfers at once trying to overdraw an account.
+- **Keys after a crash.** A server that stops in the middle of a keyed request leaves its key in flight (`409`) until the key expires 24 hours later. Taking over an abandoned key sooner needs a lease, which this demo leaves out.
 - **Ledger checks in SQL** are [Day 45](../../ROADMAP.md): queries that prove every transfer balances, run against the database itself.
 - **Exchange between currencies.** Refused, not converted.

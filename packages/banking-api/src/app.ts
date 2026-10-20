@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { Ledger, type Account, type Entry, type Result, type Transfer } from './ledger.ts';
+import { Ledger, type Account, type Entry, type Movement, type Result, type Transfer } from './ledger.ts';
 import { CURRENCIES, formatAmount, isCurrency, parseAmount, type Currency } from './money.ts';
 
 // A plain node:http server: no framework, no runtime dependencies. Every response is
@@ -7,6 +8,7 @@ import { CURRENCIES, formatAmount, isCurrency, parseAmount, type Currency } from
 
 const MAX_BODY_BYTES = 16 * 1024;
 const OWNER_MAX = 100;
+const KEY_MAX = 255;
 
 class HttpError extends Error {
   readonly status: number;
@@ -21,8 +23,17 @@ class HttpError extends Error {
 }
 
 type Body = Record<string, unknown>;
-type Handler = (ledger: Ledger, params: number[], body: Body) => [number, unknown];
+type Reply = [status: number, payload: unknown, headers?: Record<string, string>];
+interface Context { ledger: Ledger; params: number[]; body: Body; req: IncomingMessage; screen: Screen }
+type Handler = (ctx: Context) => Reply | Promise<Reply>;
 interface Route { pattern: RegExp; methods: Record<string, Handler> }
+
+// An outside check awaited before each movement (fraud, limits). The server's stands
+// in for a slow one (SCREENING_DELAY_MS); by default it returns at once. While it
+// runs, other requests run too, which is why the ledger checks funds again when it
+// writes (BK-R24).
+export type Screen = (movement: Movement) => Promise<void>;
+export interface Options { screen?: Screen }
 
 // Positive integer ids in paths; anything else isn't a route (404).
 const ID = '([1-9][0-9]{0,14})';
@@ -32,23 +43,29 @@ const routes: Route[] = [
   { pattern: /^\/accounts$/, methods: { POST: openAccount } },
   { pattern: new RegExp(`^/accounts/${ID}$`), methods: { GET: getAccount } },
   { pattern: new RegExp(`^/accounts/${ID}/entries$`), methods: { GET: getEntries } },
-  { pattern: new RegExp(`^/accounts/${ID}/deposits$`), methods: { POST: (l, [a], b) => moveFor(b, (amount, c) => l.deposit(a!, amount, c)) } },
-  { pattern: new RegExp(`^/accounts/${ID}/withdrawals$`), methods: { POST: (l, [a], b) => moveFor(b, (amount, c) => l.withdraw(a!, amount, c)) } },
+  { pattern: new RegExp(`^/accounts/${ID}/deposits$`), methods: { POST: postDeposit } },
+  { pattern: new RegExp(`^/accounts/${ID}/withdrawals$`), methods: { POST: postWithdrawal } },
   { pattern: /^\/transfers$/, methods: { POST: postTransfer } },
   { pattern: new RegExp(`^/transfers/${ID}$`), methods: { GET: getTransfer } },
 ];
 
-export function createApp(ledger: Ledger = new Ledger()): Server {
+export function createApp(ledger: Ledger = new Ledger(), { screen = async () => {} }: Options = {}): Server {
   return createServer((req, res) => {
-    handle(ledger, req, res).catch((err: unknown) => {
+    handle(ledger, screen, req, res).catch((err: unknown) => {
       if (err instanceof HttpError) return send(res, err.status, { error: err.message, code: err.code }, err.headers);
+      // Another process held the database past the busy timeout: a reason to retry,
+      // not a server fault (BK-R25).
+      if (isBusy(err)) return send(res, 503, { error: 'the database is busy; try again', code: 'busy' }, { 'Retry-After': '1' });
       console.error(err);
       send(res, 500, { error: 'internal error', code: 'internal' });
     });
   });
 }
 
-async function handle(ledger: Ledger, req: IncomingMessage, res: ServerResponse): Promise<void> {
+const isBusy = (err: unknown): boolean =>
+  (err as { code?: string }).code === 'ERR_SQLITE_ERROR' && (((err as { errcode?: number }).errcode ?? 0) & 0xff) === 5;
+
+async function handle(ledger: Ledger, screen: Screen, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { pathname } = new URL(req.url ?? '/', 'http://localhost');
   for (const route of routes) {
     const match = route.pattern.exec(pathname);
@@ -59,8 +76,8 @@ async function handle(ledger: Ledger, req: IncomingMessage, res: ServerResponse)
       throw new HttpError(405, 'method_not_allowed', `${req.method} is not allowed here; use ${allow}`, { Allow: allow });
     }
     const body = req.method === 'POST' ? await readJson(req) : {};
-    const [status, payload] = handler(ledger, match.slice(1).map(Number), body);
-    return send(res, status, payload);
+    const [status, payload, headers] = await handler({ ledger, params: match.slice(1).map(Number), body, req, screen });
+    return send(res, status, payload, headers);
   }
   throw new HttpError(404, 'not_found', `no route for ${pathname}`);
 }
@@ -118,6 +135,16 @@ function accountIdOf(body: Body, field: string): number {
   return value;
 }
 
+// Optional; 1 to 255 visible ASCII characters (BK-R19).
+function idempotencyKeyOf(req: IncomingMessage): string | null {
+  const value = req.headers['idempotency-key'];
+  if (value === undefined) return null;
+  if (typeof value !== 'string' || value.length < 1 || value.length > KEY_MAX || !/^[\x21-\x7e]+$/.test(value)) {
+    throw new HttpError(400, 'invalid_idempotency_key', `Idempotency-Key must be 1 to ${KEY_MAX} visible ASCII characters`);
+  }
+  return value;
+}
+
 function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new HttpError(result.status, result.code, result.error);
   return result.value;
@@ -125,7 +152,7 @@ function unwrap<T>(result: Result<T>): T {
 
 // ---- Handlers ------------------------------------------------------------------
 
-function openAccount(ledger: Ledger, _params: number[], body: Body): [number, unknown] {
+function openAccount({ ledger, body }: Context): Reply {
   const owner = typeof body.owner === 'string' ? body.owner.trim() : '';
   if (owner.length < 1 || owner.length > OWNER_MAX) {
     throw new HttpError(400, 'invalid_owner', `owner must be a name of 1 to ${OWNER_MAX} characters`);
@@ -133,13 +160,13 @@ function openAccount(ledger: Ledger, _params: number[], body: Body): [number, un
   return [201, account(ledger.openAccount(owner, currencyOf(body)))];
 }
 
-function getAccount(ledger: Ledger, [accountId]: number[]): [number, unknown] {
+function getAccount({ ledger, params: [accountId] }: Context): Reply {
   const found = ledger.getAccount(accountId!);
   if (!found) throw new HttpError(404, 'not_found', `account ${accountId} not found`);
   return [200, account(found)];
 }
 
-function getEntries(ledger: Ledger, [accountId]: number[]): [number, unknown] {
+function getEntries({ ledger, params: [accountId] }: Context): Reply {
   const found = ledger.getAccount(accountId!);
   if (!found) throw new HttpError(404, 'not_found', `account ${accountId} not found`);
   const entries = ledger.statement(found.id).map((e) => entry(e, found.currency));
@@ -147,21 +174,59 @@ function getEntries(ledger: Ledger, [accountId]: number[]): [number, unknown] {
 }
 
 // Currency first: it decides how many decimals the amount may have.
-function moveFor(body: Body, move: (amount: bigint, currency: Currency) => Result<Transfer>): [number, unknown] {
-  const currency = currencyOf(body);
-  const amount = amountOf(body, currency);
-  return [201, transfer(unwrap(move(amount, currency)))];
+function postDeposit(ctx: Context): Promise<Reply> {
+  const currency = currencyOf(ctx.body);
+  return move(ctx, { kind: 'deposit', from: null, to: ctx.params[0]!, amount: amountOf(ctx.body, currency), currency });
 }
 
-function postTransfer(ledger: Ledger, _params: number[], body: Body): [number, unknown] {
-  const currency = currencyOf(body);
-  const amount = amountOf(body, currency);
-  const from = accountIdOf(body, 'from_account_id');
-  const to = accountIdOf(body, 'to_account_id');
-  return [201, transfer(unwrap(ledger.transfer(from, to, amount, currency)))];
+function postWithdrawal(ctx: Context): Promise<Reply> {
+  const currency = currencyOf(ctx.body);
+  return move(ctx, { kind: 'withdrawal', from: ctx.params[0]!, to: null, amount: amountOf(ctx.body, currency), currency });
 }
 
-function getTransfer(ledger: Ledger, [transferId]: number[]): [number, unknown] {
+function postTransfer(ctx: Context): Promise<Reply> {
+  const currency = currencyOf(ctx.body);
+  const amount = amountOf(ctx.body, currency);
+  const from = accountIdOf(ctx.body, 'from_account_id');
+  const to = accountIdOf(ctx.body, 'to_account_id');
+  return move(ctx, { kind: 'transfer', from, to, amount, currency });
+}
+
+// What a key promises to repeat: the route, the accounts, the amount in minor units
+// and the currency, so "5" and "5.00" CAD are the same request (BK-R20).
+const fingerprint = (m: Movement): string =>
+  createHash('sha256').update(JSON.stringify([m.kind, m.from, m.to, m.amount.toString(), m.currency])).digest('hex');
+
+// Refusal order (BK-R16): the request (already read), then the key, then the
+// accounts and the bank's rules. A claimed key is given up unless the movement is
+// written, so a refused request can be retried with the same key (BK-R22).
+async function move(ctx: Context, m: Movement): Promise<Reply> {
+  const key = idempotencyKeyOf(ctx.req);
+  if (key === null) return run(ctx, m);
+  const claim = ctx.ledger.claimKey(key, fingerprint(m));
+  if (claim.state === 'mismatch') throw new HttpError(422, 'idempotency_key_mismatch', 'this Idempotency-Key was used for a different request');
+  if (claim.state === 'in_flight') throw new HttpError(409, 'idempotency_key_in_use', 'a request with this Idempotency-Key is still running; retry later');
+  if (claim.state === 'replay') return [201, transfer(claim.transfer), { 'Idempotent-Replayed': 'true' }];
+  let written = false;
+  try {
+    const reply = await run(ctx, m, key);
+    written = true;
+    return reply;
+  } finally {
+    if (!written) ctx.ledger.releaseKey(key);
+  }
+}
+
+// A movement that would be refused now is refused before the screening, which isn't
+// asked about it. One that passes is checked again when written (BK-R24).
+async function run({ ledger, screen }: Context, m: Movement, key?: string): Promise<Reply> {
+  const refusal = ledger.check(m);
+  if (refusal) unwrap(refusal);
+  await screen(m);
+  return [201, transfer(unwrap(ledger.apply(m, key)))];
+}
+
+function getTransfer({ ledger, params: [transferId] }: Context): Reply {
   const found = ledger.getTransfer(transferId!);
   if (!found) throw new HttpError(404, 'not_found', `transfer ${transferId} not found`);
   return [200, {

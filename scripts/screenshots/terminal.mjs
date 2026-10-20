@@ -21,7 +21,7 @@ const shots = [
     command: 'node --test --test-reporter=spec "test/*.test.ts"',
     out: 'packages/banking-api/docs',
     // The summary and a slice of named tests; the full list is hundreds of lines.
-    keep: (lines) => [...lines.filter((l) => /^\s*✔ (BK-PR|BK-R1[23])/.test(l)).slice(0, 14), '', ...lines.filter((l) => /^ℹ /.test(l))],
+    keep: (lines) => [...lines.filter((l) => /^\s*✔ (BK-R2[0-5]|BK-R13 BK-R24)/.test(l)).slice(0, 14), '', ...lines.filter((l) => /^ℹ /.test(l))],
   },
 ];
 
