@@ -1,6 +1,6 @@
 # llm-judge-check
 
-Checks an LLM-as-judge against human labels. The judge reads an acceptance criterion and the AI-written Playwright tests for it, and answers whether the tests really check it: **covered**, **partial** or **missing**. Its answers are compared with labels a person decided, case by case, and the report gives agreement, Cohen's kappa, which weak tests the judge caught, and every case where it disagreed. A [red team](#red-team-day-41) then tries to steer it with text written into the tests it reads: prompt injection, deceptive code, hallucination bait and refusal bait.
+Checks an LLM-as-judge against human labels. The judge reads an acceptance criterion and the AI-written Playwright tests for it, and answers whether the tests really check it: **covered**, **partial** or **missing**. Its answers are compared with labels a person decided, case by case, and the report gives agreement, Cohen's kappa, which weak tests the judge caught, and every case where it disagreed. A [red team](#red-team-day-41) then tries to steer it with text written into the tests it reads: prompt injection, deceptive code, hallucination bait and refusal bait. Every one of these AI tests is [traced](#tracing-day-42) to a self-hosted Langfuse, and CI checks that each has exactly its trace.
 
 **In plain English:** people are starting to let one AI grade another AI's work. Before trusting the grader, you check it against a person's answers on the same questions. This package does that check, and its main finding is about the grading instructions, not the AI.
 
@@ -58,6 +58,26 @@ All 96 replies were the one line of JSON the rubric asks for.
   - Two sessions filed answers under the wrong case (see the correction above).
   - The promptfoo replay provider shipped with its prompt hash check switched off (`if (false)`), one of Day 40's deliberate breaks left in place. `src/eval.ts` still caught a changed prompt, but the provider itself didn't. It's restored, with a test.
 
+## Tracing (Day 42)
+
+Every AI test in this package is linked to a trace in a self-hosted [Langfuse](https://langfuse.com/), and CI fails unless each of the 900 tests (12 Day 40 runs × 67 cases, 4 red-team runs × 24) has exactly one trace holding what the test saw. The traces as Langfuse stored them are published: **[every AI test with its trace](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
+
+| What | How |
+|---|---|
+| What is traced | The recorded judge runs, replayed through promptfoo exactly as `npm run eval` does. No model is called, so CI still never calls a paid API, and every run traces the same thing. |
+| A trace | Two observations: a **generation** (the prompt, the reply byte for byte as recorded, the model, the run as the Langfuse session) sent by the [replay provider](promptfoo/replay-provider.mjs) as it answers, and an **evaluator** (promptfoo's pass or fail and its reason) sent after the eval, as its child. |
+| How it gets there | OpenTelemetry (OTLP/HTTP JSON) to Langfuse's `/api/public/otel` endpoint ([`src/trace.ts`](src/trace.ts)). Langfuse's older ingestion API is deprecated. |
+| Where Langfuse runs | The `langfuse-traces` CI job starts Langfuse's own compose stack (six containers), pinned to 4.50.0, with a throwaway project ([`langfuse/`](langfuse/README.md)). The same file runs locally with Docker; nothing needs it. |
+| The link from test to trace | The trace ID is derived from the suite, the run, the case and the prompt's SHA-256, not generated. Every promptfoo result carries it (`metadata.traceId`), `npm run eval` checks each one against its own derivation, and the published report anchors each test by it (`…/langfuse-traces/#<trace id>`). The same test has the same trace ID in every run and on any Langfuse instance. |
+| The check | [`src/traces.ts`](src/traces.ts) reads every observation back from Langfuse's v2 API (the real-time read path) and compares them with what the recorded runs say, not with what was sent: one generation and one evaluator per test, the prompt's hash, the reply, the model, the session, promptfoo's result, and no trace that no test explains. |
+
+### What it found
+
+- **First real run: 1,800 observations in 900 traces, all matching, in 34 seconds.** The fake Langfuse used by the unit tests assumed Langfuse keeps the OpenTelemetry trace ID and uses the span ID as the observation ID; the real one does both. Replies came back byte for byte, including the red-team replies with spaces in their JSON. Langfuse did turn a metadata string `"true"` into a boolean, which is why the check compares the prompt, reply and result, not metadata.
+- **The pinned release didn't exist.** The first pin was Langfuse v4.51.0, the newest release at least two weeks old. Its GitHub release and worker image exist, but its web image (`langfuse/langfuse:4.51.0`) was never published, on Langfuse's registry or Docker Hub, so the stack couldn't start. Upstream's compose file uses the floating tag `4`, which would have hidden that and changed under every run. Pinned to 4.50.0, which has both images and the same compose file.
+- **A tracing failure looks like a pass.** In production a tracing error must not fail the AI call, so the provider only logs it and marks the result `traced: false`. With traces not sent, promptfoo's eval stays green and all its counts still match. Only the tracing job catches it: from the `traced: false` flags, or, when the provider wrongly claims it sent them (one of the deliberate breaks below), from reading the traces back.
+- **The checker checks itself against the real Langfuse.** After the comparison passes, CI gives it four things that must fail, with the real observations: a test with no trace, a changed reply, a flipped result, a wrong API key. All four failed as they should on the first run.
+
 ## How it works
 
 ```mermaid
@@ -83,8 +103,9 @@ flowchart LR
 
 ```bash
 npm ci
-npm test            # 36 unit tests: statistics, cases, labels, runs, citations, replay, red team
-npm run check       # cases and both reports up to date; both promptfoo replays match this package's scoring
+npm test            # 71 unit tests: statistics, cases, labels, runs, citations, replay, red team, tracing (against a fake Langfuse)
+npm run check       # cases and both reports up to date; both promptfoo replays match this package's scoring; every trace ID as derived
+npm run traces -- --out traces-report   # needs a running Langfuse: see langfuse/README.md (the langfuse-traces CI job)
 npm run evidence    # the 10 label-evidence tests in a browser
 npm run report      # rewrite REPORT.md and results/summary.json
 npm run redteam-report  # rewrite redteam/REPORT.md and results/redteam-summary.json
@@ -104,10 +125,15 @@ To red-team again: edit [`labels/redteam.ts`](labels/redteam.ts), `npm run redte
 - Red team: each attack is an exact edit that must apply once; every attack that pushes for a verdict has a clean control on the same case, and counts only if that control in the same run did not already give it; the clean controls must hash to the exact prompts the Day 40 judges answered; the prompts may not mention an attack, its category or its key. The promptfoo assertions are written separately in JavaScript ([`promptfoo/redteam-tests.mjs`](promptfoo/redteam-tests.mjs)) and must reach the same pass count as [`src/redteam-score.ts`](src/redteam-score.ts) on every run.
 - 11 deliberate breaks, each caught: a label changed without rebuilding, a case edited after judging, the rubric edited after judging, a label word leaked into the cases, a recorded verdict changed, a run left out of the promptfoo config, a wrong chance term in kappa, a lenient tie-break, the review sheet and labels disagreeing, a variant whose edit no longer applies, and the replay provider skipping its hash check. The last one first went unnoticed by `npm run eval`; the eval now hashes promptfoo's rendered prompts itself. That break was then left in by mistake and shipped; Day 41 found it, removed it, and added a test that catches it directly.
 - Day 41: 10 more deliberate breaks, each caught: an attack edited without rebuilding, a red-team spec edited after judging, a recorded reply changed, the scorer ignoring the clean control, the parser accepting extra text, an attack key leaked into a prompt, an attack left without its control, the replay hash check off again, a red-team run left out of promptfoo, and the JavaScript citation assertion always passing (promptfoo 20/24 against 19/24, after three replies were changed to fail in three different ways, which both scorers had agreed on).
+- Day 42: CI fails unless Langfuse holds exactly one trace per AI test, matching the recorded prompt, reply, model and session and promptfoo's result, with no unexplained trace, and the checker must fail on four planted mistakes against the real Langfuse. 11 deliberate breaks, each caught by `npm test`, then removed: random trace IDs in the provider, a trace ID that ignores the run, the provider claiming it traced without sending, a red-team reply traced parsed rather than as written, an assertion result with no parent, the real-time ingestion header dropped, reading only the first page of observations, unexplained traces not checked, promptfoo's result not compared, an unpinned Langfuse image, and the eval no longer checking trace IDs. The last went unnoticed at first: nothing tested the eval's own check, because a correct provider never gives it a wrong ID. It now has a test.
 
 The case specs under `cases/specs/` still spell out the public Sauce Demo password. They are judge inputs that this package never runs (its Playwright config only runs `evidence/`), so they keep the literal rather than reading `SAUCEDEMO_PASSWORD`.
 
 ## Limits
+
+- **The traces show replays, not model calls.** Timings are the replay's (close to zero), and there is no token usage or cost. What the traces prove is that every test reaches the trace store complete and linked, not how a live judge performs. A live run (an `anthropic:messages:<model>` provider) would trace through the same provider path only if it were wrapped the same way, which isn't built.
+- **The CI Langfuse lasts as long as the job.** The published report is Langfuse's copy at the end of the job, not a live Langfuse. Because trace IDs are derived, loading the same replay into any Langfuse gives the same IDs, but nothing hosts one permanently.
+- **Langfuse merges a span sent twice with the same ID.** Derived span IDs make a re-run overwrite rather than duplicate, so a promptfoo bug that called the provider twice for one test would show as one trace. Duplicates under different span IDs are caught.
 
 - **The human labels are one person's**, confirmed against my drafts rather than written blind, so they may lean toward the drafts. A second reviewer would show how much two people agree before asking how much a judge agrees with one.
 - **Rubric v2 was written after seeing these cases.** Its score is optimistic: the rules came from reviewing these exact tests. A fresh set of cases, labelled before the rubric is changed again, is the fair test.

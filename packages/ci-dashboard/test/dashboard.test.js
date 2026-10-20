@@ -67,6 +67,9 @@ test('a feature branch failure counts for nothing but flakiness', () => {
   const html = renderHtml(computeMetrics(mixed), { repo: 'o/r', generatedAt: '2026-10-16T09:00:00Z' });
   assert.match(html, /4 CI runs on <code>main<\/code>/);
   assert.match(html, /2 runs on other branches were checked for flaky jobs only/);
+  assert.doesNotMatch(html, /Langfuse trace/);
+  const linked = renderHtml(computeMetrics(mixed), { repo: 'o/r', generatedAt: '', reportsHref: 'reports/', tracesHref: 'reports/langfuse-traces/index.html' });
+  assert.match(linked, /<a href="reports\/langfuse-traces\/index\.html">Every AI test with its Langfuse trace<\/a>/);
 });
 
 test('status is the package now: failing, flaky, recovered or stable', () => {

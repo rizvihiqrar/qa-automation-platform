@@ -10,6 +10,7 @@
     "record": "node src/record.ts",
     "report": "node src/report.ts",
     "eval": "node src/eval.ts",
+    "traces": "node src/traces.ts",
     "evidence": "playwright test",
     "check": "node src/build-cases.ts --check && node src/report.ts --check && node src/redteam.ts build --check && node src/redteam-report.ts --check && node src/eval.ts",
     "redteam-build": "node src/redteam.ts build",
