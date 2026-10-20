@@ -16,12 +16,20 @@ const shots = [
     out: 'packages/banking-api/docs',
   },
   {
+    // Exits 1 on purpose: the demo ledger has defects in it.
+    name: 'checks',
+    cwd: 'packages/banking-api',
+    command: 'npm run check --silent -- --demo',
+    out: 'packages/banking-api/docs',
+    failing: true,
+  },
+  {
     name: 'tests',
     cwd: 'packages/banking-api',
     command: 'node --test --test-reporter=spec "test/*.test.ts"',
     out: 'packages/banking-api/docs',
     // The summary and a slice of named tests; the full list is hundreds of lines.
-    keep: (lines) => [...lines.filter((l) => /^\s*✔ (BK-R2[0-5]|BK-R13 BK-R24)/.test(l)).slice(0, 14), '', ...lines.filter((l) => /^ℹ /.test(l))],
+    keep: (lines) => [...lines.filter((l) => /^\s*✔ BK-R2[6-9] defect /.test(l)).slice(0, 14), '', ...lines.filter((l) => /^ℹ /.test(l))],
   },
 ];
 
@@ -35,18 +43,28 @@ const page = (title, text, dark) => `<!doctype html><meta charset="utf-8"><style
 
 const browser = await chromium.launch();
 for (const s of shots) {
-  const raw = execSync(s.command, { cwd: path.join(ROOT, s.cwd), encoding: 'utf8' }).replace(/\x1b\[[0-9;]*m/g, '').replace(/ \(\d+(\.\d+)?ms\)/g, '');
+  const run = () => {
+    try {
+      return execSync(s.command, { cwd: path.join(ROOT, s.cwd), encoding: 'utf8' });
+    } catch (err) {
+      if (s.failing && err.stdout) return err.stdout;
+      throw err;
+    }
+  };
+  const raw = run().replace(/\x1b\[[0-9;]*m/g, '').replace(/ \(\d+(\.\d+)?ms\)/g, '');
   const lines = raw.trimEnd().split('\n');
   const text = (s.keep ? s.keep(lines) : lines).map((l) => {
     const e = escape(l);
     return /-> (4\d\d)/.test(l) ? e.replace(/(-&gt; 4\d\d)/, '<span class="no">$1</span>')
       : /-> 2\d\d/.test(l) ? e.replace(/(-&gt; 2\d\d)/, '<span class="ok">$1</span>')
-      : /^\s*✔/.test(l) ? `<span class="ok">${e}</span>` : e;
+      : /^\s*✔/.test(l) ? `<span class="ok">${e}</span>`
+      : /^(FAIL|warn) /.test(l) ? e.replace(/^(FAIL|warn)/, '<span class="no">$1</span>')
+      : /^pass /.test(l) ? e.replace(/^pass/, '<span class="ok">pass</span>') : e;
   }).join('\n');
   for (const dark of [false, true]) {
     const context = await browser.newContext({ viewport: { width: 1200, height: 400 }, colorScheme: dark ? 'dark' : 'light', deviceScaleFactor: 1 });
     const tab = await context.newPage();
-    await tab.setContent(page(s.command.replace(/ --silent$/, ''), text, dark));
+    await tab.setContent(page(s.command.replace(/ --silent/, ''), text, dark));
     const file = path.join(ROOT, s.out, `${s.name}${dark ? '-dark' : ''}.png`);
     await tab.locator('.term').screenshot({ path: file });
     console.log('saved', file);

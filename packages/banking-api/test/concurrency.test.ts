@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { describe, test } from 'node:test';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { createApp } from '../src/app.ts';
+import { failed, runChecks } from '../src/checks.ts';
 import { BUSY_TIMEOUT_MS, Ledger } from '../src/ledger.ts';
 import { MAX_MINOR, formatAmount } from '../src/money.ts';
 import { startApi, startServers, type Reply } from './helpers.ts';
@@ -27,6 +28,17 @@ const tally = (replies: Reply[]) => {
 };
 
 const slowScreen = () => sleep(20);
+
+// The SQL ledger checks that fail on a file the races left, opened read-only while the
+// servers still run. Whole results, so a failure shows the rows.
+const checkFile = (path: string) => {
+  const db = new DatabaseSync(path, { readOnly: true, timeout: BUSY_TIMEOUT_MS });
+  try {
+    return runChecks(db).filter(failed);
+  } finally {
+    db.close();
+  }
+};
 
 describe('one process: requests overlap while the screening runs', () => {
   test('BK-R24 BK-R12 20 transfers of 10.00 at once from 100.00: exactly 10 pass, and the balance stops at zero', async () => {
@@ -88,18 +100,8 @@ describe('two server processes on one database file', async () => {
     assert.equal((await reply).status, 201);
   });
 
-  test('BK-R13 BK-R24 what the races left in the file: every transfer has two equal and opposite entries, and no customer balance is below zero', () => {
-    const db = new DatabaseSync(servers.dbPath, { readOnly: true, timeout: BUSY_TIMEOUT_MS });
-    try {
-      assert.deepEqual(db.prepare(`
-        SELECT t.id FROM transfers t LEFT JOIN ledger_entries e ON e.transfer_id = t.id
-        GROUP BY t.id HAVING COUNT(e.id) <> 2 OR SUM(e.amount) <> 0`).all(), []);
-      assert.deepEqual(db.prepare(`
-        SELECT a.id FROM accounts a JOIN ledger_entries e ON e.account_id = a.id
-        WHERE a.kind = 'customer' GROUP BY a.id HAVING SUM(e.amount) < 0`).all(), []);
-    } finally {
-      db.close();
-    }
+  test('BK-R13 BK-R24 BK-R26 BK-R27 BK-R28 what the races left in the file passes every SQL ledger check', () => {
+    assert.deepEqual(checkFile(servers.dbPath), []);
   });
 });
 
@@ -126,6 +128,10 @@ describe('two server processes with a slow screening', async () => {
     assert.equal(retry.headers.get('idempotent-replayed'), 'true');
     assert.deepEqual(retry.body, replies.find((r) => r.status === 201)!.body);
     assert.equal((await servers.get(one, `/accounts/${id}`)).body.balance, '9.00');
+  });
+
+  test('BK-R24 BK-R26 BK-R27 BK-R28 BK-R29 what these races left in the file passes every SQL ledger check', () => {
+    assert.deepEqual(checkFile(servers.dbPath), []);
   });
 });
 

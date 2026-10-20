@@ -54,9 +54,22 @@ The rules the API must follow. Every test names the rules it checks (`BK-R05`), 
 | BK-R24 | Movements at the same time, in one server process or in several on one database file, can't overdraw an account or pass the currency limit: the bank's rules are checked again inside the transaction that writes, after any wait (such as the screening before a movement). The outcome is the same as running them one after another. |
 | BK-R25 | A server waits up to 5 seconds for another process's write to finish instead of failing. A database that stays locked longer answers `503 busy` with `Retry-After: 1`, never `500`, and nothing is written. |
 
+## The ledger in SQL
+
+Rules the database itself must hold, whatever wrote to it: checked by the SQL queries in [`sql/checks`](sql/checks), one rule per file, run by `npm run check`.
+
+| Rule | What must hold |
+|---|---|
+| BK-R26 | The ledger balances. Every transfer has exactly two entries: a debit of minus its amount on its from account and a credit of its amount on its to account. Each entry's currency is its transfer's and its account's. The entries of each transfer, and of each currency, sum to zero. |
+| BK-R27 | No customer balance is below zero, now or at any entry in its history, even if it was refilled later. The money held in a currency stays within the limit of BK-R06. A deposit comes from the currency's funding account, a withdrawal goes to it, and a transfer is between two customer accounts. |
+| BK-R28 | No row points at a row that doesn't exist: entries at transfers and accounts, transfers at accounts, keys at transfers. No transfer answers for two keys. These hold even for a connection with foreign keys off (SQLite's default) or a table that lost its `UNIQUE` constraint. |
+| BK-R29 | An idempotency key in flight for more than 10 minutes is reported as a warning: its request most likely stopped and left the key blocked (see [Keys after a crash](#out-of-scope-today)). A key linked to its transfer is never stale. |
+| BK-R30 | `npm run check -- --db <file>` opens a ledger read-only, runs every check, and exits 1 when an error-level check finds a row, 0 otherwise (warnings are shown but don't fail), and 2 for wrong arguments or a file it can't open. A check that can't run is an error, not a skip. Every check is proven by a defect put into the database past the API, and none fires on a clean ledger, on the files real races leave, or after random model runs. The SQL also runs on Postgres: no SQLite-only functions, double-quoted strings or placeholders other than `:name`. |
+
 ## Out of scope today
 
 - **Who may move money.** There is no sign-in: anyone can move money between any accounts. Access control is tested on [qa-practice-api](../qa-practice-api/README.md) (Day 36); here the subject is the money.
 - **Keys after a crash.** A server that stops in the middle of a keyed request leaves its key in flight (`409`) until the key expires 24 hours later. Taking over an abandoned key sooner needs a lease, which this demo leaves out.
-- **Ledger checks in SQL** are [Day 45](../../ROADMAP.md): queries that prove every transfer balances, run against the database itself.
+- **Repairing a broken ledger.** The checks find and show the bad rows; fixing them is a decision for a person, made with another correcting transfer, never by editing entries.
+- **Postgres.** The checks are written to run there, and [Day 49](../../ROADMAP.md) runs them there.
 - **Exchange between currencies.** Refused, not converted.
