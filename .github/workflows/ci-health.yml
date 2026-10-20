@@ -64,7 +64,7 @@ jobs:
           gh label create ci-status --color 0E8A16 --description "Daily CI status report" --force
           status=$(gh issue list --label ci-status --state open --json number -q '.[0].number')
           if [ -z "$status" ]; then
-            gh issue create --title "Daily CI status" --label ci-status --body "Each day CI health adds a comment here with every workflow and package, green or not, so the status arrives by email."
-            status=$(gh issue list --label ci-status --state open --json number -q '.[0].number')
+            # Use the URL gh prints: issue search lags a few seconds behind a new issue.
+            status=$(gh issue create --title "Daily CI status" --label ci-status --body "Each day CI health adds a comment here with every workflow and package, green or not, so the status arrives by email.")
           fi
           gh issue comment "$status" --body-file ci-health.md
