@@ -1,7 +1,7 @@
 // Tests for the daily CI health check (scripts/ci-health.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { assess, missing, report } from './ci-health.mjs';
+import { assess, missing, passRate, report } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -39,7 +39,26 @@ test('the report counts problems and lists every workflow', () => {
   const { problems, markdown } = report(results, new Date(NOW));
   assert.equal(problems.length, 1);
   assert.match(markdown, /^\*\*1 problem\*\* on 2026-10-18:/);
-  assert.match(markdown, /\| a \| CI \| \*\*failing\*\* \| \[failure, /);
-  assert.match(markdown, /\| a \| Docs \| ok \|/);
+  assert.match(markdown, /\| a \| CI \| \*\*failing\*\* \| 0% \(0\/1\) \| \[failure, /);
+  assert.match(markdown, /\| a \| Docs \| ok \| 100% \(1\/1\) \|/);
   assert.match(report([{ repo: 'me/a', rows: [assess('Docs', [run('success', 1)], {}, NOW)] }], new Date(NOW)).markdown, /^All green/);
+});
+
+test('the pass rate counts finished runs only', () => {
+  const r = assess('CI', [run('success', 1), run('cancelled', 2), run('failure', 3), run('success', 4), run('success', 5)], {}, NOW);
+  assert.deepEqual([r.passed, r.total], [3, 4]);
+  assert.equal(passRate(3, 4), '75% (3/4)');
+  assert.equal(passRate(0, 0), '–');
+});
+
+test('packages from the dashboard are listed with a passing-now count', () => {
+  const packages = [
+    { name: 'k6-performance', results: 20, passRate: 95, latest: 'success' },
+    { name: 'graphql-test-suite', results: 10, passRate: 90, latest: 'failure' },
+  ];
+  const { markdown } = report([], new Date(NOW), packages);
+  assert.match(markdown, /\*\*Packages\*\* .*: 1\/2 passing now/);
+  assert.match(markdown, /\| k6-performance \| success \| 95% \(19\/20\) \|/);
+  assert.match(markdown, /\| graphql-test-suite \| \*\*failure\*\* \| 90% \(9\/10\) \|/);
+  assert.doesNotMatch(report([], new Date(NOW)).markdown, /Packages/);
 });

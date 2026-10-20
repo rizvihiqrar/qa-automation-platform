@@ -5,6 +5,8 @@ name: CI health
 # ci-health) open while anything is failing or a scheduled workflow is overdue.
 # A new comment is added each day it stays that way, so the reminder keeps
 # arriving by email; the issue is closed when everything is green again.
+# Separately, the full report (pass rates per workflow and package) is posted to
+# the "Daily CI status" issue every day, so a status email arrives even when green.
 on:
   schedule:
     - cron: '45 9 * * *' # 09:45 UTC, after the 09:00 nightly CI
@@ -54,3 +56,15 @@ jobs:
           elif [ -n "$open" ]; then
             gh issue close "$open" --comment "$(printf 'All green again.\n\n'; cat ci-health.md)"
           fi
+
+      # The daily status email, green or not: one long-lived issue (label ci-status)
+      # gets the full report as a comment each day, and GitHub emails each comment.
+      - name: Post the daily status
+        run: |
+          gh label create ci-status --color 0E8A16 --description "Daily CI status report" --force
+          status=$(gh issue list --label ci-status --state open --json number -q '.[0].number')
+          if [ -z "$status" ]; then
+            gh issue create --title "Daily CI status" --label ci-status --body "Each day CI health adds a comment here with every workflow and package, green or not, so the status arrives by email."
+            status=$(gh issue list --label ci-status --state open --json number -q '.[0].number')
+          fi
+          gh issue comment "$status" --body-file ci-health.md

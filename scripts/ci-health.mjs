@@ -22,6 +22,8 @@ export const WATCH = [
   { repo: 'rizvihiqrar/rizvihiqrar', overdueAfterHours: { 'Refresh screenshots': 8 * 24 } },
 ];
 
+export const METRICS_URL = 'https://rizvihiqrar.github.io/qa-automation-platform/metrics.json';
+
 const FAILED = ['failure', 'timed_out', 'startup_failure'];
 
 // One row per workflow. `runs` are that workflow's runs on main, newest first.
@@ -32,7 +34,8 @@ export function assess(name, runs, overdueAfterHours, now) {
   const limit = overdueAfterHours[name];
   if (!last) return { workflow: name, state: limit ? 'overdue' : 'never run', detail: 'no finished run on main' };
   const ageHours = (now - Date.parse(last.created_at)) / HOUR;
-  const base = { workflow: name, conclusion: last.conclusion, url: last.html_url, at: last.created_at, event: last.event };
+  const passed = done.filter((r) => r.conclusion === 'success').length;
+  const base = { workflow: name, conclusion: last.conclusion, url: last.html_url, at: last.created_at, event: last.event, passed, total: done.length };
   if (FAILED.includes(last.conclusion)) return { ...base, state: 'failing' };
   if (limit && ageHours > limit) return { ...base, state: 'overdue', detail: `last run ${Math.round(ageHours)} hours ago, expected within ${limit}` };
   return { ...base, state: 'ok' };
@@ -46,19 +49,32 @@ export function missing(names, overdueAfterHours) {
     .map((n) => ({ workflow: n, state: 'missing', detail: 'scheduled workflow not found' }));
 }
 
-export function report(results, now) {
+// "95% (19/20)", or a dash when there is nothing to count.
+export function passRate(passed, total) {
+  return total ? `${Math.round((passed / total) * 100)}% (${passed}/${total})` : '–';
+}
+
+// `packages` is the published dashboard's metrics.json `packages` list (optional):
+// each package's latest job on main and its pass rate over the analysed runs.
+export function report(results, now, packages = []) {
   const problems = results.flatMap(({ repo, rows }) => rows.filter((r) => PROBLEMS.includes(r.state)).map((r) => ({ repo, ...r })));
   const lines = [
     problems.length ? `**${problems.length} problem${problems.length > 1 ? 's' : ''}** on ${now.toISOString().slice(0, 10)}:` : `All green on ${now.toISOString().slice(0, 10)}.`,
     '',
-    '| Repo | Workflow | State | Last run on main |',
-    '|---|---|---|---|',
+    '| Repo | Workflow | State | Passed on main | Last run on main |',
+    '|---|---|---|---|---|',
     ...results.flatMap(({ repo, rows }) => rows.map((r) => {
       const state = PROBLEMS.includes(r.state) ? `**${r.state}**${r.detail ? `: ${r.detail}` : ''}` : r.state;
       const last = r.url ? `[${r.conclusion}, ${r.at.slice(0, 16).replace('T', ' ')} UTC](${r.url}) (${r.event})` : (r.detail ?? '');
-      return `| ${repo.split('/')[1]} | ${r.workflow} | ${state} | ${last} |`;
+      return `| ${repo.split('/')[1]} | ${r.workflow} | ${state} | ${passRate(r.passed, r.total)} | ${last} |`;
     })),
   ];
+  if (packages.length) {
+    const failing = packages.filter((p) => p.latest && p.latest !== 'success').length;
+    lines.push('', `**Packages** (qa-automation-platform CI jobs on main): ${packages.length - failing}/${packages.length} passing now`, '',
+      '| Package | Latest | Passed on main |', '|---|---|---|',
+      ...packages.map((p) => `| ${p.name} | ${p.latest === 'success' || !p.latest ? (p.latest ?? '–') : `**${p.latest}**`} | ${passRate(Math.round((p.passRate ?? 0) * p.results / 100), p.results)} |`));
+  }
   return { problems, markdown: lines.join('\n') + '\n' };
 }
 
@@ -78,7 +94,9 @@ if (isMain) {
   const results = [];
   for (const { repo, overdueAfterHours } of WATCH) {
     const { workflows } = await api(`/repos/${repo}/actions/workflows?per_page=100`, token);
-    const active = workflows.filter((w) => w.state === 'active');
+    // Dynamic workflows (Dependabot) are left out: a failed run there means a dependency
+    // couldn't be bumped, not that main is broken, and GitHub emails its alerts itself.
+    const active = workflows.filter((w) => w.state === 'active' && !w.path.startsWith('dynamic/'));
     const rows = [];
     for (const w of active) {
       const { workflow_runs: runs } = await api(`/repos/${repo}/actions/workflows/${w.id}/runs?branch=main&per_page=20`, token);
@@ -87,7 +105,9 @@ if (isMain) {
     rows.push(...missing(active.map((w) => w.name), overdueAfterHours));
     results.push({ repo, rows });
   }
-  const { problems, markdown } = report(results, now);
+  // Per-package pass rates from the published dashboard; the report still goes out without them.
+  const packages = await fetch(METRICS_URL).then((r) => (r.ok ? r.json() : {})).then((m) => m.packages ?? []).catch(() => []);
+  const { problems, markdown } = report(results, now, packages);
   console.log(markdown);
   if (out) fs.writeFileSync(out, markdown);
   process.exit(problems.length ? 1 : 0);
