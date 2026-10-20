@@ -14,7 +14,7 @@ The plan was written as 30 "days", each one module or one improvement. Days 1–
 | Automated checks | about 650 |
 | CI jobs per run on main | 30, plus nightly runs |
 | Workflows | CI, dashboard and reports, flaky-test tracking, release gate, AI generator eval |
-| Real defects found and fixed | 18 ([list](README.md#bugs-found-and-fixed-while-building-this)) |
+| Real defects found and fixed | 18 ([list](TECHNICAL.md#bugs-found-and-fixed-while-building-this)) |
 | Public pages | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/), [test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) |
 
 ## The lesson that kept coming back: green is not proof
