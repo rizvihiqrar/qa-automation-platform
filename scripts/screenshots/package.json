@@ -2,9 +2,10 @@
   "name": "readme-screenshots",
   "private": true,
   "type": "module",
-  "description": "Captures the README screenshots from the live CI dashboard, reports.",
+  "description": "Captures the README screenshots from the live CI dashboard and reports, and real terminal output from package commands.",
   "scripts": {
-    "capture": "node capture.mjs"
+    "capture": "node capture.mjs",
+    "terminal": "node terminal.mjs"
   },
   "devDependencies": {
     "playwright": "^1.64.1"

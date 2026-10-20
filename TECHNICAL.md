@@ -26,7 +26,7 @@ How the platform is built and run: the CI design, every workflow, how to run a p
 ```mermaid
 flowchart LR
   T["CI workflow (ci.yml)<br/>on pull request, push to main,<br/>nightly, or by hand"]
-  T --> TC["typecheck<br/>23 packages + root script tests"]
+  T --> TC["typecheck<br/>25 packages + root script tests"]
   T --> Z["ZAP scan<br/>passive, every API operation"]
   T --> P["One job per package<br/>unit, API, contract, performance,<br/>accessibility, mutation, CI demos"]
   T --> SC{"test-scope.mjs<br/>smoke or full?"}
@@ -131,6 +131,7 @@ The full description of each package, with its check count. The [overview](READM
 | [k6-performance](packages/k6-performance) | Load and spike tests with per-endpoint limits; found that each login froze every other request for ~70 ms, now fixed (browsing p95 67 ms → 1 ms) | 5 + 3 k6 tests |
 | [contract-testing-demo](packages/contract-testing-demo) | Checks that a live API still returns what the app that uses it expects | 4 |
 | [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with its own API test suite and 119 cases designed from a written [test strategy](docs/test-strategy/README.md) (equivalence classes, boundaries, decision tables, state transitions, an access-control matrix), plus a passive [OWASP ZAP scan](packages/qa-practice-api/README.md#security-scan) of every operation in CI. Its discount codes were written by an AI from a reviewed spec, then reviewed and tested like code from an unknown author: 126 designed cases found 4 defects that passed every check the AI was given, and property-based tests found 2 more nobody had picked a value for; mutation testing then showed which checks the tests didn't really make, and a [scoreboard](docs/ai-written-code/scoreboard.md) shows which technique caught each mistake ([validating AI-written code](docs/ai-written-code/README.md)) | 291 + 17 properties + ZAP scan |
+| [banking-api](packages/banking-api) | A small banking API built to be tested: accounts in CAD, USD, JPY and KWD (2, 2, 0 and 3 decimals), deposits, withdrawals and transfers on a double-entry SQLite ledger (`node:sqlite`, no runtime dependencies). Amounts travel as strings and are held as BigInt minor units, exact above 2^53. 18 written [rules](packages/banking-api/SPEC.md) are checked by 127 designed cases and 8 fast-check properties, one a model of the bank over random sequences of moves; 20 deliberate mistakes were each caught. Putting them back showed the model missed an off-by-one in the funds check and a disabled limit until it generated boundary amounts, and that only an injected database failure proves the transaction is there. The base for Days 44–46 | 130 + 8 properties |
 | [a11y-aoda-audit](packages/a11y-aoda-audit) | Audits a demo store against the WCAG 2.0 AA standard Ontario's AODA requires, before and after fixes; also catches two issues axe misses | 16 |
 | [multi-user-flow-patterns](packages/multi-user-flow-patterns) | Runs several users at once to catch bugs that only appear when people share a system | 9 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios + 4 |
@@ -146,7 +147,7 @@ The full description of each package, with its check count. The [overview](READM
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 
-25 packages, about 1,130 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
+26 packages, about 1,270 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
 
 ## Running locally
 
@@ -168,7 +169,8 @@ There is no central config file: each package keeps its own `package.json`. Thes
 | Setting | Default | What it does |
 |---|---|---|
 | `BASE_URL` | `https://www.saucedemo.com` (browser suites); the local server (qa-practice-api) | Where the browser or API tests point |
-| `PORT` | `4000` (qa-practice-api), `3002` (pipeline-templates-demo) | Port a local server listens on |
+| `PORT` | `4000` (qa-practice-api), `4100` (banking-api), `3002` (pipeline-templates-demo) | Port a local server listens on |
+| `DATABASE_PATH` | none: the ledger is in memory | A SQLite file for banking-api to keep its ledger in |
 | `JWT_SECRET` | A random secret per start | Signs qa-practice-api tokens; set it only to keep tokens valid across restarts |
 | `AI_MODEL` | `mock-model-1.0` (qa-for-ai-features); the generator's default model (ai-test-generator) | Model name sent to the AI client |
 | `ANTHROPIC_API_KEY` | none | Repository secret; only the manual [AI generator eval](.github/workflows/ai-eval.yml) uses it |
@@ -179,14 +181,14 @@ There is no central config file: each package keeps its own `package.json`. Thes
 
 ## Type-checking
 
-Every package with code is type-checked in CI (23 of 23; the Postman collection has no code). The CI `typecheck` job runs it on every push:
+Every package with code is type-checked in CI (25 of 25; the Postman collection has no code). The CI `typecheck` job runs it on every push:
 
 ```bash
 npm ci
 npm run typecheck   # the list of packages is in scripts/typecheck.mjs
 ```
 
-Ten packages are strict TypeScript, run directly by Node 24, which strips types at load time, so there's no build step: test-data-factory, flaky-test-analyzer, worker-scaling-benchmark, ai-test-generator, qa-for-ai-features, qa-practice-api, multi-user-flow-patterns, bdd-playwright-demo, sql-data-integrity, llm-judge-check. They use `tsconfig.ts.json`: strict mode, unchecked index access, and only syntax Node can strip (no enums or namespaces). The other packages are JavaScript checked by the same type-checker (`checkJs`, shared `tsconfig.base.json`). The CI demos stay JavaScript on purpose: they exist to show pipeline patterns.
+Eleven packages are strict TypeScript, run directly by Node 24, which strips types at load time, so there's no build step: test-data-factory, flaky-test-analyzer, worker-scaling-benchmark, ai-test-generator, qa-for-ai-features, qa-practice-api, multi-user-flow-patterns, bdd-playwright-demo, sql-data-integrity, llm-judge-check, banking-api. They use `tsconfig.ts.json`: strict mode, unchecked index access, and only syntax Node can strip (no enums or namespaces). The other packages are JavaScript checked by the same type-checker (`checkJs`, shared `tsconfig.base.json`). The CI demos stay JavaScript on purpose: they exist to show pipeline patterns.
 
 What `checkJs` does and doesn't catch: it catches wrong use of anything typed, such as Node's APIs (`fs.readFilSync` fails with "Did you mean readFileSync?") and functions with JSDoc types. In plain JavaScript, TypeScript treats every parameter as optional, so a call missing an argument to an untyped function passes. That gap is why the main packages moved to strict TypeScript (Days 16–21), and the move found bugs of its own, listed below.
 
@@ -244,9 +246,9 @@ A pull request runs only the `@smoke` tests (16 of 65) unless it changes that su
 
 Re-running until green would hide real failures. A pass on the re-run is counted as flaky on the dashboard, never hidden; a second failure is reported with a diagnosis.
 
-### The dashboard says 33 packages, but the repo has 25. Which is right?
+### The dashboard says 34 packages, but the repo has 26. Which is right?
 
-Both. There are 25 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
+Both. There are 26 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
 
 ### Does running the tests call a paid AI service?
 
@@ -289,6 +291,7 @@ cd scripts/screenshots
 npm ci
 npx playwright install chromium
 npm run capture            # or: npm run capture -- dashboard reports-index
+npm run terminal           # real terminal output as images (banking-api's README)
 ```
 
 ## Roadmap

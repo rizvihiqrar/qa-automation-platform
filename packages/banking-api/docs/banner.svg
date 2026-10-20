@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">banking-api</title>
+  <desc id="d">Accounts and transfers on a double-entry ledger, with money as whole cents and no floating point.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#2563eb"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M98 92h104M98 92l52-30 52 30"/>
+    <path d="M112 102v44M136 102v44M164 102v44M188 102v44"/>
+    <path d="M94 158h112"/>
+  </g>
+  <text x="250" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="64" font-weight="700" fill="#f8fafc">banking-api</text>
+  <text x="252" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#cbd5e1">Accounts and transfers on a double-entry ledger. Every cent exact.</text>
+</svg>

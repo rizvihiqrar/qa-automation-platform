@@ -26,6 +26,7 @@ export const PACKAGES = [
   'k6-performance',
   'ci-dashboard',
   'llm-judge-check',
+  'banking-api',
   // CI demos: plain JavaScript checked with checkJs (they exist to show CI patterns)
   'contract-testing-demo',
   'mutation-testing-demo',
