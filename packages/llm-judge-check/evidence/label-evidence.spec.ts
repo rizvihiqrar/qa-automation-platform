@@ -28,10 +28,21 @@ test('H01 an unawaited expect still fails the test when the value is wrong', asy
   void expect(page.locator('[data-test="shopping-cart-badge"]')).toHaveText('3');
 });
 
-test('H01 an unawaited expect passes when the value is right', async ({ page }) => {
+// The other side is not "the right value always passes": an unawaited expect that has
+// not settled when the test returns fails with "Test ended." even though the page is
+// right (in CI the plain twin failed about 1 run in 6). Made deterministic here: the
+// badge is right, then reads 1 for 500 ms, so the check is always still polling.
+test('H01 an unawaited expect fails a correct page when it has not settled by test end', async ({ page }) => {
+  test.fail(); // the expected outcome: "Test ended.", a false failure
   await page.click('[data-test="add-to-cart-sauce-labs-backpack"]');
   await page.click('[data-test="add-to-cart-sauce-labs-bike-light"]');
-  void expect(page.locator('[data-test="shopping-cart-badge"]')).toHaveText('2');
+  const badge = page.locator('[data-test="shopping-cart-badge"]');
+  await expect(badge).toHaveText('2'); // the page is right
+  await badge.evaluate((el) => {
+    el.textContent = '1';
+    setTimeout(() => { el.textContent = '2'; }, 500);
+  });
+  void expect(badge).toHaveText('2');
 });
 
 test('H02 data-test="cart-item" matches nothing on a cart page with an item in it', async ({ page }) => {
