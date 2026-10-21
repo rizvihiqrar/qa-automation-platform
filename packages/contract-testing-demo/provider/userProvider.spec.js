@@ -4,9 +4,16 @@
  */
 
 const { Verifier } = require('@pact-foundation/pact');
+const net = require('net');
 const path = require('path');
+const { ATTEMPT_MS } = require('./network');
 
 describe('Users API — Provider verification', () => {
+  // Guards the CI fix in network.js: the Pact proxy connects with Node's default.
+  it('gives a slow first connect 5 s before trying the next address', () => {
+    expect(net.getDefaultAutoSelectFamilyAttemptTimeout()).toBe(ATTEMPT_MS);
+  });
+
   it('honours all consumer contracts', () => {
     return new Verifier({
       providerBaseUrl: 'https://dummyjson.com',

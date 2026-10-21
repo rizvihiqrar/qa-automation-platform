@@ -5,7 +5,8 @@
   "scripts": {
     "test:consumer": "jest consumer/",
     "test:provider": "jest provider/",
-    "test":          "npm run test:consumer && npm run test:provider"
+    "test":          "npm run test:consumer && npm run test:provider",
+    "repro:slow-connect": "node scripts/slow-connect-repro.js"
   },
   "devDependencies": {
     "@pact-foundation/pact": "^12.0.0",
