@@ -19,6 +19,8 @@ jobs:
     name: typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      CYPRESS_INSTALL_BINARY: 0   # types only; the browser binary isn't needed here
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,7 +37,7 @@ jobs:
         run: npm test
 
   test:
-    name: ${{ matrix.package }}
+    name: ${{ matrix.name || matrix.package }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -62,6 +64,9 @@ jobs:
           # API
           - { package: qa-practice-api,          browsers: false, command: npm test && npm run test:properties }
           - { package: banking-api,              browsers: false, command: npm test && npm run demo && npm run race -- raced.db && npm run check -- --db raced.db }
+          # The banking UI in Cypress, in Chrome and then Firefox; each run starts the server
+          # on a fresh ui.db and ends with the SQL ledger checks on it
+          - { package: banking-api, name: banking-api-ui, browsers: false, cypress: true, command: npm run test:ui -- --browser chrome && npm run test:ui -- --browser firefox }
           - { package: graphql-test-suite,       browsers: false, command: npm test }
           - { package: postman-api-collection,   browsers: false, command: npm test }
           - { package: contract-testing-demo,    browsers: false, command: npm test }
@@ -92,7 +97,21 @@ jobs:
         if: matrix.smoke
         run: node ../../scripts/test-scope.mjs ${{ matrix.package }}
 
+      # The Cypress binary is downloaded only for the job that runs it, and cached.
       - run: npm ci
+        env:
+          CYPRESS_INSTALL_BINARY: 0
+
+      - name: Cache Cypress binary
+        if: matrix.cypress
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles(format('packages/{0}/package-lock.json', matrix.package)) }}
+
+      - name: Install Cypress binary
+        if: matrix.cypress
+        run: npx cypress install && npx cypress verify
 
       # Fails on a high or critical advisory not triaged in scripts/audit-allowlist.json.
       - name: Dependency audit
@@ -113,7 +132,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: report-${{ matrix.package }}
+          name: report-${{ matrix.name || matrix.package }}
           path: |
             packages/${{ matrix.package }}/playwright-report/
             packages/${{ matrix.package }}/reports/

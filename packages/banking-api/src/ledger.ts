@@ -151,6 +151,17 @@ export class Ledger {
     return { id: id(row.id), owner: row.owner as string, currency: row.currency as Currency, balance: this.#balance(id(row.id)), created_at: row.created_at as string };
   }
 
+  // Customer accounts, oldest first, with balances summed from the entries (BK-R31).
+  listAccounts(): Account[] {
+    const rows = this.#sql(`
+      SELECT a.id, a.owner, a.currency, a.created_at, COALESCE(SUM(e.amount), 0) AS balance
+      FROM accounts a LEFT JOIN ledger_entries e ON e.account_id = a.id
+      WHERE a.kind = 'customer'
+      GROUP BY a.id, a.owner, a.currency, a.created_at
+      ORDER BY a.id`).all();
+    return rows.map((r: Row) => ({ id: id(r.id), owner: r.owner as string, currency: r.currency as Currency, balance: r.balance as bigint, created_at: r.created_at as string }));
+  }
+
   deposit(accountId: number, amount: bigint, currency: Currency): Result<Transfer> {
     return this.apply({ kind: 'deposit', from: null, to: accountId, amount, currency });
   }

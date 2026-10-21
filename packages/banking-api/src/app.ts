@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { Ledger, type Account, type Entry, type Movement, type Result, type Transfer } from './ledger.ts';
 import { CURRENCIES, formatAmount, isCurrency, parseAmount, type Currency } from './money.ts';
@@ -40,7 +41,7 @@ const ID = '([1-9][0-9]{0,14})';
 
 const routes: Route[] = [
   { pattern: /^\/health$/, methods: { GET: () => [200, { status: 'ok' }] } },
-  { pattern: /^\/accounts$/, methods: { POST: openAccount } },
+  { pattern: /^\/accounts$/, methods: { GET: listAccounts, POST: openAccount } },
   { pattern: new RegExp(`^/accounts/${ID}$`), methods: { GET: getAccount } },
   { pattern: new RegExp(`^/accounts/${ID}/entries$`), methods: { GET: getEntries } },
   { pattern: new RegExp(`^/accounts/${ID}/deposits$`), methods: { POST: postDeposit } },
@@ -65,8 +66,30 @@ export function createApp(ledger: Ledger = new Ledger(), { screen = async () => 
 const isBusy = (err: unknown): boolean =>
   (err as { code?: string }).code === 'ERR_SQLITE_ERROR' && (((err as { errcode?: number }).errcode ?? 0) & 0xff) === 5;
 
+// The banking UI (public/): plain files, no build, served from the same origin as the
+// API so it needs no CORS. Nothing inline, so the policy allows only this origin (BK-R32).
+const PUBLIC = new URL('../public/', import.meta.url);
+const UI_FILES: Record<string, [file: string, type: string]> = {
+  '/': ['index.html', 'text/html; charset=utf-8'],
+  '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
+  '/app.css': ['app.css', 'text/css; charset=utf-8'],
+};
+const UI_POLICY = "default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+
 async function handle(ledger: Ledger, screen: Screen, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { pathname } = new URL(req.url ?? '/', 'http://localhost');
+  const file = UI_FILES[pathname];
+  if (file) {
+    if (req.method !== 'GET') throw new HttpError(405, 'method_not_allowed', `${req.method} is not allowed here; use GET`, { Allow: 'GET' });
+    res.writeHead(200, {
+      'Content-Type': file[1],
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': UI_POLICY,
+    });
+    res.end(await readFile(new URL(file[0], PUBLIC)));
+    return;
+  }
   for (const route of routes) {
     const match = route.pattern.exec(pathname);
     if (!match) continue;
@@ -158,6 +181,10 @@ function openAccount({ ledger, body }: Context): Reply {
     throw new HttpError(400, 'invalid_owner', `owner must be a name of 1 to ${OWNER_MAX} characters`);
   }
   return [201, account(ledger.openAccount(owner, currencyOf(body)))];
+}
+
+function listAccounts({ ledger }: Context): Reply {
+  return [200, { accounts: ledger.listAccounts().map(account) }];
 }
 
 function getAccount({ ledger, params: [accountId] }: Context): Reply {

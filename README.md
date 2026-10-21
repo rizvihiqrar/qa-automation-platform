@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 26 packages, about 1,360 automated tests and checks, all run by one CI workflow
+- 26 packages, about 1,450 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -38,6 +38,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 - AI-written tests reviewed before they count, and an AI grader checked against a person's answers
 - Every AI test linked to the record of what the AI was asked and answered, in a self-hosted Langfuse
 - Mutation testing that deliberately breaks code to prove the tests would notice
+- Playwright and Cypress both: a banking UI tested by Cypress in Chrome and Firefox, where a double click or a lost reply still moves money once
 - A release gate that blocks a deployment, with reasons, when a rule is broken
 - A daily CI health check, and an automatic one-time re-run when CI fails on main
 - Strict TypeScript in ten packages, type-checked in CI with no build step
@@ -59,7 +60,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | Package | What it does | Checks |
 |---|---|---:|
 | [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with 119 cases designed from a written [test strategy](docs/test-strategy/README.md) and a passive OWASP ZAP scan in CI | 291 + 17 properties + ZAP scan |
-| [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, and 14 SQL checks prove every transfer balances | 219 + 8 properties |
+| [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, and 14 SQL checks prove every transfer balances. A small banking UI on top is tested by Cypress in Chrome and Firefox | 236 + 8 properties + 69 Cypress |
 | [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 27-step live check |
 | [webhook-harness](packages/webhook-harness) | Proves a webhook receiver rejects forged or replayed messages and processes each one only once | 21 |
 | [graphql-test-suite](packages/graphql-test-suite) | Tests a GraphQL API: queries, errors, and partial results | 33 |
@@ -131,12 +132,12 @@ Each number links to where it comes from. Figures are as of 2026-10-20.
 
 | Result | Number | Source |
 |---|---|---|
-| CI jobs passing on main | 34 of 34 | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| CI jobs passing on main | 35 of 35 | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
 | CI runs fully green on main | 100% of the last 39 | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
 | Mutation score, shopping cart module | 89.2% (198 of 222 changes caught) | [mutation-testing-demo](packages/mutation-testing-demo/README.md) |
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |
-| Money, race and ledger-check mistakes put back on purpose and caught, banking API | 56 of 56 | [banking-api](packages/banking-api/README.md#deliberate-breaks) |
+| Money, race, ledger-check and UI mistakes put back on purpose and caught, banking API | 78 of 78 | [banking-api](packages/banking-api/TECHNICAL.md#deliberate-breaks) |
 | Requirements traced to passing tests | 18 of 18, 119 of 119 cases | [traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/) |
 | AI tests with a matching trace | 900 of 900 | [Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/) |
 | Bugs found and fixed | Real ones, each with its fix | [full list](TECHNICAL.md#bugs-found-and-fixed-while-building-this) |

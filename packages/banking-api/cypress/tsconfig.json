@@ -1,0 +1,11 @@
+{
+  // The Cypress specs and support file: run in the browser with Mocha's and Chai's
+  // globals, so they don't share the Node test config.
+  "extends": "../../../tsconfig.ts.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["cypress"],
+    "typeRoots": ["../node_modules/@types", "../node_modules"]
+  },
+  "include": ["**/*.ts"]
+}

@@ -40,7 +40,7 @@ The rules the API must follow. Every test names the rules it checks (`BK-R05`), 
 |---|---|
 | BK-R16 | Refusals have a JSON body `{ "error", "code" }`, and the status says what kind: `400` for a request that can't be read (body, currency, amount, ids, owner, idempotency key), `404` for an unknown account, transfer or route, `405` for the wrong method (with `Allow`), `409` for a key whose first request is still running, `413` for a body over 16 KB, `415` for a POST that isn't JSON, `422` for a key reused for another request or a rule of the bank (`same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`), `503` for a database busy too long. Checks run in that order: the request first, then the idempotency key, then whether the accounts exist, then the bank's rules. Nothing a client sends gets a `500`. |
 | BK-R17 | Ids in paths are positive whole numbers; any other path is `404`. Ids in a body are JSON whole numbers of 1 or more (`400 invalid_account_id` otherwise). |
-| BK-R18 | Every response is `application/json`, with `Cache-Control: no-store` (balances must not be cached) and `X-Content-Type-Options: nosniff`. |
+| BK-R18 | Every API response is `application/json`, with `Cache-Control: no-store` (balances must not be cached) and `X-Content-Type-Options: nosniff`. The UI's three files (BK-R32) have their own types and the same two headers. |
 
 ## Retries and races
 
@@ -66,7 +66,23 @@ Rules the database itself must hold, whatever wrote to it: checked by the SQL qu
 | BK-R29 | An idempotency key in flight for more than 10 minutes is reported as a warning: its request most likely stopped and left the key blocked (see [Keys after a crash](#out-of-scope-today)). A key linked to its transfer is never stale. |
 | BK-R30 | `npm run check -- --db <file>` opens a ledger read-only, runs every check, and exits 1 when an error-level check finds a row, 0 otherwise (warnings are shown but don't fail), and 2 for wrong arguments or a file it can't open. A check that can't run is an error, not a skip. Every check is proven by a defect put into the database past the API, and none fires on a clean ledger, on the files real races leave, or after random model runs. The SQL also runs on Postgres: no SQLite-only functions, double-quoted strings or placeholders other than `:name`. |
 
+## The UI
+
+A small banking UI served by the API's own server (plain HTML and JavaScript, no framework, no build), tested in Chrome and Firefox by Cypress ([`cypress/e2e`](cypress/e2e)), which counts as tests for the rule check above.
+
+| Rule | What must hold |
+|---|---|
+| BK-R31 | `GET /accounts` lists every customer account, oldest first, each with its balance as in BK-R07; a new bank lists none. Funding accounts are never listed. |
+| BK-R32 | The UI is three files served at `/`, `/app.js` and `/app.css`, with `Content-Security-Policy: default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`: no inline script, style or event handler, and nothing from another origin. Other methods are `405`, other paths `404` JSON. Pages are built from text, never HTML strings, so an owner's name can't become markup. |
+| BK-R33 | Money in the UI is text from end to end. An amount is sent as typed, with only the spaces around it removed, as a JSON string; every amount shown is the API's string. The UI never turns an amount into a number and never adds one up. Each amount field is a text field (not `type="number"`, which takes `1e3` and rounds) with the currency in its label and its decimals in a hint. |
+| BK-R34 | A refusal is shown in the form that caused it: the API's message, in an element with `role="alert"`, linked to the field it's about by `aria-describedby`, and that field marked `aria-invalid`. What was typed stays. An unknown account or page shows Account Not Found with a link back. |
+| BK-R35 | One movement per filled form. The page makes one `Idempotency-Key` when a form is first sent and keeps it until a final answer (`201` or a refusal). With no answer, `409`, `502`, `503` or `504`, it tries again up to 3 times with the same key; still unconfirmed, it says so and keeps the key, so sending again replays instead of moving the money twice. While a request runs, a second click or Enter is ignored. A confirmed or refused form gets a new key, so the same amount twice on purpose is two movements. |
+| BK-R36 | Balances and statements on the page are always the API's: the page reads the account again after every answer, success or refusal, and never works a balance out itself. A page left open while another tab moves money shows the fresh balance at its next answer, and its own movement is checked against the real balance, not the one on screen. |
+| BK-R37 | The UI has no WCAG 2.2 A or AA violation that axe-core finds, on every screen and state, in the light and dark themes and at 375 px wide with no sideways scrolling. Every field has a visible label, everything works by keyboard, a skip link comes first, focus moves to the heading when a page opens, and the theme switch is a labelled button that says what it will do. |
+
 ## Out of scope today
+
+- **Two real browsers at once.** Cypress drives one tab, so the second tab in BK-R36 is another client of the same API (`cy.request`, or `fetch` from inside an intercept), which is what a second tab is to the server. Two real browser contexts at once are shown with Playwright in [multi-user-flow-patterns](../multi-user-flow-patterns/README.md).
 
 - **Who may move money.** There is no sign-in: anyone can move money between any accounts. Access control is tested on [qa-practice-api](../qa-practice-api/README.md) (Day 36); here the subject is the money.
 - **Keys after a crash.** A server that stops in the middle of a keyed request leaves its key in flight (`409`) until the key expires 24 hours later. Taking over an abandoned key sooner needs a lease, which this demo leaves out.
