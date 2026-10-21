@@ -2,13 +2,15 @@
   "name": "banking-api",
   "version": "1.0.0",
   "type": "module",
-  "description": "A small banking API to test: accounts, deposits, withdrawals and transfers on a double-entry SQLite ledger, with money as whole minor units and no floating point, idempotency keys, races across processes, and SQL checks that every transfer balances",
+  "description": "A small banking API to test: accounts, deposits, withdrawals and transfers on a double-entry SQLite ledger, with money as whole minor units and no floating point, idempotency keys, races across processes, SQL checks that every transfer balances, and a small banking UI tested with Cypress",
   "scripts": {
     "start": "node src/server.ts",
     "test": "node --test \"test/*.test.ts\"",
     "demo": "node src/demo.ts",
     "check": "node src/check.ts",
-    "race": "node src/race.ts"
+    "race": "node src/race.ts",
+    "test:ui": "node src/ui-test.ts",
+    "cy:open": "cypress open"
   },
   "engines": {
     "node": ">=24"
@@ -16,6 +18,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "axe-core": "^4.14.0",
+    "cypress": "^16.1.0",
     "fast-check": "^4.10.2"
   }
 }

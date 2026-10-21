@@ -59,7 +59,11 @@ for (const name of PACKAGES) {
   const dir = path.join(ROOT, 'packages', name);
   const config = ['tsconfig.typecheck.json', 'tsconfig.json'].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
   if (!config) { failed += 1; console.log(`FAIL  ${name} (no tsconfig)`); continue; }
-  const res = spawnSync(process.execPath, [TSC, '-p', config], { encoding: 'utf8' });
+  // Cypress specs run in the browser with Mocha's globals, so they have a config of
+  // their own (cypress/tsconfig.json), checked as part of the same package.
+  const configs = [config, path.join(dir, 'cypress', 'tsconfig.json')].filter((f) => fs.existsSync(f));
+  const runs = configs.map((c) => spawnSync(process.execPath, [TSC, '-p', c], { encoding: 'utf8' }));
+  const res = { status: runs.every((r) => r.status === 0) ? 0 : 1, stdout: runs.map((r) => r.stdout).join('\n') };
   const errors = (res.stdout.match(/error TS\d+/g) ?? []).length;
   if (res.status === 0) {
     console.log(`pass  ${name}`);

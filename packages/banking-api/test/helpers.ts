@@ -15,6 +15,7 @@ export interface Reply {
 
 export interface Api {
   ledger: Ledger;
+  base: string;
   request(method: string, path: string, body?: unknown, headers?: Record<string, string>): Promise<Reply>;
   post(path: string, body: unknown): Promise<Reply>;
   get(path: string): Promise<Reply>;
@@ -44,6 +45,7 @@ export async function startApi({ now, screen }: { now?: () => string; screen?: S
 
   const api: Api = {
     ledger,
+    base,
     request,
     post: (path, body) => request('POST', path, body),
     get: (path) => request('GET', path),

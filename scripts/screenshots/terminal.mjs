@@ -31,7 +31,18 @@ const shots = [
     // The summary and a slice of named tests; the full list is hundreds of lines.
     keep: (lines) => [...lines.filter((l) => /^\s*✔ BK-R2[6-9] defect /.test(l)).slice(0, 14), '', ...lines.filter((l) => /^ℹ /.test(l))],
   },
+  {
+    // The Cypress run in Chrome: the per-spec table, then the SQL checks on its ledger.
+    name: 'cypress',
+    cwd: 'packages/banking-api',
+    command: 'npm run test:ui --silent -- --browser chrome',
+    out: 'packages/banking-api/docs',
+    keep: (lines) => lines.filter((l) => /^\s+│ ✔|^\s+✔  All specs|^SQL ledger checks|^\d+\/14 checks/.test(l)).map((l) => l.replace(/^\s+/, '')),
+  },
 ];
+
+// Names to capture only some: npm run terminal -- cypress
+const wanted = process.argv.slice(2);
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const page = (title, text, dark) => `<!doctype html><meta charset="utf-8"><style>
@@ -43,6 +54,7 @@ const page = (title, text, dark) => `<!doctype html><meta charset="utf-8"><style
 
 const browser = await chromium.launch();
 for (const s of shots) {
+  if (wanted.length && !wanted.includes(s.name)) continue;
   const run = () => {
     try {
       return execSync(s.command, { cwd: path.join(ROOT, s.cwd), encoding: 'utf8' });
