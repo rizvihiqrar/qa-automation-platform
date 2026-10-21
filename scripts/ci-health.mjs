@@ -5,6 +5,10 @@
 //
 //   GITHUB_TOKEN=… node scripts/ci-health.mjs [--out ci-health.md]
 //
+// Also flags every run on main that needed a re-run in the last day: CI recheck
+// re-runs a failed job once, and a pass on that second attempt keeps main green, so
+// without this a flaky job would only show up as a count on the dashboard.
+//
 // Exits 1 when something needs looking at. The workflow keeps one open issue
 // (label ci-health) while that's true and closes it when everything is green.
 import fs from 'node:fs';
@@ -41,7 +45,25 @@ export function assess(name, runs, overdueAfterHours, now) {
   return { ...base, state: 'ok' };
 }
 
-export const PROBLEMS = ['failing', 'overdue', 'missing'];
+export const PROBLEMS = ['failing', 'overdue', 'missing', 're-run'];
+
+// Runs on main whose latest attempt started within the window and that needed more
+// than one attempt. The daily check looks back 25 hours, so a late start misses nothing.
+export const RERUN_WINDOW_HOURS = 25;
+export function reruns(runs, now, windowHours = RERUN_WINDOW_HOURS) {
+  return runs.filter((r) => (r.run_attempt ?? 1) > 1 && now - Date.parse(r.run_started_at ?? r.created_at) <= windowHours * HOUR);
+}
+
+// One row per re-run run. `firstJobs` are the jobs of its first attempt: the ones
+// that failed there are the jobs that needed the re-run.
+export function rerunRow(name, run, firstJobs) {
+  const failed = firstJobs.filter((j) => FAILED.includes(j.conclusion)).map((j) => j.name);
+  const jobs = failed.length ? failed.join(', ') : 'no failed job recorded';
+  return {
+    workflow: name, state: 're-run', conclusion: run.conclusion, url: run.html_url, at: run.created_at, event: run.event,
+    detail: `${jobs} failed on attempt 1, run took ${run.run_attempt} attempts (${run.conclusion} in the end)`,
+  };
+}
 
 // Watched scheduled workflows that no longer exist are problems too.
 export function missing(names, overdueAfterHours) {
@@ -101,6 +123,10 @@ if (isMain) {
     for (const w of active) {
       const { workflow_runs: runs } = await api(`/repos/${repo}/actions/workflows/${w.id}/runs?branch=main&per_page=20`, token);
       rows.push(assess(w.name, runs, overdueAfterHours, now.getTime()));
+      for (const r of reruns(runs, now.getTime())) {
+        const { jobs } = await api(`/repos/${repo}/actions/runs/${r.id}/attempts/1/jobs?per_page=100`, token);
+        rows.push(rerunRow(w.name, r, jobs));
+      }
     }
     rows.push(...missing(active.map((w) => w.name), overdueAfterHours));
     results.push({ repo, rows });
