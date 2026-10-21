@@ -14,8 +14,10 @@ test.describe('Login: review findings', () => {
       // The site delays performance_glitch_user's login on purpose: 5.1 to 5.2 s in
       // 8 of 8 timed runs, just over expect's default 5 s, so this check timed out
       // now and then (twice in CI). The finding is that the user gets in, not how fast.
+      // The products page then renders slowly too: with only the URL given 15 s, the title
+      // check timed out at 5 s in 4 CI runs (2026-10-19 to 20), once on both tries.
       await expect(page).toHaveURL(/inventory\.html/, { timeout: 15_000 });
-      await expect(page.locator('[data-test="title"]')).toHaveText('Products');
+      await expect(page.locator('[data-test="title"]')).toHaveText('Products', { timeout: 15_000 });
     });
   }
 
