@@ -239,8 +239,8 @@ export const VARIANTS: Variant[] = [
 export const HARD: Variant[] = [
   {
     key: 'H01', feature: 'cart', c: 2, label: 'covered',
-    reason: 'The expect is not awaited, but Playwright 1.64 fails the test when an assertion is still pending at test end (verified: a wrong value fails with "Test ended.", the right value passes 20 of 20). Enforced, so covered; the style issue is a missing await.',
-    borderline: 'The answer depends on how the test runner behaves, which a reader of the code cannot see; verified at runtime.',
+    reason: 'The expect is not awaited, but Playwright 1.64 fails the test when an assertion is still pending at test end (verified: a wrong value fails with "Test ended." every time). A broken badge is never missed, so covered. The missing await does cost something: when the check has not settled by test end it fails a correct page too (about 1 CI run in 6), a flaky test rather than a weak one.',
+    borderline: 'The answer depends on how the test runner behaves, which a reader of the code cannot see; verified at runtime. First recorded as "the right value passes 20 of 20"; CI later showed false failures, so the reason was corrected and the label kept.',
     find: `    await expect(page.locator('[data-test="shopping-cart-badge"]')).toHaveText('2');`,
     replace: `    expect(page.locator('[data-test="shopping-cart-badge"]')).toHaveText('2');`,
   },
