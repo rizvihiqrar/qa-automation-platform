@@ -9,6 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   timeout: 30000,
   retries: process.env.CI ? 1 : 0,
+  failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   use: {
     headless: true,
     viewport: { width: 1280, height: 720 },

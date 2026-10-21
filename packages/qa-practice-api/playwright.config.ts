@@ -7,6 +7,7 @@ const port = 4000 + Number(process.env.STRYKER_MUTATOR_WORKER ?? 0);
 
 export default defineConfig({
   testDir: './tests',
+  failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   timeout: 30000,
   fullyParallel: true,
   globalSetup: './tests/global-setup.ts',
