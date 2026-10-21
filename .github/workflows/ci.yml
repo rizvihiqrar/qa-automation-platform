@@ -348,7 +348,26 @@ jobs:
           cache: npm
           cache-dependency-path: packages/ai-test-generator/package-lock.json
       - run: npm ci   # no browser needed: listing and merging don't launch one
-      - uses: actions/download-artifact@v4
+      # GitHub's artifact service sometimes fails ("Artifact download failed after 5
+      # retries", run 39175286860). That is not a test failure, and a re-run would hide
+      # it as a flaky job, so wait and try once more before failing the job.
+      - name: Download shard reports
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: packages/ai-test-generator/all-blob-reports
+          merge-multiple: true
+      - name: Wait before the second download
+        if: ${{ steps.download.outcome == 'failure' }}
+        run: |
+          echo "::warning::Artifact download failed once (GitHub side); trying again in 30 s"
+          rm -rf all-blob-reports
+          sleep 30
+      - name: Download shard reports (second try)
+        if: ${{ steps.download.outcome == 'failure' }}
+        uses: actions/download-artifact@v4
         with:
           pattern: blob-report-*
           path: packages/ai-test-generator/all-blob-reports
