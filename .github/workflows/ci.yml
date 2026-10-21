@@ -36,6 +36,30 @@ jobs:
       - name: Test root scripts
         run: npm test
 
+  # An unawaited Playwright assertion races the end of the test (the H01 flake), so
+  # every Playwright package is linted for it. tools/playwright-lint has its own deps.
+  playwright-lint:
+    name: playwright lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/playwright-lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tools/playwright-lint/package-lock.json
+      - run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: The lint catches a deliberately unawaited expect
+        run: npm test
+      - name: No unawaited Playwright calls
+        run: npm run lint
+
   test:
     name: ${{ matrix.name || matrix.package }}
     runs-on: ubuntu-latest

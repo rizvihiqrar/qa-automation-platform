@@ -25,6 +25,7 @@ test('H01 an unawaited expect still fails the test when the value is wrong', asy
   test.fail(); // the expected outcome: Playwright fails the test with "Test ended."
   await page.click('[data-test="add-to-cart-sauce-labs-backpack"]');
   await page.click('[data-test="add-to-cart-sauce-labs-bike-light"]');
+  // eslint-disable-next-line playwright/missing-playwright-await -- unawaited on purpose: this is the H01 variant
   void expect(page.locator('[data-test="shopping-cart-badge"]')).toHaveText('3');
 });
 
@@ -42,6 +43,7 @@ test('H01 an unawaited expect fails a correct page when it has not settled by te
     el.textContent = '1';
     setTimeout(() => { el.textContent = '2'; }, 500);
   });
+  // eslint-disable-next-line playwright/missing-playwright-await -- unawaited on purpose: this is the H01 variant
   void expect(badge).toHaveText('2');
 });
 

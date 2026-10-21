@@ -4,7 +4,8 @@
   "description": "Root tooling for the monorepo (type-checking). Each package keeps its own dependencies.",
   "scripts": {
     "typecheck": "node scripts/typecheck.mjs",
-    "test": "node --test scripts/*.test.mjs"
+    "test": "node --test scripts/*.test.mjs",
+    "lint:playwright": "node tools/playwright-lint/lint.mjs"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
