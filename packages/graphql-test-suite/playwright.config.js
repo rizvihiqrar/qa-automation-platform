@@ -6,6 +6,7 @@ export default defineConfig({
   workers:       4,
   fullyParallel: true,
   retries:       0,
+  failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   use: {
     extraHTTPHeaders: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
   },

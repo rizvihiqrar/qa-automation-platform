@@ -10,5 +10,6 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   retries: process.env.CI ? 2 : 0,
+  failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   reporter: [['list']],
 });

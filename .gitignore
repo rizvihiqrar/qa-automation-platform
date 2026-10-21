@@ -18,3 +18,4 @@ packages/ci-dashboard/site/
 all-blob-reports/
 packages/ai-test-generator/list.json
 packages/ai-test-generator/merged.json
+.flaky-proof-*/

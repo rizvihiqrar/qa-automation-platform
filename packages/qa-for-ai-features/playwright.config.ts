@@ -8,6 +8,7 @@ export default defineConfig({
     actionTimeout: 10000,
   },
   retries: 0,
+  failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   // One mock server for the whole run. Starting it per spec file made parallel
   // workers race for port 3031 (EADDRINUSE).
   webServer: {
