@@ -62,15 +62,25 @@ describe('one process: requests overlap while the screening runs', () => {
     assert.equal((await api.get(`/accounts/${id}`)).body.balance, formatAmount(MAX_MINOR, 'KWD'));
   });
 
-  test('BK-R21 BK-R24 the same keyed transfer sent 10 times at once moves the money once; the others are 409', async () => {
+  // Which of the others still find the first in flight (409) and which arrive after it
+  // finished (a replay) depends on the machine: on a slow CI runner, 2 of 9 came late.
+  // What must hold either way: one movement, and every other answer is one of those two.
+  // The 409 itself is shown without timing in idempotency.test.ts.
+  test('BK-R21 BK-R24 the same keyed transfer sent 10 times at once moves the money once; the others are 409 or a replay of it', async () => {
     const api = await startApi({ screen: slowScreen });
     const from = await api.openAccount('CAD');
     const to = await api.openAccount('CAD');
     await api.post(`/accounts/${from}/deposits`, { amount: '100.00', currency: 'CAD' });
     const replies = await Promise.all(Array.from({ length: 10 }, () =>
       api.request('POST', '/transfers', { from_account_id: from, to_account_id: to, amount: '30.00', currency: 'CAD' }, { 'Idempotency-Key': 'storm' })));
-    assert.deepEqual(tally(replies), { '201': 1, '409 idempotency_key_in_use': 9 });
+    const fresh = replies.filter((r) => r.status === 201 && r.headers.get('idempotent-replayed') !== 'true');
+    const replayed = replies.filter((r) => r.status === 201 && r.headers.get('idempotent-replayed') === 'true');
+    const inFlight = replies.filter((r) => r.status === 409 && r.body.code === 'idempotency_key_in_use');
+    assert.equal(fresh.length, 1, JSON.stringify(tally(replies)));
+    assert.equal(fresh.length + replayed.length + inFlight.length, 10, JSON.stringify(tally(replies)));
+    for (const r of replayed) assert.deepEqual(r.body, fresh[0]!.body);
     assert.equal((await api.get(`/accounts/${from}`)).body.balance, '70.00');
+    assert.equal((await api.get(`/accounts/${from}/entries`)).body.entries.length, 2);
   });
 });
 
