@@ -53,8 +53,14 @@ describe('another tab moves money while the page is open', () => {
       cy.visit(`/#/accounts/${id}`);
       cy.get(`${form('withdraw')} [data-cy=amount]`).type('10.00');
       cy.get(`${form('withdraw')} [data-cy=submit]`).click();
-      cy.wait('@withdraw').its('response.statusCode').should('equal', 201); // the other tab's
-      cy.wait('@withdraw').its('response.statusCode').should('equal', 422); // the page's
+      // Both requests match the route, the page's first (its handler sends the other).
+      // Which one cy.wait yields first isn't fixed, so each is found by its header.
+      cy.wait(['@withdraw', '@withdraw']).then((calls) => {
+        const other = calls.find((c) => c.request.headers['x-other-tab']);
+        const own = calls.find((c) => !c.request.headers['x-other-tab']);
+        expect(other?.response?.statusCode, 'the other tab').to.equal(201);
+        expect(own?.response?.statusCode, 'the page').to.equal(422);
+      });
       cy.get(`${form('withdraw')} [data-cy=error]`).should('contain', 'insufficient funds');
       cy.get('[data-cy=balance]').should('have.text', '0.00');
       cy.statementOf(id).then((s) => {
