@@ -1,7 +1,7 @@
 // Tests for the daily CI health check (scripts/ci-health.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { assess, missing, passRate, report } from './ci-health.mjs';
+import { assess, missing, passRate, report, rerunRow, reruns } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -61,4 +61,27 @@ test('packages from the dashboard are listed with a passing-now count', () => {
   assert.match(markdown, /\| k6-performance \| success \| 95% \(19\/20\) \|/);
   assert.match(markdown, /\| graphql-test-suite \| \*\*failure\*\* \| 90% \(9\/10\) \|/);
   assert.doesNotMatch(report([], new Date(NOW)).markdown, /Packages/);
+});
+
+test('a run on main that needed a re-run in the last day is flagged', () => {
+  const runs = [
+    run('success', 2, { id: 1, run_attempt: 2 }), // CI recheck re-ran a failed job: flagged
+    run('success', 3, { id: 2, run_attempt: 1 }), // passed first time
+    run('success', 30, { id: 3, run_attempt: 2, run_started_at: new Date(NOW - 30 * 3600_000).toISOString() }), // too old
+    run('success', 30, { id: 4, run_attempt: 3, run_started_at: new Date(NOW - 1 * 3600_000).toISOString() }), // old run, re-run today
+    run('success', 4, { id: 5 }), // no attempt field: one attempt
+  ];
+  assert.deepEqual(reruns(runs, NOW).map((r) => r.id), [1, 4]);
+});
+
+test('the re-run row names the jobs that failed on the first attempt and is a problem', () => {
+  const r = run('success', 2, { id: 9, run_attempt: 2 });
+  const jobs = [{ name: 'llm-judge-check', conclusion: 'failure' }, { name: 'typecheck', conclusion: 'success' }, { name: 'k6', conclusion: 'timed_out' }];
+  const row = rerunRow('CI', r, jobs);
+  assert.equal(row.state, 're-run');
+  assert.equal(row.detail, 'llm-judge-check, k6 failed on attempt 1, run took 2 attempts (success in the end)');
+  const { problems, markdown } = report([{ repo: 'me/a', rows: [assess('CI', [r], {}, NOW), row] }], new Date(NOW));
+  assert.deepEqual(problems.map((p) => p.state), ['re-run']);
+  assert.match(markdown, /\| a \| CI \| \*\*re-run\*\*: llm-judge-check, k6 failed on attempt 1/);
+  assert.equal(rerunRow('CI', r, []).detail.startsWith('no failed job recorded'), true);
 });
