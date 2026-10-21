@@ -68,6 +68,10 @@ A daily [CI health check](.github/workflows/ci-health.yml) runs after the nightl
 
 When CI fails on `main`, a [recheck](.github/workflows/ci-recheck.yml) re-runs the failed jobs once. If they pass, nothing is reported as broken, and the dashboard counts the job as flaky rather than hiding it. If they fail again, [`scripts/ci-diagnose.mjs`](scripts/ci-diagnose.mjs) posts the failing jobs, their error lines, the commits since the last green run and a prompt to paste into a Claude Code session on the `ci-health` issue. A person makes and reviews the fix; nothing is re-run more than once, since re-running until green would hide real failures.
 
+Flaky tests are stopped before they merge, not only counted after. Each check below was added after a real flake and is proven by a deliberately flaky or broken test that it catches:
+
+- **Unawaited Playwright calls** (`playwright lint` job, [`tools/playwright-lint`](tools/playwright-lint)): `eslint-plugin-playwright`'s `missing-playwright-await` runs on every package that depends on Playwright. An unawaited `expect` races the end of the test, so it can fail a correct page with "Test ended." (the llm-judge-check H01 flake, 4 CI runs in 80). Its tests lint a deliberately unawaited fixture, check the rule is on in every Playwright package, and fail if a new Playwright package isn't in the list. The two deliberate unawaited expects in the H01 evidence are marked with a reason.
+
 The `.github/workflows` folders inside `matrix-build-demo` and `pipeline-templates-demo` are example content for those demos. GitHub only runs the root workflow.
 
 ## CI workflows
