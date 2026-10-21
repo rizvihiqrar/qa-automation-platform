@@ -163,6 +163,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Pull requests only: every Playwright or Cypress spec the PR adds or changes runs
+  # 3 times with no retries (Cypress in Chrome and Firefox), so a test that passes
+  # only sometimes is caught before it merges. scripts/burn-in.mjs picks the specs.
+  burn-in:
+    name: burn-in
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # the PR merge commit and its base, to list changed files
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Changed specs x3, no retries
+        run: node scripts/burn-in.mjs --run
+
   # OWASP ZAP scan of qa-practice-api, passive rules only (no attacks). ZAP's plain
   # baseline crawls links from the home page and a JSON API has none, so this
   # imports the OpenAPI spec instead (zap-api-scan.py) and, with -S, skips the active
