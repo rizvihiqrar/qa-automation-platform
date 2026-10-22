@@ -35,7 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: packages/ai-test-generator/package-lock.json
       - run: npm ci
-      - run: timeout -k 10 240 npx playwright install --with-deps chromium || timeout -k 10 240 npx playwright install --with-deps chromium
+      - run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh"
       - name: Run each test ${{ inputs.repeat }} times
         # A failing test is the data, not a reason to stop: the summary job reads every result.
         continue-on-error: true

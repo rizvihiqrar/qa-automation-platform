@@ -1,28 +1,33 @@
-// A hung browser install must not cost a job its whole 20 minute timeout. On 2026-10-22
-// `playwright install --with-deps` stalled on an Ubuntu mirror inside apt, and the
-// ai-test-generator job ran until GitHub cancelled it. Every install step now runs under
-// `timeout` and is tried twice, and this test keeps new workflows from skipping that.
+// A failed or hung browser install must not cost a job its whole 20 minute timeout.
+// Two things went wrong on GitHub's runners on 2026-10-22: `playwright install
+// --with-deps` stalled on an Ubuntu mirror inside apt until the job was cancelled
+// (ai-test-generator), and on a later run it failed at once because the runner's own
+// apt held the dpkg lock (five jobs). scripts/install-playwright-browser.sh cuts a
+// stalled try off after 240 s and waits 45 s between up to 3 tries. Every workflow must
+// install through it, and this test keeps new ones from calling `playwright install` directly.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const WORKFLOWS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.github', 'workflows');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const WORKFLOWS = path.join(ROOT, '.github', 'workflows');
+const SCRIPT = 'scripts/install-playwright-browser.sh';
 
-const installLines = fs.readdirSync(WORKFLOWS)
-  .filter((f) => /\.ya?ml$/.test(f))
-  .flatMap((f) => fs.readFileSync(path.join(WORKFLOWS, f), 'utf8').split(/\r?\n/)
-    .map((line, i) => ({ where: `${f}:${i + 1}`, line }))
-    .filter(({ line }) => line.includes('playwright install')));
+const linesOf = (file) => fs.readFileSync(file, 'utf8').split(/\r?\n/).map((line, i) => ({ where: `${path.basename(file)}:${i + 1}`, line }));
+const workflowLines = fs.readdirSync(WORKFLOWS).filter((f) => /\.ya?ml$/.test(f)).flatMap((f) => linesOf(path.join(WORKFLOWS, f)));
 
-test('there are browser install steps to check', () => {
-  assert.ok(installLines.length >= 4, `found ${installLines.length}`);
+test('the install script retries three times under a timeout, with a wait between', () => {
+  const script = fs.readFileSync(path.join(ROOT, SCRIPT), 'utf8');
+  assert.match(script, /for attempt in 1 2 3/);
+  assert.match(script, /timeout -k 10 240 npx playwright install --with-deps chromium/);
+  assert.match(script, /sleep 45/);
 });
 
-test('every browser install runs under timeout, and is tried twice', () => {
-  for (const { where, line } of installLines) {
-    const tries = line.split('timeout -k').length - 1;
-    assert.equal(tries, 2, `${where} must be: timeout -k 10 240 <install> || timeout -k 10 240 <install>`);
-  }
+test('workflows install the browser through the script, never directly', () => {
+  const direct = workflowLines.filter(({ line }) => line.includes('playwright install'));
+  assert.deepEqual(direct.map((d) => d.where), [], 'call the script instead of `playwright install`');
+  const viaScript = workflowLines.filter(({ line }) => line.includes('install-playwright-browser.sh'));
+  assert.ok(viaScript.length >= 4, `found ${viaScript.length} steps that use the script`);
 });
