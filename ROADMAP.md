@@ -113,7 +113,7 @@ The day numbers below stay as they are, because other documents link to them. Th
 | 50 | Event-driven backend: a queue between two services; ordering, retries, duplicates, dead-letter queue | ⬜ |
 | 51 | Resilience: Toxiproxy injects latency, dropped connections and timeouts; tests prove retries and timeouts work | ⬜ |
 | 52 | Observability: OpenTelemetry traces and metrics from qa-practice-api; tests assert on traces | ⬜ |
-| 53 | Python: pytest + requests suite against qa-practice-api | ⬜ |
+| 53 | Python: pytest + requests suite against qa-practice-api | ✅ [api-pytest](packages/api-pytest/README.md): 40 of the Day 33 designed cases (20 equivalence classes, 12 boundary values, 4 decision-table rules, 4 status moves) under the same TC IDs as the Playwright suite. A session fixture starts the API on a free port, so one command runs it; every request has a timeout, because `requests` has none. Three bugs put back into the API were each caught (TC-BVA-01, TC-BVA-11 and 12, TC-ST-01). The first `pip-audit` failed on the versions first pinned, so both were bumped and the audit is now a CI step. The repository also has an MIT LICENSE now. Built first of the reordered items |
 | 54 | Selenium side by side with Playwright on the same flows: setup, waits, flakiness, speed | ⬜ |
 
 ### Days 55–60: Automation and wrap-up
