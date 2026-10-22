@@ -30,6 +30,32 @@ test('the rule is on in every Playwright package', async () => {
   }
 });
 
+test('a bare locator.count() in a fixture is reported', async () => {
+  const [result] = await linter().lintFiles(['tools/playwright-lint/fixtures/count.spec.ts']);
+  assert.deepEqual(result.messages.map((m) => `${m.line} ${m.ruleId}`), ['6 no-restricted-syntax']);
+});
+
+const COUNT = `import { test } from '@playwright/test';
+test('t', async ({ page }) => {
+  const n = await page.locator('#x').count();
+});
+`;
+
+test('count() is reported in a spec of every Playwright package', async () => {
+  const eslint = linter();
+  for (const pkg of PACKAGES) {
+    const filePath = path.join(ROOT, 'packages', pkg, 'tests', 'new.spec.ts');
+    const [result] = await eslint.lintText(COUNT, { filePath });
+    assert.deepEqual(result.messages.map((m) => m.ruleId), ['no-restricted-syntax'], pkg);
+  }
+});
+
+test('count() is allowed outside specs, where a page object may wait first', async () => {
+  const filePath = path.join(ROOT, 'packages', 'bdd-playwright-demo', 'pageObjects', 'New.ts');
+  const [result] = await linter().lintText(COUNT, { filePath });
+  assert.equal(result.errorCount, 0);
+});
+
 test('an awaited expect passes', async () => {
   const filePath = path.join(ROOT, 'packages', PACKAGES[0], 'tests', 'ok.spec.ts');
   const [result] = await linter().lintText(UNAWAITED.replace('  expect(', '  await expect('), { filePath });
