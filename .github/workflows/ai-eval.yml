@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: packages/ai-test-generator/package-lock.json
 
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: timeout -k 10 240 npx playwright install --with-deps chromium || timeout -k 10 240 npx playwright install --with-deps chromium
 
       - name: Generate and score
         env:
