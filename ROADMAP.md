@@ -62,6 +62,15 @@ The resume leads with TypeScript, so convert one area a day, keeping CI green af
 
 Days 1–30 ended at [v1.0.0](https://github.com/rizvihiqrar/qa-automation-platform/releases/tag/v1.0.0). Phase 2 covers what v1.0 doesn't show yet: test design and written analysis, testing AI-written code and AI output, a money-handling domain, mobile, and backend infrastructure. Same rules as before. Days marked 🤖 use model output generated in a Claude Code session and committed as a recorded run (as on Day 4), so CI never calls a paid API.
 
+### Build order for what's left
+
+The day numbers below stay as they are, because other documents link to them. The order the remaining work is built in has changed, to put the cheapest and most visible items first:
+
+1. Day 53 (Python)
+2. The course "Testing money in software" (a row of its own, after Days 43–48)
+3. Day 59, 57, 49, 52, 51, 54, 55, 47, 50, 56, 48, 58
+4. Day 60 (retrospective, tag v2.0), always last
+
 ### Days 31–36: Test design and analysis
 
 | Day | Work | Status |
@@ -94,6 +103,7 @@ Days 1–30 ended at [v1.0.0](https://github.com/rizvihiqrar/qa-automation-platf
 | 46 | Cypress UI tests for a small banking UI | ✅ [banking-api](packages/banking-api/TECHNICAL.md#the-banking-ui-tested-with-cypress): a banking UI served by banking-api itself (plain HTML and JavaScript in `public/`, no framework or build, same origin so no CORS, `default-src 'self'` with nothing inline), an accounts list (new `GET /accounts`) and an account page with deposit, withdraw and transfer forms and the statement. 69 Cypress 16 tests in five specs, run in Chrome and Firefox in their own CI job (`banking-api-ui`); `cypress.config.ts` starts a real `node src/server.ts` on a fresh `ui.db` per run, every spec ends with the 14 SQL ledger checks on it, and `npm run test:ui` runs them once more. Money typed as text in each currency (`"1.230"` CAD, `"12.5"` JPY, `"１２"` refused; 90071992547409.93 + 0.01 exact); refusals shown on the right field with `role=alert` and `aria-invalid`; one `Idempotency-Key` per filled form, so a double click, a second Enter, and a reply replaced on its way back after the money moved (`cy.intercept`) all move money once, with retries on no answer, `409` and `502` to `504`; a second tab as another API client, including one let in while the page's own withdrawal was held at the proxy; axe-core (WCAG 2.2 AA) on every screen in light and dark and at 375 px, and a keyboard-only deposit. 7 new rules (37), 17 new Node tests (244), 22 new deliberate breaks (78), all caught. Found: axe flagged the statement table scrolling sideways at phone width with no keyboard access (fixed); removing the double-submit guard still moved money once, since the second submit carried the same key, so only the one-request assertion caught it; `cypress-axe` has no Cypress 16 release, so axe-core is loaded directly; `cy.press` moves focus with a real Tab but doesn't press a focused button with Enter; VS Code's `ELECTRON_RUN_AS_NODE` stops Cypress from starting (`npm run test:ui` unsets it). The package README is now split into README.md and TECHNICAL.md |
 | 47 | Azure DevOps pipeline run for real, results in Azure Test Plans | ⬜ |
 | 48 | Mobile: Appium or WebdriverIO against a sample Android app on an emulator in CI | ⬜ |
+| Course | **Testing money in software**: a short course built on the banking UI (Days 43–46). Content drafted with AI. Learning objectives written as observable behaviour, a quiz for each objective, an ungraded practical assessment (a hands-on task on the banking API with planted bugs, self-checked against a checklist and a model answer, with feedback and no score), and a retention check two weeks later. Run as a pilot with 3 or 4 people | ⬜ built second, after Day 53 |
 
 ### Days 49–54: Backend and infrastructure
 
@@ -114,7 +124,7 @@ Days 1–30 ended at [v1.0.0](https://github.com/rizvihiqrar/qa-automation-platf
 | 56 | n8n alerts on a failed nightly run or a new flaky-test issue | ⬜ |
 | 57 | Synthetic monitoring: scheduled Playwright checks on public demo sites, uptime and response-time history on the dashboard | ⬜ |
 | 58 | Run only the affected tests, selected from code coverage | ⬜ |
-| 59 | Visual regression | ⬜ |
+| 59 | Visual regression. Also two charts, each in a light and a dark version in the dashboard colours: a before/after SVG of the login problem (one password hash blocked the API for about 70 ms; `list products` p95 went from 67 ms to 1 ms after the fix, from [the write-up](docs/rca/01-login-hashing-blocked-the-api.md)), and the AI-written-code [scoreboard](docs/ai-written-code/scoreboard.md) as a heatmap (7 mistakes against 9 kinds of check) | ⬜ built third |
 | 60 | Retrospective; tag v2.0 | ⬜ |
 
 ---
