@@ -35,7 +35,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
-          [ -n "$RUN_ID" ] || RUN_ID=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --status completed --limit 1 --json databaseId -q '.[0].databaseId')
+          # Filtered here, not by GitHub: see flaky.yml and scripts/workflow-run-list.test.mjs.
+          [ -n "$RUN_ID" ] || RUN_ID=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --limit 100 --json databaseId,headBranch,status -q '[.[] | select(.headBranch == "main" and .status == "completed")][0].databaseId')
           echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
           gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -p 'report-*' -D reports-raw || echo "No reports to download"
 

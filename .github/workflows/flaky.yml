@@ -35,10 +35,13 @@ jobs:
           node-version: 24
 
       # Runs without the artifact (older than the upload, expired, or cancelled) are skipped.
+      # The list is not filtered by GitHub (--branch, --status): during a GitHub incident on
+      # 2026-10-22 those filters returned nothing, the loop found 0 runs, and this workflow
+      # failed. The filtering is done here instead (scripts/workflow-run-list.test.mjs).
       - name: Download regression results from recent CI runs on main
         run: |
           mkdir -p runs
-          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --status completed --limit 50 --json databaseId -q '.[].databaseId'); do
+          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --limit 100 --json databaseId,headBranch,status -q '.[] | select(.headBranch == "main" and .status == "completed") | .databaseId'); do
             [ "$(ls runs | wc -l)" -ge "$RUNS" ] && break
             gh run download "$id" -R "$GITHUB_REPOSITORY" -n regression-results -D "runs/$id" 2>/dev/null || rm -rf "runs/$id"
           done
