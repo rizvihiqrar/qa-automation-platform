@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 27 packages, about 1,490 automated tests and checks, all run by one CI workflow
+- 28 packages, about 1,520 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -99,6 +99,12 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [log-signature-grouper](packages/log-signature-grouper) | Groups thousands of log errors into a few patterns and flags patterns that are new since the last release | 15 |
 | [exploratory-session-tracker](packages/exploratory-session-tracker) | Structures exploratory testing (charters, timeboxes, tagged notes) and turns sessions into a team debrief | 10 |
 
+### Learning
+
+| Package | What it does | Checks |
+|---|---|---:|
+| [money-course](packages/money-course) | A short course, Testing money in software, built on the banking API: six objectives, a quiz for each, and an ungraded practical with six planted bugs and a model answer. Being run as a pilot | 30 |
+
 ## How a change gets tested
 
 ```mermaid
@@ -139,6 +145,7 @@ Each number links to where it comes from. Figures are as of 2026-10-20.
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |
 | Money, race, ledger-check and UI mistakes put back on purpose and caught, banking API | 78 of 78 | [banking-api](packages/banking-api/TECHNICAL.md#deliberate-breaks) |
+| Planted bugs in the course practical caught by the model answer, each by its own check only | 6 of 6 | [money-course](packages/money-course/TECHNICAL.md#the-model-answer-is-proven-against-each-bug) |
 | Requirements traced to passing tests | 18 of 18, 119 of 119 cases | [traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/) |
 | AI tests with a matching trace | 900 of 900 | [Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/) |
 | Bugs found and fixed | Real ones, each with its fix | [full list](TECHNICAL.md#bugs-found-and-fixed-while-building-this) |

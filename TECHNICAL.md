@@ -154,8 +154,9 @@ The full description of each package, with its check count. The [overview](READM
 | [release-gate](packages/release-gate) | Reads smoke, contract and performance results, applies a policy, and blocks a deployment with clear reasons when a rule is broken | 15 |
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
+| [money-course](packages/money-course) | A short course, Testing money in software, built on the banking API: six objectives, a quiz for each, and an ungraded practical with six planted bugs and a model answer. Being run as a pilot | 30 |
 
-27 packages, about 1,490 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
+28 packages, about 1,520 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
 
 ## Running locally
 
@@ -260,7 +261,7 @@ Re-running until green would hide real failures. A pass on the re-run is counted
 
 ### The dashboard says 34 packages, but the repo has 26. Which is right?
 
-Both. There are 27 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
+Both. There are 28 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
 
 ### Does running the tests call a paid AI service?
 

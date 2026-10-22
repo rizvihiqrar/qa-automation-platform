@@ -11,6 +11,7 @@ export const PACKAGES = [
   'bdd-playwright-demo',
   'graphql-test-suite',
   'llm-judge-check',
+  'money-course',
   'multi-user-flow-patterns',
   'qa-for-ai-features',
   'qa-practice-api',

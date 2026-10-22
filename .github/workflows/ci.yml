@@ -91,6 +91,9 @@ jobs:
           # The banking UI in Cypress, in Chrome and then Firefox; each run starts the server
           # on a fresh ui.db and ends with the SQL ledger checks on it
           - { package: banking-api, name: banking-api-ui, browsers: false, cypress: true, command: npm run test:ui -- --browser chrome && npm run test:ui -- --browser firefox }
+          # Testing money in software: the course checks (the model answer against six planted bugs)
+          # and the quiz page in Chromium and Firefox
+          - { package: money-course,             browsers: true,  browserList: chromium firefox, command: npm test }
           - { package: graphql-test-suite,       browsers: false, command: npm test }
           - { package: postman-api-collection,   browsers: false, command: npm test }
           - { package: contract-testing-demo,    browsers: false, command: npm test }
@@ -143,7 +146,7 @@ jobs:
 
       - name: Install Playwright browser
         if: matrix.browsers
-        run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh"
+        run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh" ${{ matrix.browserList }}
 
       - name: Install k6
         if: matrix.k6
