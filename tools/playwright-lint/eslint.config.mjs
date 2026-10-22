@@ -16,6 +16,11 @@ export const PACKAGES = [
   'qa-practice-api',
 ];
 
+const COUNT_BAN = {
+  selector: "CallExpression[callee.property.name='count'][arguments.length=0]",
+  message: 'locator.count() does not wait. Use await expect(locator).toHaveCount(n).',
+};
+
 export default [
   {
     ignores: [
@@ -41,10 +46,21 @@ export default [
     },
   },
   {
-    // The check's own proof: a deliberately unawaited expect that must be reported.
+    // Specs only. A read of locator.count() does not wait for the page, so it can return 0
+    // before the list is drawn (the multi-user-flow-patterns flake). Use
+    // expect(locator).toHaveCount(n), which waits. Page objects and checks in src/ may
+    // count after they have waited for something themselves.
+    files: PACKAGES.map((p) => `packages/${p}/**/*.spec.{js,mjs,cjs,ts,mts}`),
+    rules: { 'no-restricted-syntax': ['error', COUNT_BAN] },
+  },
+  {
+    // The check's own proof: a deliberately unawaited expect and a bare count() that must be reported.
     files: ['tools/playwright-lint/fixtures/**/*.ts'],
     languageOptions: { parser: tseslint.parser },
     plugins: { playwright },
-    rules: { 'playwright/missing-playwright-await': 'error' },
+    rules: {
+      'playwright/missing-playwright-await': 'error',
+      'no-restricted-syntax': ['error', COUNT_BAN],
+    },
   },
 ];
