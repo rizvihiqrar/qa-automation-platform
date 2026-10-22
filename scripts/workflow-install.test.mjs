@@ -24,6 +24,11 @@ test('the install script retries three times under a timeout, and waits for a ru
   assert.match(script, /for attempt in 1 2 3/);
   assert.ok(script.includes('timeout -k 10 300 npx playwright install --with-deps "${@:-chromium}"'), 'chromium unless browsers are named');
   assert.match(script, /pgrep -x/);
+  // apt gives up on a silent mirror after 20 s and retries, before playwright runs it
+  assert.match(script, /Acquire::http::Timeout "20"/);
+  assert.match(script, /Acquire::https::Timeout "20"/);
+  assert.match(script, /Acquire::Retries "3"/);
+  assert.ok(script.indexOf('Acquire::Retries') < script.indexOf('for attempt'), 'set before the first try');
 });
 
 test('workflows install the browser through the script, never directly', () => {
