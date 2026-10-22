@@ -143,7 +143,7 @@ jobs:
 
       - name: Install Playwright browser
         if: matrix.browsers
-        run: npx playwright install --with-deps chromium
+        run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh"
 
       - name: Install k6
         if: matrix.k6
@@ -373,7 +373,7 @@ jobs:
           cache: npm
           cache-dependency-path: packages/ai-test-generator/package-lock.json
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh"
       - name: Test shard
         run: npx playwright test -c playwright.regression.config.js --shard=${{ matrix.shard }}/${{ matrix.total }} --reporter=blob ${GREP:+--grep "$GREP"}
       - name: Upload blob report
