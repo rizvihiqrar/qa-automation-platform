@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lastGreenBefore } from './run-select.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -87,8 +88,8 @@ if (isMain) {
     failedJobs.push({ name: j.name, url: j.html_url, errors });
   }
   // The last green run on main BEFORE this one: what changed since is the first suspect.
-  const { workflow_runs: recent } = await api(`/repos/${repo}/actions/workflows/${r.workflow_id}/runs?branch=main&status=success&per_page=1&created=<${r.created_at}`, token);
-  const g = recent[0];
+  const { workflow_runs: recent } = await api(`/repos/${repo}/actions/workflows/${r.workflow_id}/runs?per_page=100`, token);
+  const g = lastGreenBefore(recent, r.created_at);
   const lastGreen = g ? { number: g.run_number, url: g.html_url, sha: g.head_sha } : null;
   let commits = [];
   if (lastGreen && lastGreen.sha !== run.sha) {

@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { onMain } from './run-select.mjs';
 
 const HOUR = 3600_000;
 
@@ -121,7 +122,9 @@ if (isMain) {
     const active = workflows.filter((w) => w.state === 'active' && !w.path.startsWith('dynamic/'));
     const rows = [];
     for (const w of active) {
-      const { workflow_runs: runs } = await api(`/repos/${repo}/actions/workflows/${w.id}/runs?branch=main&per_page=20`, token);
+      // Unfiltered, then picked here: GitHub's branch filter returned nothing during an incident.
+      const { workflow_runs: all } = await api(`/repos/${repo}/actions/workflows/${w.id}/runs?per_page=100`, token);
+      const runs = onMain(all);
       rows.push(assess(w.name, runs, overdueAfterHours, now.getTime()));
       for (const r of reruns(runs, now.getTime())) {
         const { jobs } = await api(`/repos/${repo}/actions/runs/${r.id}/attempts/1/jobs?per_page=100`, token);
