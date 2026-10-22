@@ -19,3 +19,8 @@ all-blob-reports/
 packages/ai-test-generator/list.json
 packages/ai-test-generator/merged.json
 .flaky-proof-*/
+
+# Python (packages/api-pytest)
+.venv/
+__pycache__/
+.pytest_cache/

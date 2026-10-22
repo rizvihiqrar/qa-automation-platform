@@ -32,6 +32,19 @@ const shots = [
     keep: (lines) => [...lines.filter((l) => /^\s*✔ BK-R2[6-9] defect /.test(l)).slice(0, 14), '', ...lines.filter((l) => /^ℹ /.test(l))],
   },
   {
+    // The pytest run: the API starts itself, then each designed case reports under its ID.
+    // Needs the package's venv (python -m venv .venv && .venv/Scripts/pip install -r requirements.txt).
+    name: 'pytest',
+    cwd: 'packages/api-pytest',
+    command: '.venv\\Scripts\\python -m pytest -v --no-header -p no:cacheprovider',
+    out: 'packages/api-pytest/docs',
+    keep: (lines) => [
+      ...lines.filter((l) => /PASSED/.test(l)).map((l) => l.trimEnd().replace(/^tests[\\/]\S+::\S+\[(.+)\] PASSED.*$/, '✔ $1').replace(/^tests[\\/]\S+::(\S+) PASSED.*$/, '✔ $1').replace(/^✔ test_tc_([a-z]+)_(\d+)_(\S+)$/, (_, k, n, rest) => `✔ TC-${k.toUpperCase()}-${n} ${rest.replace(/_/g, ' ')}`)).filter((l, i) => i % 3 === 0).slice(0, 14),
+      '',
+      ...lines.filter((l) => /^=+ \d+ passed/.test(l)).map((l) => l.replace(/^=+ | =+$/g, '')),
+    ],
+  },
+  {
     // The Cypress run in Chrome: the per-spec table, then the SQL checks on its ledger.
     name: 'cypress',
     cwd: 'packages/banking-api',

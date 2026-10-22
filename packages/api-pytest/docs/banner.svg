@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">api-pytest</title>
+  <desc id="d">The same designed API test cases as the Playwright suite, written in Python with pytest and requests.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#2563eb"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="80" y="52" width="130" height="116" rx="14"/>
+    <path d="M108 90l26 18-26 18"/>
+    <path d="M148 128h34"/>
+  </g>
+  <text x="250" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="64" font-weight="700" fill="#f8fafc">api-pytest</text>
+  <text x="252" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#cbd5e1">The same designed API cases as Playwright, in Python.</text>
+</svg>
