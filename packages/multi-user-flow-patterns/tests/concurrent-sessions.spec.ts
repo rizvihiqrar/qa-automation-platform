@@ -27,10 +27,10 @@ test.describe('Pattern: Concurrent browser sessions', () => {
     await expect(sessionB.page).toHaveURL(/inventory/);
 
     // Both see the same product catalogue
-    const countA = await sessionA.page.locator('[data-test="inventory-item"]').count();
-    const countB = await sessionB.page.locator('[data-test="inventory-item"]').count();
-    expect(countA).toBe(6);
-    expect(countB).toBe(6);
+    // toHaveCount waits for the items to render. locator.count() does not: the URL changes
+    // to /inventory before the glitch user's list is drawn, so it read 0 on the first try.
+    await expect(sessionA.page.locator('[data-test="inventory-item"]')).toHaveCount(6);
+    await expect(sessionB.page.locator('[data-test="inventory-item"]')).toHaveCount(6);
 
     await Promise.all([teardownSession(sessionA), teardownSession(sessionB)]);
   });
