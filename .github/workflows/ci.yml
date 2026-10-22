@@ -163,6 +163,43 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Day 53: the same designed cases as qa-practice-api's Playwright suite, in Python
+  # (pytest + requests). A pytest fixture starts the API itself, so the job only
+  # needs Node 24 for the server and Python for the tests. JUnit XML is kept as a report.
+  api-pytest:
+    name: api-pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/api-pytest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/qa-practice-api/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: packages/api-pytest/requirements.txt
+      - run: npm ci --prefix ../qa-practice-api
+      - run: pip install -r requirements.txt pip-audit
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt
+      - name: Test
+        run: pytest
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-api-pytest
+          path: packages/api-pytest/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Pull requests only: every Playwright or Cypress spec the PR adds or changes runs
   # 3 times with no retries (Cypress in Chrome and Firefox), so a test that passes
   # only sometimes is caught before it merges. scripts/burn-in.mjs picks the specs.

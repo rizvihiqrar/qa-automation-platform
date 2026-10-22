@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 26 packages, about 1,450 automated tests and checks, all run by one CI workflow
+- 27 packages, about 1,490 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -61,7 +61,8 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 |---|---|---:|
 | [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with 119 cases designed from a written [test strategy](docs/test-strategy/README.md) and a passive OWASP ZAP scan in CI | 291 + 17 properties + ZAP scan |
 | [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, and 14 SQL checks prove every transfer balances. A small banking UI on top is tested by Cypress in Chrome and Firefox | 236 + 8 properties + 69 Cypress |
-| [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 27-step live check |
+| [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 39-step live check |
+| [api-pytest](packages/api-pytest) | The same designed cases as the Playwright API suite, written again in Python with pytest and requests, under the same case IDs. A fixture starts the API, so one command runs it | 40 |
 | [webhook-harness](packages/webhook-harness) | Proves a webhook receiver rejects forged or replayed messages and processes each one only once | 21 |
 | [graphql-test-suite](packages/graphql-test-suite) | Tests a GraphQL API: queries, errors, and partial results | 33 |
 | [postman-api-collection](packages/postman-api-collection) | API checks in Postman, runnable from the command line | 25 |
@@ -74,7 +75,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | Package | What it does | Checks |
 |---|---|---:|
 | [k6-performance](packages/k6-performance) | Load and spike tests with per-endpoint limits; found that each login froze every other request for about 70 ms | 5 + 3 k6 tests |
-| [worker-scaling-benchmark](packages/worker-scaling-benchmark) | Measures whether running tests in parallel actually makes a suite faster | 10 |
+| [worker-scaling-benchmark](packages/worker-scaling-benchmark) | Measures whether running tests in parallel actually makes a suite faster | 12 |
 
 ### AI quality
 
