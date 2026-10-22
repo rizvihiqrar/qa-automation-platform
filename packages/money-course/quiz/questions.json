@@ -1,0 +1,614 @@
+{
+  "objectives": [
+    {
+      "id": "O1",
+      "module": 1,
+      "text": "The learner can send an amount as a string, as a JSON number and with one decimal too many, and name the answer each must get."
+    },
+    {
+      "id": "O2",
+      "module": 1,
+      "text": "The learner can list the decimals of CAD, USD, JPY and KWD, and write one deposit for each currency that proves its rule."
+    },
+    {
+      "id": "O3",
+      "module": 2,
+      "text": "The learner can add up the balances before and after a transfer and show that no money was created or lost."
+    },
+    {
+      "id": "O4",
+      "module": 2,
+      "text": "The learner can send a request twice with one Idempotency-Key and predict whether the second answer is a replay or a refusal."
+    },
+    {
+      "id": "O5",
+      "module": 3,
+      "text": "The learner can send twenty overlapping transfers from one account and show from the count of successes and the final balance that it was not overdrawn."
+    },
+    {
+      "id": "O6",
+      "module": 3,
+      "text": "The learner can send a refused request and tell a refusal (a 4xx answer with a code) from a server fault (a 500)."
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q01",
+      "objective": "O1",
+      "text": "A tester sends {\"amount\": 12.34, \"currency\": \"CAD\"} with the amount as a JSON number. What must the banking API answer?",
+      "options": [
+        {
+          "text": "500: the server cannot read it",
+          "feedback": "A 500 is a server fault. A request the API can read and refuses is a 400, never a 500."
+        },
+        {
+          "text": "201: 12.34 is a valid amount",
+          "feedback": "The value is fine, but how it arrived is not. A JSON number is read as a double before any code sees it, so digits can already be lost."
+        },
+        {
+          "text": "400 invalid_amount: amounts must be strings",
+          "feedback": "Amounts travel as strings such as \"12.34\", so no amount ever passes through a double."
+        },
+        {
+          "text": "422 insufficient_funds",
+          "feedback": "That refusal is about the balance, and the request is refused earlier, for its shape."
+        }
+      ],
+      "correct": 2
+    },
+    {
+      "id": "Q02",
+      "objective": "O1",
+      "text": "Which request proves the API refuses an amount with too many decimals?",
+      "options": [
+        {
+          "text": "A deposit of \"1.005\" CAD, expecting 400",
+          "feedback": "Three decimals is one more than CAD has. If the API reads it, a half cent has been rounded or invented."
+        },
+        {
+          "text": "A deposit of \"abc\" CAD, expecting 400",
+          "feedback": "A good request, but it checks letters, not the decimals rule."
+        },
+        {
+          "text": "A deposit of \"10.00\" CAD",
+          "feedback": "That is a normal amount. It proves the happy path, not the rule."
+        },
+        {
+          "text": "A deposit of \"0.01\" CAD",
+          "feedback": "One cent is the smallest valid CAD amount. It checks the lower edge, not too many decimals."
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "id": "Q03",
+      "objective": "O1",
+      "text": "A deposit of \"1.005\" CAD is accepted and the balance shows 10.05. Which is the best description of the bug?",
+      "options": [
+        {
+          "text": "The balance is shown with too many digits",
+          "feedback": "The display is fine. The wrong number was stored."
+        },
+        {
+          "text": "Nothing: 10.05 is a valid CAD balance",
+          "feedback": "The balance is a valid amount, but the customer sent 1.005 and got ten times that."
+        },
+        {
+          "text": "The rounding is wrong: it should show 1.01",
+          "feedback": "No amount should be rounded here. The request itself should have been refused."
+        },
+        {
+          "text": "The extra decimal was read as part of the whole number of cents (1005 cents)",
+          "feedback": "\"1.005\" became 1005 minor units, which is 10.05, ten times too much, and the request should never have passed."
+        }
+      ],
+      "correct": 3
+    },
+    {
+      "id": "Q04",
+      "objective": "O2",
+      "text": "How many decimals do CAD, USD, JPY and KWD have, in that order?",
+      "options": [
+        {
+          "text": "2, 2, 2, 3",
+          "feedback": "Yen has no decimals: 1250 yen is written \"1250\"."
+        },
+        {
+          "text": "2, 2, 0, 3",
+          "feedback": "CAD and USD have cents, yen has no minor unit in use, and the Kuwaiti dinar has fils, thousandths."
+        },
+        {
+          "text": "2, 2, 2, 2",
+          "feedback": "Many people assume every currency has cents. Yen and the dinar do not."
+        },
+        {
+          "text": "2, 2, 0, 2",
+          "feedback": "The dinar is divided into 1,000 fils, so it has three decimals."
+        }
+      ],
+      "correct": 1
+    },
+    {
+      "id": "Q05",
+      "objective": "O2",
+      "text": "Which deposit proves the JPY rule?",
+      "options": [
+        {
+          "text": "\"100.50\" JPY, expecting 201",
+          "feedback": "That treats yen like dollars. A yen has no cents."
+        },
+        {
+          "text": "\"100.500\" JPY, expecting 400",
+          "feedback": "It would be refused, but the same is true of \"100.5\", so this does not show the boundary."
+        },
+        {
+          "text": "\"100\" CAD, expecting 400",
+          "feedback": "That is a valid CAD amount, and it is not a yen test."
+        },
+        {
+          "text": "\"100.50\" JPY, expecting 400",
+          "feedback": "Yen has no decimals, so any decimal part must be refused. A pair with \"1250\" JPY accepted shows the rule from both sides."
+        }
+      ],
+      "correct": 3
+    },
+    {
+      "id": "Q06",
+      "objective": "O2",
+      "text": "A KWD account holds 1.250. What is that in minor units?",
+      "options": [
+        {
+          "text": "1.25",
+          "feedback": "That is the amount written with two decimals, which is not a minor-unit count."
+        },
+        {
+          "text": "125",
+          "feedback": "That treats the dinar as having two decimals. It has three."
+        },
+        {
+          "text": "1250",
+          "feedback": "Three decimals means 1.250 is 1,250 fils, and the API holds whole minor units."
+        },
+        {
+          "text": "12500",
+          "feedback": "That would be four decimals."
+        }
+      ],
+      "correct": 2
+    },
+    {
+      "id": "Q07",
+      "objective": "O3",
+      "text": "Ada has 25.00 and Bo has 0.00, both CAD. Ada sends Bo 10.00. After a correct transfer, what do the two balances add up to?",
+      "options": [
+        {
+          "text": "25.00",
+          "feedback": "A transfer moves money. It never creates or destroys it, so the total is the same as before."
+        },
+        {
+          "text": "35.00",
+          "feedback": "That counts the 10.00 twice."
+        },
+        {
+          "text": "It depends on the transfer fee",
+          "feedback": "This API has no fees. With a fee there would be a third account, the bank's, that also gets an entry."
+        },
+        {
+          "text": "15.00",
+          "feedback": "That is Ada's balance on its own. Bo's 10.00 is missing from the sum."
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "id": "Q08",
+      "objective": "O3",
+      "text": "After a 10.00 transfer, Ada shows 15.01 and Bo shows 10.00. What does this show?",
+      "options": [
+        {
+          "text": "A display bug in the balance",
+          "feedback": "Both balances are sums of ledger entries. A wrong sum means wrong entries, not a wrong display."
+        },
+        {
+          "text": "The debit and the credit are not the same amount: one cent of money was created",
+          "feedback": "The two entries of a transfer must be equal and opposite, and here the debit is 9.99 against a credit of 10.00."
+        },
+        {
+          "text": "A race between two requests",
+          "feedback": "One request, one transfer. No overlap is needed to see this."
+        },
+        {
+          "text": "Correct behaviour: the bank keeps a cent as a fee",
+          "feedback": "A fee would be written as its own entry, and would reduce the sum, not raise it."
+        }
+      ],
+      "correct": 1
+    },
+    {
+      "id": "Q09",
+      "objective": "O3",
+      "text": "Which check finds a transfer that creates money, using only the API?",
+      "options": [
+        {
+          "text": "Check the response time",
+          "feedback": "Speed says nothing about the entries."
+        },
+        {
+          "text": "Check that the transfer answers 201",
+          "feedback": "A transfer that creates money can still answer 201."
+        },
+        {
+          "text": "Add up both balances before and after, and compare",
+          "feedback": "Equal and opposite entries mean the total never changes. The comparison needs no knowledge of the code."
+        },
+        {
+          "text": "Check that the transfer id is a number",
+          "feedback": "The id says nothing about the amounts."
+        }
+      ],
+      "correct": 2
+    },
+    {
+      "id": "Q10",
+      "objective": "O4",
+      "text": "A transfer of 5.00 is sent with Idempotency-Key abc. The reply is lost, so the client sends the same request again with the same key. What must happen?",
+      "options": [
+        {
+          "text": "A 409 conflict in every case",
+          "feedback": "A 409 is for a request with this key that is still running, not for a finished one."
+        },
+        {
+          "text": "A second transfer of 5.00, so 10.00 has moved",
+          "feedback": "That is exactly what the key is for. A retry must not repeat the movement."
+        },
+        {
+          "text": "A 422, because the key was already used",
+          "feedback": "A 422 is for a key used on a different request. The same request is replayed."
+        },
+        {
+          "text": "The first answer again (a replay), and 5.00 has moved once",
+          "feedback": "The API recognises the key and the same request, and returns the first answer without moving money again."
+        }
+      ],
+      "correct": 3
+    },
+    {
+      "id": "Q11",
+      "objective": "O4",
+      "text": "The same Idempotency-Key is sent with 5.00 and then with 6.00. What must the second answer be?",
+      "options": [
+        {
+          "text": "422 idempotency_key_mismatch",
+          "feedback": "The key was used for a different request, so the API refuses instead of guessing."
+        },
+        {
+          "text": "500",
+          "feedback": "A key reused with a different amount is a client mistake. It is refused, not a fault."
+        },
+        {
+          "text": "The first answer again",
+          "feedback": "That would tell the client its 6.00 transfer happened when it did not."
+        },
+        {
+          "text": "A new transfer of 6.00",
+          "feedback": "A key promises one request. Using it for a second, different request is a mistake the API must report."
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "id": "Q12",
+      "objective": "O4",
+      "text": "Why must the amount be part of what an Idempotency-Key promises to repeat?",
+      "options": [
+        {
+          "text": "So the amount is stored twice",
+          "feedback": "Storing it twice does not help. The comparison is what matters."
+        },
+        {
+          "text": "Without it, a different amount sent with the same key is answered with the first transfer, and the client believes the wrong amount moved",
+          "feedback": "The fingerprint is how the API knows whether a second request is the same request."
+        },
+        {
+          "text": "To make the key longer",
+          "feedback": "The key length has its own rule and has nothing to do with this."
+        },
+        {
+          "text": "To speed up the replay",
+          "feedback": "It is about correctness, not speed."
+        }
+      ],
+      "correct": 1
+    },
+    {
+      "id": "Q13",
+      "objective": "O5",
+      "text": "Twenty transfers of 10.00 are sent at the same time from an account holding 100.00. How many should go through?",
+      "options": [
+        {
+          "text": "1, because requests are handled one at a time",
+          "feedback": "Requests do overlap, and nine more are affordable once the first has paid."
+        },
+        {
+          "text": "Any number, since the order is not known",
+          "feedback": "The order is not known, but the count is. Exactly ten can be afforded."
+        },
+        {
+          "text": "20, since each one looked affordable when it arrived",
+          "feedback": "That is the bug. Each saw 100.00, but together they ask for 200.00."
+        },
+        {
+          "text": "10, and the balance ends at 0.00",
+          "feedback": "100.00 pays for ten. The other ten must be refused with insufficient_funds."
+        }
+      ],
+      "correct": 3
+    },
+    {
+      "id": "Q14",
+      "objective": "O5",
+      "text": "Twenty overlapping transfers all answer 201 and the account balance is -100.00. What went wrong?",
+      "options": [
+        {
+          "text": "The funds were checked before the wait but not again when the money was written",
+          "feedback": "Each request passed the early check, and none was stopped when the money was actually taken."
+        },
+        {
+          "text": "The amounts were parsed wrongly",
+          "feedback": "The amounts are exact. The total they add up to is what is wrong."
+        },
+        {
+          "text": "The database ran out of disk space",
+          "feedback": "That would give an error, not twenty successes."
+        },
+        {
+          "text": "The test was run too fast",
+          "feedback": "A faster test only exposes the bug sooner. It does not cause it."
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "id": "Q15",
+      "objective": "O5",
+      "text": "Which result proves an account was not overdrawn by overlapping requests?",
+      "options": [
+        {
+          "text": "No answer took more than a second",
+          "feedback": "Speed is not what is being checked."
+        },
+        {
+          "text": "Every answer was 201",
+          "feedback": "That can be exactly the bug."
+        },
+        {
+          "text": "Ten answers were 201, ten were 422, and the final balance is not negative",
+          "feedback": "The count of successes and the final balance together show the account paid for what it could afford."
+        },
+        {
+          "text": "The first request answered 201",
+          "feedback": "The first request is always affordable. It says nothing about the other nineteen."
+        }
+      ],
+      "correct": 2
+    },
+    {
+      "id": "Q16",
+      "objective": "O6",
+      "text": "A transfer from account 1 to account 1 answers 500. What is wrong?",
+      "options": [
+        {
+          "text": "Nothing: a transfer to oneself is a server problem",
+          "feedback": "It is the client's mistake, and the API knows about it, so it must say so."
+        },
+        {
+          "text": "The API did not recognise the mistake and let the database refuse it: it should be a 422 with the code same_account",
+          "feedback": "A refusal is a decision with a code the client can act on. A 500 says the server broke."
+        },
+        {
+          "text": "The account does not exist",
+          "feedback": "A missing account is a 404 not_found, and this account does exist."
+        },
+        {
+          "text": "The amount was too large",
+          "feedback": "That would be a 400 or a 422 with its own code."
+        }
+      ],
+      "correct": 1
+    },
+    {
+      "id": "Q17",
+      "objective": "O6",
+      "text": "Which answer to a withdrawal one cent over the balance is correct?",
+      "options": [
+        {
+          "text": "422 insufficient_funds, with the balance unchanged",
+          "feedback": "A refusal is a 4xx with a code, and nothing was written."
+        },
+        {
+          "text": "500 internal",
+          "feedback": "The API understood the request. It is refused, not broken."
+        },
+        {
+          "text": "201, with a negative balance",
+          "feedback": "That overdraws the account."
+        },
+        {
+          "text": "400 invalid_amount",
+          "feedback": "The amount is a valid amount. The balance is the problem."
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "id": "Q18",
+      "objective": "O6",
+      "text": "Why is a 500 for a customer's mistake a bug, even if no money moved?",
+      "options": [
+        {
+          "text": "It is not a bug if no money moved",
+          "feedback": "Refusing correctly is part of the behaviour, not only keeping the money safe."
+        },
+        {
+          "text": "Because it is slower",
+          "feedback": "Speed is not the problem."
+        },
+        {
+          "text": "Because a 500 says the server failed: it hides the real reason from the client, and it fills real alerts with customer mistakes",
+          "feedback": "A client can fix a 422 and cannot fix a 500, and monitoring cannot tell a customer slip from an outage."
+        },
+        {
+          "text": "Because 500 is not a valid status code",
+          "feedback": "It is valid. It is the wrong one for this situation."
+        }
+      ],
+      "correct": 2
+    }
+  ],
+  "retention": [
+    {
+      "id": "R1",
+      "objective": "O1",
+      "text": "A new client library sends amounts as numbers, such as 19.99. The API answers 400 to every deposit. Is that the API's bug?",
+      "options": [
+        {
+          "text": "Yes: it should round the number",
+          "feedback": "Rounding money is exactly what the API must not do."
+        },
+        {
+          "text": "No: the API should answer 500",
+          "feedback": "A request it understood and refuses is a 400."
+        },
+        {
+          "text": "Yes: 19.99 is a valid amount",
+          "feedback": "The value is valid, but a JSON number is read as a double before the API sees it. The rule is a string."
+        },
+        {
+          "text": "No: the API requires amounts as strings, so the library must send \"19.99\"",
+          "feedback": "The refusal is the designed behaviour."
+        }
+      ],
+      "correct": 3
+    },
+    {
+      "id": "R2",
+      "objective": "O2",
+      "text": "A tester writes one test with CAD, and says the decimals rule is covered for every currency. What is missing?",
+      "options": [
+        {
+          "text": "Nothing: all currencies work the same",
+          "feedback": "They do not: the decimals differ."
+        },
+        {
+          "text": "A test for each currency with a different number of decimals: JPY with 0 and KWD with 3",
+          "feedback": "CAD and USD share a rule. Yen and the dinar each need their own case."
+        },
+        {
+          "text": "A faster test",
+          "feedback": "Speed is not the gap."
+        },
+        {
+          "text": "A test in another browser",
+          "feedback": "This is an API rule."
+        }
+      ],
+      "correct": 1
+    },
+    {
+      "id": "R3",
+      "objective": "O3",
+      "text": "Three accounts hold 10.00, 20.00 and 30.00. After a transfer between two of them, which total proves no money was created?",
+      "options": [
+        {
+          "text": "The total of all three is still 60.00",
+          "feedback": "A transfer moves money between accounts and never changes the sum."
+        },
+        {
+          "text": "The receiver's balance went up",
+          "feedback": "It would go up if money was created too."
+        },
+        {
+          "text": "The sender's balance went down",
+          "feedback": "It would go down by too little if the debit was short."
+        },
+        {
+          "text": "The transfer answered 201",
+          "feedback": "That says it was accepted, not that it was right."
+        }
+      ],
+      "correct": 0
+    },
+    {
+      "id": "R4",
+      "objective": "O4",
+      "text": "A client retries a request after a timeout and gets 422 idempotency_key_mismatch. What is the most likely cause?",
+      "options": [
+        {
+          "text": "The ledger is out of balance",
+          "feedback": "The refusal is about the request, not the ledger."
+        },
+        {
+          "text": "The server crashed",
+          "feedback": "A crash would not give a coded 422."
+        },
+        {
+          "text": "The retry changed something, such as the amount, while keeping the same key",
+          "feedback": "A retry must repeat the request exactly. A changed request needs a new key."
+        },
+        {
+          "text": "The key was too short",
+          "feedback": "A bad key length is a 400 with its own code."
+        }
+      ],
+      "correct": 2
+    },
+    {
+      "id": "R5",
+      "objective": "O5",
+      "text": "A test sends two withdrawals of 80.00 one after the other from an account with 100.00 and sees one 201 and one 422. Does it prove the account is safe from overlapping requests?",
+      "options": [
+        {
+          "text": "Yes: the second was refused",
+          "feedback": "In a sequence, the first has finished before the second starts. That cannot show an overlap bug."
+        },
+        {
+          "text": "No: the requests must be sent at the same time to show it",
+          "feedback": "Only overlapping requests can both pass an early check."
+        },
+        {
+          "text": "Yes: the status codes are right",
+          "feedback": "The codes are right in a sequence even with the overlap bug."
+        },
+        {
+          "text": "No: it needs a bigger amount",
+          "feedback": "The size of the amount is not what matters."
+        }
+      ],
+      "correct": 1
+    },
+    {
+      "id": "R6",
+      "objective": "O6",
+      "text": "A request to a missing account answers 404 not_found, and a transfer to the same account answers 500. Which one needs a bug report?",
+      "options": [
+        {
+          "text": "Both",
+          "feedback": "The 404 is correct."
+        },
+        {
+          "text": "Neither",
+          "feedback": "The 500 hides a mistake the API can name."
+        },
+        {
+          "text": "The 404",
+          "feedback": "A missing account is a refusal with a code, as designed."
+        },
+        {
+          "text": "The 500",
+          "feedback": "A customer mistake the API could recognise must be a 422 with a code, not a server fault."
+        }
+      ],
+      "correct": 3
+    }
+  ]
+}

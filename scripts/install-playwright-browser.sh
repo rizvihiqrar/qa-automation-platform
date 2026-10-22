@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs Chromium and its system packages for Playwright, and survives the ways GitHub's
+# Installs Chromium (or the browsers named as arguments: chromium firefox) and its system packages for Playwright, and survives the ways GitHub's
 # runners make that fail. Run it from the package directory.
 #  - apt can stall on a mirror (2026-10-22: 20 minutes in the middle of `apt-get update`),
 #    so each try is cut off after 300 s.
@@ -8,7 +8,7 @@
 #    So before each new try this waits (up to 240 s) for any running apt or dpkg to finish.
 #    The orphan usually finishes the installing, and the next try has little left to do.
 for attempt in 1 2 3; do
-  timeout -k 10 300 npx playwright install --with-deps chromium && exit 0
+  timeout -k 10 300 npx playwright install --with-deps "${@:-chromium}" && exit 0
   echo "Browser install attempt $attempt of 3 failed."
   [ "$attempt" -lt 3 ] || break
   for _ in $(seq 1 48); do

@@ -48,6 +48,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node packages/ci-dashboard/src/build.js --out _site --reports reports-raw --reports-run "$RUN_ID" --plan docs/test-strategy/test-plan.md
 
+      # The course quiz (packages/money-course/quiz) is a static page, published at /course/.
+      - name: Add the course quiz
+        run: mkdir -p _site/course && cp packages/money-course/quiz/* _site/course/
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

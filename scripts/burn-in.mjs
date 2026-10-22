@@ -24,6 +24,7 @@ export const PLAYWRIGHT = [
   { pkg: 'ai-test-generator', config: 'playwright.review.config.js', dirs: ['tests/review/'] },
   { pkg: 'graphql-test-suite', config: 'playwright.config.js', dirs: ['tests/'] },
   { pkg: 'llm-judge-check', config: 'playwright.config.ts', dirs: ['evidence/'] },
+  { pkg: 'money-course', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'multi-user-flow-patterns', config: 'playwright.config.ts', dirs: ['tests/'] },
   { pkg: 'qa-for-ai-features', config: 'playwright.config.ts', dirs: ['tests/'] },
   { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'] },
@@ -48,7 +49,7 @@ export function plan(files) {
     const [, pkg, rel] = m;
     for (const s of PLAYWRIGHT) {
       if (s.pkg === pkg && PLAYWRIGHT_SPEC.test(rel) && s.dirs.some((d) => rel.startsWith(d))) {
-        add(`${pkg}/${s.config}`, () => ({ runner: 'playwright', pkg, config: s.config }), rel);
+        add(`${pkg}/${s.config}`, () => ({ runner: 'playwright', pkg, config: s.config, browsers: s.browsers }), rel);
       }
     }
     for (const s of CYPRESS) {
@@ -113,7 +114,7 @@ if (isMain) {
       const cwd = path.join(ROOT, 'packages', g.pkg);
       if (!ready.has(g.pkg)) {
         if (sh('npm', ['ci', '--no-audit', '--no-fund'], cwd) !== 0) throw new Error(`npm ci failed in ${g.pkg}`);
-        if (g.runner === 'playwright' && sh('npx', ['playwright', 'install', '--with-deps', 'chromium'], cwd) !== 0) throw new Error('browser install failed');
+        if (g.runner === 'playwright' && sh('npx', ['playwright', 'install', '--with-deps', ...(g.browsers ?? ['chromium'])], cwd) !== 0) throw new Error('browser install failed');
         ready.add(g.pkg);
       }
       for (const [label, cmd, args, env] of commands(g)) {

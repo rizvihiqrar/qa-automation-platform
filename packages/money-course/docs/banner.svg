@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">Testing money in software</title>
+  <desc id="d">A short course on the banking API: six objectives, a quiz for each, and a practical with six planted bugs.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#2563eb"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="150" cy="120" r="50"/>
+    <path d="M150 92v56M132 106h28a10 10 0 0 1 0 20h-20a10 10 0 0 0 0 20h28"/>
+  </g>
+  <text x="250" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc">Testing money in software</text>
+  <text x="252" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#cbd5e1">Six objectives, a quiz for each, and a practical with six planted bugs.</text>
+</svg>

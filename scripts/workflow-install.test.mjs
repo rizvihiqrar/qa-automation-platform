@@ -22,7 +22,7 @@ const workflowLines = fs.readdirSync(WORKFLOWS).filter((f) => /\.ya?ml$/.test(f)
 test('the install script retries three times under a timeout, and waits for a running apt between', () => {
   const script = fs.readFileSync(path.join(ROOT, SCRIPT), 'utf8');
   assert.match(script, /for attempt in 1 2 3/);
-  assert.match(script, /timeout -k 10 300 npx playwright install --with-deps chromium/);
+  assert.ok(script.includes('timeout -k 10 300 npx playwright install --with-deps "${@:-chromium}"'), 'chromium unless browsers are named');
   assert.match(script, /pgrep -x/);
 });
 

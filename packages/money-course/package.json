@@ -1,0 +1,24 @@
+{
+  "name": "money-course",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Testing money in software: a short course on the banking API with six objectives, a quiz for each, an ungraded practical with six planted bugs and a model answer, and a retention check",
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\" && playwright test",
+    "test:course": "node --test \"test/*.test.ts\"",
+    "test:quiz": "playwright test",
+    "quiz": "node src/serve-quiz.ts",
+    "practical": "node src/practical.ts",
+    "proof": "node src/proof.ts",
+    "screenshots": "node src/screenshots.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2"
+  }
+}
