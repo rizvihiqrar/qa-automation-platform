@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { assess, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
+import { assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -113,4 +113,36 @@ test('the re-run row names the jobs that failed on the first attempt and is a pr
   assert.deepEqual(problems.map((p) => p.state), ['re-run']);
   assert.match(markdown, /\| a \| CI \| \*\*re-run\*\*: llm-judge-check, k6 failed on attempt 1/);
   assert.equal(rerunRow('CI', r, []).detail.startsWith('no failed job recorded'), true);
+});
+
+test('a re-run stops being a problem once a fix merged after it names the run', () => {
+  const r = run('success', 5, { id: 40206566126, run_attempt: 2 });
+  const pr = (number, hoursAgo, ...texts) => ({ number, merged_at: new Date(NOW - hoursAgo * 3600_000).toISOString(), texts });
+  const fix = pr(88, 1, 'Run 40206566126 attempt 1: DC-ST-06 failed');
+  assert.equal(fixedBy(r, [pr(87, 2, 'unrelated', null), fix])?.number, 88);
+  assert.equal(fixedBy(r, [pr(85, 1, 'body', 'Fixes the re-run of run 40206566126.')])?.number, 85, 'a comment counts too');
+  assert.equal(fixedBy(r, [pr(80, 6, 'Run 40206566126')]), undefined, 'merged before the run: not its fix');
+  assert.equal(fixedBy(r, [pr(81, 1, 'Run 402065661260 and 140206566126')]), undefined, 'a longer number is another run');
+  assert.equal(fixedBy(r, [{ number: 82, merged_at: null, texts: ['40206566126'] }]), undefined, 'closed without merging');
+
+  const row = rerunRow('CI', r, [{ name: 'qa-practice-api', conclusion: 'failure' }], fix);
+  assert.equal(row.state, 'fixed');
+  assert.match(row.detail, /qa-practice-api failed on attempt 1.*; fixed in #88$/);
+  const { problems, markdown } = report([{ repo: 'me/a', rows: [assess('CI', [r], {}, NOW), row] }], new Date(NOW));
+  assert.deepEqual(problems, []);
+  assert.match(markdown, /^All green[\s\S]*\| CI \| fixed: qa-practice-api failed on attempt 1.*; fixed in #88 \|/);
+});
+
+test('the workflow runs after CI on main without emailing, and keeps the status issue closed', () => {
+  const yml = fs.readFileSync(new URL('../.github/workflows/ci-health.yml', import.meta.url), 'utf8');
+  assert.deepEqual(triggers(yml), ['schedule', 'workflow_run', 'workflow_dispatch']);
+  assert.match(yml, /workflow_run:\s+workflows: \[CI\]\s+types: \[completed\]\s+branches: \[main\]/);
+  // After CI, the ci-health issue only gets its body refreshed or is closed: comments are daily.
+  assert.match(yml, /if \[ "\$DAILY" = "true" \]; then gh issue comment "\$open"/);
+  assert.equal(yml.match(/gh issue comment "\$open"/g).length, 1, 'no other comment on the ci-health issue');
+  // The daily status is posted only on the daily (and hand-started) runs, to a closed issue.
+  const status = yml.slice(yml.indexOf('- name: Post the daily status'));
+  assert.match(status, /^- name: Post the daily status\s+if: \$\{\{ github\.event_name != 'workflow_run' \}\}/);
+  assert.match(status, /--state all/);
+  assert.match(status, /gh issue close "\$status"/);
 });

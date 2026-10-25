@@ -50,6 +50,8 @@ export function report({ repo, run, failedJobs, lastGreen, commits, commands }) 
     `Failing jobs: ${failedJobs.map((j) => j.name).join(', ')}.`,
     lastGreen ? `Last green run: ${lastGreen.url} at ${lastGreen.sha.slice(0, 7)}; ${commits.length} commit(s) since.` : '',
     'Reproduce it locally with the job\'s CI command, find the root cause (don\'t just retry, raise a timeout or loosen a check without saying why), fix it with a test that fails without the fix, then ship it on a branch and merge on green CI.',
+    // CI health keeps the issue open until a merged PR names the run (scripts/ci-health.mjs fixedBy).
+    run.id ? `Name run ${run.id} in the PR description, so CI health counts it as fixed.` : '',
   ].filter(Boolean).join(' ');
   return [
     `**${workflow} failed on main and failed again when re-run:** [run #${run.number}](${run.url}), \`${run.sha.slice(0, 7)}\`, ${run.event}.`,
@@ -79,7 +81,7 @@ if (isMain) {
   const repo = arg('--repo', process.env.GITHUB_REPOSITORY ?? 'rizvihiqrar/qa-automation-platform');
   const id = arg('--run');
   const r = await api(`/repos/${repo}/actions/runs/${id}`, token);
-  const run = { workflow: r.name, number: r.run_number, url: r.html_url, sha: r.head_sha, event: r.event, attempt: r.run_attempt };
+  const run = { id: r.id, workflow: r.name, number: r.run_number, url: r.html_url, sha: r.head_sha, event: r.event, attempt: r.run_attempt };
   const { jobs } = await api(`/repos/${repo}/actions/runs/${id}/attempts/${r.run_attempt}/jobs?per_page=100`, token);
   const failedJobs = [];
   for (const j of jobs.filter((x) => x.conclusion === 'failure')) {

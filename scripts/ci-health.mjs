@@ -79,15 +79,34 @@ export function reruns(runs, now, windowHours = RERUN_WINDOW_HOURS) {
   return runs.filter((r) => (r.run_attempt ?? 1) > 1 && now - Date.parse(r.run_started_at ?? r.created_at) <= windowHours * HOUR);
 }
 
+// The pull request merged to main after the run that names the run's ID in its body
+// or a comment: the fix for whatever needed the re-run. `prs` are
+// { number, merged_at, texts: [body, ...comments] }.
+export function fixedBy(run, prs) {
+  const id = new RegExp(`(^|\\D)${run.id}(\\D|$)`);
+  return prs.find((p) => p.merged_at && Date.parse(p.merged_at) > Date.parse(run.created_at) && p.texts.some((t) => id.test(t ?? '')));
+}
+
 // One row per re-run run. `firstJobs` are the jobs of its first attempt: the ones
-// that failed there are the jobs that needed the re-run.
-export function rerunRow(name, run, firstJobs) {
+// that failed there are the jobs that needed the re-run. Once a merged fix names the
+// run (`fix`), the row is no longer a problem.
+export function rerunRow(name, run, firstJobs, fix = null) {
   const failed = firstJobs.filter((j) => FAILED.includes(j.conclusion)).map((j) => j.name);
   const jobs = failed.length ? failed.join(', ') : 'no failed job recorded';
   return {
-    workflow: name, state: 're-run', conclusion: run.conclusion, url: run.html_url, at: run.created_at, event: run.event,
-    detail: `${jobs} failed on attempt 1, run took ${run.run_attempt} attempts (${run.conclusion} in the end)`,
+    workflow: name, state: fix ? 'fixed' : 're-run', conclusion: run.conclusion, url: run.html_url, at: run.created_at, event: run.event,
+    detail: `${jobs} failed on attempt 1, run took ${run.run_attempt} attempts (${run.conclusion} in the end)${fix ? `; fixed in #${fix.number}` : ''}`,
   };
+}
+
+// Pull requests merged to main in the window, with their body and comments, for fixedBy.
+async function mergedPrs(repo, token, now, windowHours) {
+  const pulls = await api(`/repos/${repo}/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=50`, token);
+  const recent = pulls.filter((p) => p.merged_at && now - Date.parse(p.merged_at) <= windowHours * HOUR);
+  return Promise.all(recent.map(async (p) => {
+    const comments = await api(`/repos/${repo}/issues/${p.number}/comments?per_page=100`, token);
+    return { number: p.number, merged_at: p.merged_at, texts: [p.body, ...comments.map((c) => c.body)] };
+  }));
 }
 
 // Watched scheduled workflows that no longer exist are problems too.
@@ -111,7 +130,7 @@ export function report(results, now, packages = []) {
     '| Repo | Workflow | State | Passed on main | Last run on main |',
     '|---|---|---|---|---|',
     ...results.flatMap(({ repo, rows }) => rows.map((r) => {
-      const state = PROBLEMS.includes(r.state) ? `**${r.state}**${r.detail ? `: ${r.detail}` : ''}` : r.state;
+      const state = PROBLEMS.includes(r.state) ? `**${r.state}**${r.detail ? `: ${r.detail}` : ''}` : r.state === 'fixed' ? `fixed: ${r.detail}` : r.state;
       const last = r.url ? `[${r.conclusion}, ${r.at.slice(0, 16).replace('T', ' ')} UTC](${r.url}) (${r.event})` : (r.detail ?? '');
       return `| ${repo.split('/')[1]} | ${r.workflow} | ${state} | ${passRate(r.passed, r.total)} | ${last} |`;
     })),
@@ -145,6 +164,7 @@ if (isMain) {
     // couldn't be bumped, not that main is broken, and GitHub emails its alerts itself.
     const active = workflows.filter((w) => w.state === 'active' && !w.path.startsWith('dynamic/'));
     const rows = [];
+    let prs = null; // fetched once, only if a run needed a re-run
     for (const w of active) {
       // Unfiltered, then picked here: GitHub's branch filter returned nothing during an incident.
       const { workflow_runs: all } = await api(`/repos/${repo}/actions/workflows/${w.id}/runs?per_page=100`, token);
@@ -158,7 +178,8 @@ if (isMain) {
       rows.push(assess(w.name, runs, overdueAfterHours, now.getTime(), { manual }));
       for (const r of reruns(runs, now.getTime())) {
         const { jobs } = await api(`/repos/${repo}/actions/runs/${r.id}/attempts/1/jobs?per_page=100`, token);
-        rows.push(rerunRow(w.name, r, jobs));
+        prs ??= await mergedPrs(repo, token, now.getTime(), RERUN_WINDOW_HOURS);
+        rows.push(rerunRow(w.name, r, jobs, fixedBy(r, prs)));
       }
     }
     rows.push(...missing(active.map((w) => w.name), overdueAfterHours));
