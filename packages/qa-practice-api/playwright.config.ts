@@ -12,6 +12,7 @@ export default defineConfig({
   fullyParallel: true,
   globalSetup: './tests/global-setup.ts',
   use: {
+    trace: 'retain-on-failure',
     baseURL: process.env.BASE_URL || `http://localhost:${port}`,
     extraHTTPHeaders: { 'Content-Type': 'application/json' },
   },

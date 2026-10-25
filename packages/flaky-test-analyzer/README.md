@@ -81,6 +81,20 @@ The lifecycle rules are pure functions in `src/tracker.ts`. `src/github.ts` appl
 
 ---
 
+## Triage: Why Does This Test Flake?
+
+Once a test is labelled `flaky`, three questions narrow down the cause before anyone changes code:
+
+| Question | How to check | If yes, look at |
+|---|---|---|
+| Does it fail alone? | Run just that test, repeated: `npx playwright test <file> -g "<title>" --repeat-each=20 --retries=0` | The test itself: a missing wait, an unawaited `expect`, or time it guesses at. |
+| Does it fail only in parallel? | Repeat with `--workers=1`, then with several workers. Fails only with several: | Shared data or state between tests (the same account, code or port). |
+| Does it fail only in continuous integration? | Same command on your machine and in CI (the [variance workflow](../../.github/workflows/variance.yml) runs it on the runners). Fails only in CI: | Slower machines, a cold start, the network, or time zone and clock differences. |
+
+Fix the cause these point to, never the retry count. Then put the fix back once to see the test fail without it.
+
+---
+
 ## How Sure Are We? Run-to-Run Variance
 
 A test that never failed in 10 runs might still fail 1 run in 5. `src/variance-cli.ts` puts a number on that: each test's first-try pass rate with a 95% confidence interval, and what the clean runs do and don't rule out.

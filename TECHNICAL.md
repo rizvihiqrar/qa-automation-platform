@@ -8,6 +8,7 @@ How the platform is built and run: the CI design, every workflow, how to run a p
 
 - [Architecture](#architecture)
 - [CI workflows](#ci-workflows)
+- [Flaky test rules](#flaky-test-rules)
 - [Package reference](#package-reference)
 - [Running locally](#running-locally)
 - [Configuration](#configuration)
@@ -120,6 +121,23 @@ The regression suite writes one Playwright HTML report, merged from the three sh
 [![Packages table of the CI dashboard: pass rate, median time, p90 and a Stable, Flaky or Recovered status for each package](docs/assets/dashboard-packages.png)](docs/assets/dashboard-packages.png)
 
 *The dashboard's per-package table. Flaky counts jobs that failed and then passed on a re-run, or failed and passed on the same commit.*
+
+## Flaky test rules
+
+Eight rules keep a test from passing or failing at random. Rules 2 and 4 fail a pull request when broken. Rules 1, 7 and 8 are covered in part by a check. Rules 3, 5 and 6 are practice, with no check; the table says which is which.
+
+| Rule | Enforced by |
+|---|---|
+| 1. Wait for state, not time | The test generator's review rules flag `waitForTimeout` and `setTimeout` in generated tests ([`review.ts`](packages/ai-test-generator/src/review.ts)). Hand-written tests rely on review: the last fixed wait (two discount specs) now waits on the server's clock. |
+| 2. Use retrying assertions | [playwright-lint](tools/playwright-lint/README.md) fails an unawaited `expect` and a bare `count()` read, on every Playwright package. |
+| 3. Isolate test data | Practice: each test makes its own account, product or code. `burn-in` and `fullyParallel` runs expose a test that shares data. |
+| 4. Retries are not a fix | `failOnFlakyTests: !!process.env.CI` in every Playwright config fails a test that passes only on a retry. [`playwright-config.test.mjs`](scripts/playwright-config.test.mjs) fails if a config drops it. |
+| 5. Mock what you do not own | Practice: the AI-feature tests run against one local mock server ([`qa-for-ai-features`](packages/qa-for-ai-features)), not a paid service. |
+| 6. Control time and randomness | Practice: the data factory takes `--seed`, and expiry tests wait for the server's clock instead of guessing. |
+| 7. Do not race the loader | Rule 2's lint covers the common case (a check still running when the test ends). Playwright's own auto-waiting does the rest. |
+| 8. Reproduce before you fix | `burn-in` repeats every new or changed spec 3 times with no retries. The manual [variance workflow](.github/workflows/variance.yml) gives a pass rate with a 95% confidence interval, and the [flaky-test-analyzer](packages/flaky-test-analyzer/README.md) tracks repeats across runs. |
+
+Every Playwright config also keeps a trace on failure (`trace: 'retain-on-failure'`), and CI uploads each package's `test-results/` with its reports, so a flake that fails once in CI can be opened in the trace viewer instead of guessed at. [`playwright-config.test.mjs`](scripts/playwright-config.test.mjs) fails if a config lacks it.
 
 ## Package reference
 

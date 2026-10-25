@@ -163,6 +163,7 @@ jobs:
           path: |
             packages/${{ matrix.package }}/playwright-report/
             packages/${{ matrix.package }}/reports/
+            packages/${{ matrix.package }}/test-results/
           if-no-files-found: ignore
           retention-days: 7
 

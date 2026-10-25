@@ -5,6 +5,7 @@ export default defineConfig({
   timeout: 60000,
   fullyParallel: false,
   use: {
+    trace: 'retain-on-failure',
     baseURL: process.env.BASE_URL || 'https://www.saucedemo.com',
     headless: true,
     viewport: { width: 1280, height: 720 },

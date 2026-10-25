@@ -2,7 +2,7 @@
 // range in docs/ai-written-code/spec.md, with the value just inside and just
 // outside it. Money steps are one cent; dates step across real calendar edges.
 import { test, expect } from '@playwright/test';
-import { signUp, admin, makeProduct, uniqueCode, createCode, makeCode, getCode, order, fromNow, sleep } from './helpers.ts';
+import { signUp, admin, makeProduct, uniqueCode, createCode, makeCode, getCode, order, fromNow, waitUntilServerReaches } from './helpers.ts';
 
 type Case = [id: string, rule: string, label: string, fields: Record<string, unknown>, status: number];
 
@@ -61,9 +61,10 @@ test.describe('creating a code', () => {
 test.describe('using a code', () => {
   test('DC-BVA-31 [DC-R05] a code works before expires_at and has expired at it @regression', async ({ request }) => {
     const p = await makeProduct(request, { price: 10, stock: 10 });
-    const code = await makeCode(request, { expires_at: fromNow(2_000) });
+    const expiresAt = fromNow(2_000);
+    const code = await makeCode(request, { expires_at: expiresAt });
     expect((await order(request, await signUp(request), p.id, 1, code)).status()).toBe(201);
-    await sleep(2_100);
+    await waitUntilServerReaches(request, expiresAt);
     const late = await order(request, await signUp(request), p.id, 1, code);
     expect(late.status()).toBe(422);
     expect((await late.json()).error).toBe('Discount code has expired');

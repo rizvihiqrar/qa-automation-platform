@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: true,
   retries: 0,
   failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
-  use: { baseURL: 'http://127.0.0.1:4300', actionTimeout: 10000 },
+  use: { trace: 'retain-on-failure', baseURL: 'http://127.0.0.1:4300', actionTimeout: 10000 },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
     { name: 'firefox', use: { browserName: 'firefox' } },

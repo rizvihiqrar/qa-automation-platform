@@ -2,7 +2,7 @@
 // case names its ID and the spec rule it checks (DC-BVA-01 with DC-R01 and so on);
 // scripts/ai-written-code.test.mjs checks every rule has a case and the coverage
 // table in docs/ai-written-code/code-review.md matches the files.
-import type { APIRequestContext } from '@playwright/test';
+import { expect, type APIRequestContext } from '@playwright/test';
 import { signUp, admin, makeProduct, type Account } from '../design/helpers.ts';
 
 export { signUp, admin, makeProduct, type Account };
@@ -46,4 +46,12 @@ export const orderCount = async (request: APIRequestContext, account: Account): 
 
 // A date-time `ms` from now, in the form the spec's example uses.
 export const fromNow = (ms: number) => new Date(Date.now() + ms).toISOString();
-export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Waits for the state the test needs, not for a guessed number of seconds: the server's own
+// clock (GET /health) has reached `iso`, which is when it starts refusing a code with that
+// expires_at. It makes no orders while it waits, so no stock or use count is spent.
+export const waitUntilServerReaches = (request: APIRequestContext, iso: string) =>
+  expect.poll(
+    async () => Date.parse((await (await request.get('/health')).json()).timestamp),
+    { message: `the server clock to reach ${iso}`, intervals: [100], timeout: 10_000 },
+  ).toBeGreaterThanOrEqual(Date.parse(iso));
