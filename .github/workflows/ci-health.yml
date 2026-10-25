@@ -51,6 +51,9 @@ jobs:
             if [ -z "$open" ]; then
               gh issue create --title "CI health: a workflow on main needs attention" --label ci-health --body-file ci-health.md
             else
+              # The body shows today's report too: whatever opened the issue (often a CI
+              # recheck diagnosis) may be fixed by now, and the body is what people read first.
+              gh issue edit "$open" --body-file ci-health.md
               gh issue comment "$open" --body-file ci-health.md
             fi
           elif [ -n "$open" ]; then
