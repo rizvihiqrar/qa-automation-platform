@@ -11,7 +11,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { generateTests, type MessagesClient } from './generator.ts';
+import { generateTests } from './generator.ts';
+import { sdkClient } from './sdkClient.ts';
 import { reviewSpec, formatReview } from './review.ts';
 
 export function parseArgs(argv: string[]): { input: string; output: string } {
@@ -32,9 +33,8 @@ async function main(): Promise<void> {
   const featureText = fs.readFileSync(input, 'utf8').trim();
 
   console.log(`Generating tests for: ${input}`);
-  // The SDK's own types lag the beta request fields used here, so the client is
-  // narrowed to the interface generator.ts declares.
-  const client = new Anthropic() as unknown as MessagesClient;
+  // Adapted, not cast: sdkClient.ts type-checks the request and response against the SDK.
+  const client = sdkClient(new Anthropic());
   const { code, usage, model } = await generateTests(client, featureText);
 
   fs.mkdirSync(path.dirname(output), { recursive: true });

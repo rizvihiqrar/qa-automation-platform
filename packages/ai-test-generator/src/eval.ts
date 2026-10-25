@@ -17,7 +17,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { generateTests, DEFAULT_MODEL, type MessagesClient } from './generator.ts';
+import { generateTests, DEFAULT_MODEL } from './generator.ts';
+import { sdkClient } from './sdkClient.ts';
 import { reviewSpec } from './review.ts';
 import { collectRunResults, summarize, toMarkdown, fixesTemplate, stripLocalPaths, type PlaywrightReport, type Summary } from './evalReport.ts';
 
@@ -46,7 +47,7 @@ export function parseEvalArgs(argv: string[], today = new Date().toISOString().s
 
 async function generateAll(inputs: string, runDir: string): Promise<void> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic() as unknown as MessagesClient;
+  const client = sdkClient(new Anthropic());
   fs.mkdirSync(runDir, { recursive: true });
   const files = fs.readdirSync(inputs).filter((f) => f.endsWith('.txt')).sort();
   let model = DEFAULT_MODEL;
