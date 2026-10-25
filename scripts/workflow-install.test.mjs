@@ -37,3 +37,19 @@ test('workflows install the browser through the script, never directly', () => {
   const viaScript = workflowLines.filter(({ line }) => line.includes('install-playwright-browser.sh'));
   assert.ok(viaScript.length >= 4, `found ${viaScript.length} steps that use the script`);
 });
+
+test('a stalled try is cleaned up, and the next try uses another mirror', () => {
+  const script = fs.readFileSync(path.join(ROOT, SCRIPT), 'utf8');
+  const loop = script.slice(script.indexOf('for attempt'));
+  // The orphaned apt-get of a cut-off try is stopped, but never while dpkg is installing.
+  assert.match(loop, /pgrep -x dpkg[\s\S]*sudo pkill -x 'apt-get'/);
+  assert.match(loop, /sudo dpkg --configure -a/);
+  // Only after a failed try, and before the next one, apt is pointed at the main archive.
+  const failed = loop.indexOf('failed.');
+  const mirror = loop.indexOf('archive.ubuntu.com');
+  assert.ok(failed !== -1 && mirror > failed, 'switch the mirror after a failed try, not before the first');
+  assert.ok(loop.includes('azure\\.archive\\.ubuntu\\.com'), 'the Azure mirror is replaced');
+  assert.ok(loop.includes('mirror\\+file:/etc/apt/apt-mirrors\\.txt'), 'the mirror list file is replaced');
+  // A lock that is still held says who holds it.
+  assert.match(loop, /ps -eo pid,etimes,args/);
+});
