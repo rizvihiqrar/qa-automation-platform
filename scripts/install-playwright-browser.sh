@@ -13,14 +13,29 @@
 if [ -d /etc/apt/apt.conf.d ] && command -v sudo >/dev/null 2>&1; then
   printf 'Acquire::http::Timeout "20";\nAcquire::https::Timeout "20";\nAcquire::Retries "3";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null || true
 fi
+#  - 2026-10-23, regression shard 1: the Azure mirror kept failing single packages (apt `Ign:`
+#    lines), so try 1 used all 300 s, and the orphaned apt-get it left behind held the lock for
+#    the whole 240 s wait. Tries 2 and 3 then died on the lock at once (exit 100). So an orphaned
+#    apt-get is stopped instead of waited for (a running dpkg is never stopped: it is installing),
+#    and from the second try apt uses archive.ubuntu.com instead of the Azure mirror.
 for attempt in 1 2 3; do
   timeout -k 10 300 npx playwright install --with-deps "${@:-chromium}" && exit 0
   echo "Browser install attempt $attempt of 3 failed."
   [ "$attempt" -lt 3 ] || break
+  if ! pgrep -x dpkg >/dev/null; then
+    sudo pkill -x 'apt-get' || true
+    sudo pkill -x 'apt' || true
+    sleep 2
+  fi
   for _ in $(seq 1 48); do
     pgrep -x 'apt-get|apt|dpkg' >/dev/null || break
     echo "Waiting for a running apt or dpkg to finish."
+    ps -eo pid,etimes,args | grep -E '[a]pt-get|[a]pt |[d]pkg' | head -3
     sleep 5
   done
+  sudo dpkg --configure -a || true
+  # Use the main Ubuntu archive for the next try.
+  sudo sed -i -E 's#mirror\+file:/etc/apt/apt-mirrors\.txt#http://archive.ubuntu.com/ubuntu/#; s#https?://azure\.archive\.ubuntu\.com/ubuntu/?#http://archive.ubuntu.com/ubuntu/#' /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list 2>/dev/null || true
+  echo "Next try uses archive.ubuntu.com."
 done
 exit 1
