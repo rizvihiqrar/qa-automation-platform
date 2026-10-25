@@ -182,7 +182,7 @@ The ten feature files were never reviewed before the AI wrote tests from them. T
 └── test/                   # Unit tests (node:test)
 ```
 
-The tool is strict TypeScript, run directly by Node 24 with no build step. The generated specs stay JavaScript, because that is what the model is asked to write. The API client is typed through a small `MessagesClient` interface in `generator.ts`, so the tests' fake client is checked against the same shape the real SDK call uses.
+The tool is strict TypeScript, run directly by Node 24 with no build step. The generated specs stay JavaScript, because that is what the model is asked to write. The API client is typed through a small `MessagesClient` interface in `generator.ts`, so the tests' fake client is checked against the same shape the real SDK call uses. The real client goes through `src/sdkClient.ts`, an adapter with no casts: the request must type-check against the SDK's own `create()` and the response is built from its own fields, so a breaking SDK release fails `npm run typecheck` on the Dependabot PR instead of on the next paid eval run. Its first run caught one: in SDK 1.x, `stop_details.category` can be `null`.
 
 ---
 

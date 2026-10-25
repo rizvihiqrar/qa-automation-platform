@@ -25,7 +25,7 @@ export interface Usage {
 export interface MessageResponse {
   model: string;
   stop_reason: string | null;
-  stop_details?: { category?: string } | null;
+  stop_details?: { category?: string | null } | null;
   content: ContentBlock[];
   usage: Usage;
 }
