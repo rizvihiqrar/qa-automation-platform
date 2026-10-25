@@ -31,12 +31,36 @@ export const METRICS_URL = 'https://rizvihiqrar.github.io/qa-automation-platform
 
 const FAILED = ['failure', 'timed_out', 'startup_failure'];
 
+// The events a workflow file's `on:` runs it for. Handles the three YAML forms
+// (`on: push`, `on: [push, pull_request]`, and a block of `event:` keys).
+export function triggers(yaml) {
+  const lines = yaml.split(/\r?\n/);
+  const i = lines.findIndex((l) => /^(on|"on"|'on'):/.test(l));
+  if (i < 0) return [];
+  const inline = lines[i].replace(/^[^:]+:/, '').replace(/#.*/, '').trim();
+  if (inline) return inline.replace(/^\[|\]$/g, '').split(',').map((s) => s.trim()).filter(Boolean);
+  const events = [];
+  for (const line of lines.slice(i + 1)) {
+    if (/^\S/.test(line)) break;
+    const m = line.match(/^ {1,4}([a-z_]+):/) ?? line.match(/^ {1,4}- ([a-z_]+)\s*$/);
+    if (m && line.search(/\S/) === lines[i + 1].search(/\S/)) events.push(m[1]);
+  }
+  return events;
+}
+
+// Started by hand only (workflow_dispatch): no run on main is normal, not a problem.
+export const manualOnly = (events) => events.length > 0 && events.every((e) => e === 'workflow_dispatch');
+
 // One row per workflow. `runs` are that workflow's runs on main, newest first.
 // Cancelled runs are skipped: CI cancels a run when a newer push supersedes it.
-export function assess(name, runs, overdueAfterHours, now) {
-  const done = runs.filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled' && r.conclusion !== 'skipped');
+// `manual` marks a workflow that only runs when started by hand.
+export const finished = (runs) => runs.filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled' && r.conclusion !== 'skipped');
+
+export function assess(name, runs, overdueAfterHours, now, { manual = false } = {}) {
+  const done = finished(runs);
   const last = done[0];
   const limit = overdueAfterHours[name];
+  if (!last && manual) return { workflow: name, state: 'manual', detail: 'runs only when started by hand; none on main yet' };
   if (!last) return { workflow: name, state: limit ? 'overdue' : 'never run', detail: 'no finished run on main' };
   const ageHours = (now - Date.parse(last.created_at)) / HOUR;
   const passed = done.filter((r) => r.conclusion === 'success').length;
@@ -125,7 +149,13 @@ if (isMain) {
       // Unfiltered, then picked here: GitHub's branch filter returned nothing during an incident.
       const { workflow_runs: all } = await api(`/repos/${repo}/actions/workflows/${w.id}/runs?per_page=100`, token);
       const runs = onMain(all);
-      rows.push(assess(w.name, runs, overdueAfterHours, now.getTime()));
+      // The workflow file is read only when there is no run to go by.
+      let manual = false;
+      if (!finished(runs).length) {
+        const file = await api(`/repos/${repo}/contents/${w.path}`, token);
+        manual = manualOnly(triggers(Buffer.from(file.content, 'base64').toString('utf8')));
+      }
+      rows.push(assess(w.name, runs, overdueAfterHours, now.getTime(), { manual }));
       for (const r of reruns(runs, now.getTime())) {
         const { jobs } = await api(`/repos/${repo}/actions/runs/${r.id}/attempts/1/jobs?per_page=100`, token);
         rows.push(rerunRow(w.name, r, jobs));

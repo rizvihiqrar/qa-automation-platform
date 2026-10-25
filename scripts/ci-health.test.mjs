@@ -1,7 +1,8 @@
 // Tests for the daily CI health check (scripts/ci-health.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { assess, missing, passRate, report, rerunRow, reruns } from './ci-health.mjs';
+import fs from 'node:fs';
+import { assess, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -26,7 +27,35 @@ test('a scheduled workflow is overdue past its limit, and only then', () => {
   assert.equal(assess('CI', [run('success', 27)], { CI: 26 }, NOW).state, 'overdue');
   assert.equal(assess('Release', [run('success', 500)], { CI: 26 }, NOW).state, 'ok', 'no limit, no overdue');
   assert.equal(assess('CI', [], { CI: 26 }, NOW).state, 'overdue', 'a scheduled workflow that never ran');
-  assert.equal(assess('Eval', [], {}, NOW).state, 'never run', 'a manual one is just reported');
+  assert.equal(assess('Eval', [], {}, NOW).state, 'never run', 'not scheduled, not manual: just reported');
+});
+
+test('a workflow started only by hand is "manual" until it runs, and never a problem', () => {
+  const row = assess('AI generator eval', [run('skipped', 1)], {}, NOW, { manual: true });
+  assert.equal(row.state, 'manual');
+  assert.ok(!PROBLEMS.includes(row.state));
+  assert.match(report([{ repo: 'me/a', rows: [row] }], new Date(NOW)).markdown, /^All green[\s\S]*\| AI generator eval \| manual \|/);
+  assert.equal(assess('AI generator eval', [run('failure', 1)], {}, NOW, { manual: true }).state, 'failing', 'a failed manual run still counts');
+});
+
+test('triggers reads every form of on:, and only workflow_dispatch alone is manual', () => {
+  const forms = {
+    'on: workflow_dispatch\n': ['workflow_dispatch'],
+    'on: [push, workflow_dispatch]\n': ['push', 'workflow_dispatch'],
+    'name: x\n\non:\n  workflow_dispatch:\n    inputs:\n      label:\n        default: run-1\n\njobs:\n  eval:\n': ['workflow_dispatch'],
+    'on:\r\n  schedule:\r\n    - cron: 1 * * * *\r\n  workflow_dispatch:\r\njobs:\r\n': ['schedule', 'workflow_dispatch'],
+    'on:\n  - push\n  - workflow_dispatch\n': ['push', 'workflow_dispatch'],
+  };
+  for (const [yaml, events] of Object.entries(forms)) assert.deepEqual(triggers(yaml), events, yaml);
+  assert.equal(manualOnly(['workflow_dispatch']), true);
+  assert.equal(manualOnly(['schedule', 'workflow_dispatch']), false);
+  assert.equal(manualOnly([]), false, 'no on: found is not manual');
+});
+
+test('every workflow in this repo reads as the trigger its file says', () => {
+  const dir = new URL('../.github/workflows/', import.meta.url);
+  const manual = fs.readdirSync(dir).filter((f) => manualOnly(triggers(fs.readFileSync(new URL(f, dir), 'utf8'))));
+  assert.deepEqual(manual, ['ai-eval.yml', 'release.yml', 'variance.yml']);
 });
 
 test('a watched scheduled workflow that no longer exists is reported', () => {
