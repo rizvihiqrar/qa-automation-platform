@@ -8,13 +8,6 @@
   },
   {
     "package": "postman-api-collection",
-    "advisory": "GHSA-vfj7-8cjw-p6xm",
-    "library": "braces",
-    "reason": "Denial of service on attacker-supplied brace patterns, inside the HTML reporter's template helpers. The reporter only renders our own run results on the CI machine. No fixed braces release exists.",
-    "review_by": "2027-01-18"
-  },
-  {
-    "package": "postman-api-collection",
     "advisory": "GHSA-86w9-cpqp-85rv",
     "library": "node-forge",
     "reason": "RSA PKCS#1 v1.5 signature verification, inside Newman's runtime for certificate and signing auth types. The collection uses neither (one bearer header). 1.4.0, the latest release, is still affected.",
@@ -36,9 +29,9 @@
   },
   {
     "package": "llm-judge-check",
-    "advisory": "GHSA-vfj7-8cjw-p6xm",
-    "library": "braces",
-    "reason": "Inside chokidar 3, the optional file watcher nunjucks loads for template watch mode. promptfoo renders our own prompt template once and never watches it. No fixed braces release exists.",
-    "review_by": "2027-01-18"
+    "advisory": "GHSA-xcx6-jx8p-x3h5",
+    "library": "@azure/msal-node",
+    "reason": "Inside promptfoo, through @azure/identity, which pins msal-node 6 (the fix is 7.1.0). It matters only for Azure sign-in flows. This package runs only a local replay provider: no Azure provider, no sign-in. Revisit when @azure/identity allows msal-node 7.",
+    "review_by": "2027-01-24"
   }
 ]
