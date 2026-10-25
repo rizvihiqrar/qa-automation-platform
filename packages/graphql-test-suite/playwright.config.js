@@ -8,6 +8,7 @@ export default defineConfig({
   retries:       0,
   failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   use: {
+    trace: 'retain-on-failure',
     extraHTTPHeaders: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
   },
   reporter: [

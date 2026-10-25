@@ -5,6 +5,7 @@ export default defineConfig({
   timeout: 15000,
   fullyParallel: false,
   use: {
+    trace: 'retain-on-failure',
     actionTimeout: 10000,
   },
   retries: 0,

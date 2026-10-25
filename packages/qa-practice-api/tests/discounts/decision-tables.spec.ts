@@ -3,7 +3,7 @@
 // second combines bad items with a bad discount_code to check which error wins.
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import {
-  signUp, makeProduct, uniqueCode, makeCode, getCode, patchCode, order, orderCount, fromNow, sleep, type Account,
+  signUp, makeProduct, uniqueCode, makeCode, getCode, patchCode, order, orderCount, fromNow, waitUntilServerReaches, type Account,
 } from './helpers.ts';
 import { stockOf } from '../design/helpers.ts';
 
@@ -22,15 +22,16 @@ async function setUp(request: APIRequestContext, c: {
   const me = await signUp(request);
   if (c.known === false) return { code: uniqueCode(), me };
   const big = await makeProduct(request, { price: 60, stock: 10 });
+  const expiresAt = fromNow(1_500);
   const code = await makeCode(request, {
-    ...(c.expired ? { expires_at: fromNow(1_500) } : {}),
+    ...(c.expired ? { expires_at: expiresAt } : {}),
     ...(c.atLimit ? { max_uses: 1 } : {}),
     ...(c.belowMin ? { min_subtotal: 50 } : {}),
   });
   // A use by me (which also fills a limit of 1), or by someone else.
   if (c.usedByMe) expect((await order(request, me, big.id, 1, code)).status()).toBe(201);
   else if (c.atLimit) expect((await order(request, await signUp(request), big.id, 1, code)).status()).toBe(201);
-  if (c.expired) await sleep(1_600);
+  if (c.expired) await waitUntilServerReaches(request, expiresAt);
   if (c.inactive) expect((await patchCode(request, code, { active: false })).status()).toBe(200);
   return { code, me };
 }

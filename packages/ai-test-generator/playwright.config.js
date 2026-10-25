@@ -5,6 +5,7 @@ export default defineConfig({
   testMatch: ['examples/output/**/*.spec.js', 'tests/generated/**/*.spec.js'],
   timeout: 30000,
   use: {
+    trace: 'retain-on-failure',
     headless: true,
     viewport: { width: 1280, height: 720 },
     screenshot: 'only-on-failure',
