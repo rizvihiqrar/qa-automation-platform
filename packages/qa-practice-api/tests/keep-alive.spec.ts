@@ -35,5 +35,5 @@ test('an idle keep-alive connection is still open after 7 s @regression', async 
   received = '';
   socket.write(GET_HEALTH);
   await expect.poll(() => received).toContain('"status":"ok"');
-  socket.destroy();
+  socket.end();
 });
