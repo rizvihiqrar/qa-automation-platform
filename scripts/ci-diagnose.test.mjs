@@ -43,7 +43,7 @@ test('every package job in ci.yml has its command, without the smoke variant', (
 test('the report names the failure, what changed since green, and a fix prompt', () => {
   const md = report({
     repo: 'me/repo',
-    run: { number: 9, url: 'https://x/run/9', sha: 'abcdef1234', event: 'schedule' },
+    run: { id: 4242, number: 9, url: 'https://x/run/9', sha: 'abcdef1234', event: 'schedule' },
     failedJobs: [{ name: 'api', url: 'https://x/job/1', errors: ['Error: boom'] }, { name: 'ui', url: 'https://x/job/2', errors: [] }],
     lastGreen: { number: 8, url: 'https://x/run/8', sha: '1234567890' },
     commits: [{ sha: 'fedcba9876', message: 'Change the api' }],
@@ -55,6 +55,7 @@ test('the report names the failure, what changed since green, and a fix prompt',
   assert.match(md, /- `fedcba9` Change the api/);
   assert.match(md, /```text\nFix the CI failure on main of me\/repo\..*Failing jobs: api, ui\..*1 commit\(s\) since\./s);
   assert.match(md, /don't just retry, raise a timeout or loosen a check without saying why/);
+  assert.match(md, /Name run 4242 in the PR description, so CI health counts it as fixed\./);
 });
 
 test('a failure of another workflow is named as that workflow, in the heading and the prompt', () => {
