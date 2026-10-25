@@ -1,0 +1,21 @@
+# New advisories land in dependencies we do not choose (body-parser through express, node-forge
+# through promptfoo). The Dependency audit step fails CI when one does, on the 2026-10-24 and
+# 2026-10-25 scheduled runs. Dependabot opens the lockfile bump as a pull request, so the fix
+# arrives as a PR instead of waiting for someone to read a red run. Two open at a time keeps CI free.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories: ["/", "/tools/*", "/packages/*"]
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: pip
+    directory: "/packages/api-pytest"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 1
