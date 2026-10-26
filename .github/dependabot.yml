@@ -13,6 +13,11 @@ updates:
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
+    # CI runs Node 24. The types must stay on the runtime's major version: Node 26 types
+    # describe APIs Node 24 does not have, and the compile-only checks would still pass.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: "/packages/api-pytest"
     schedule:
