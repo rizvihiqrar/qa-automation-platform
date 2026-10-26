@@ -4,7 +4,7 @@
 // (ai-test-generator), and on a later run it failed at once because the runner's own
 // apt held the dpkg lock (five jobs). On a slow mirror a try that is cut off leaves its apt-get
 // running, which holds the lock too. scripts/install-playwright-browser.sh cuts a stalled try off
-// after 300 s, waits for any running apt to finish, and tries up to 3 times. Every workflow must
+// after 120 s (300 s for the later tries), waits for any running apt to finish, and tries up to 3 times. Every workflow must
 // install through it, and this test keeps new ones from calling `playwright install` directly.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -22,7 +22,13 @@ const workflowLines = fs.readdirSync(WORKFLOWS).filter((f) => /\.ya?ml$/.test(f)
 test('the install script retries three times under a timeout, and waits for a running apt between', () => {
   const script = fs.readFileSync(path.join(ROOT, SCRIPT), 'utf8');
   assert.match(script, /for attempt in 1 2 3/);
-  assert.ok(script.includes('timeout -k 10 300 npx playwright install --with-deps "${@:-chromium}"'), 'chromium unless browsers are named');
+  assert.ok(script.includes('timeout -k 10 "$limit" npx playwright install --with-deps "${@:-chromium}"'), 'chromium unless browsers are named');
+  // A healthy install takes 21 to 42 s; a stalled mirror must not cost the first try 300 s (2026-10-26).
+  const first = Number(script.match(/\[ "\$attempt" -gt 1 \] \|\| limit=(\d+)/)?.[1]);
+  const later = Number(script.match(/^  limit=(\d+)$/m)?.[1]);
+  assert.ok(Number.isFinite(first) && Number.isFinite(later), 'the script sets `limit=<later>` and `|| limit=<first>` (the test reads those two lines)');
+  assert.ok(first >= 90 && first <= 150, `the first try is cut off after ${first} s: long enough for a slow healthy install, short enough to fail over early`);
+  assert.ok(later >= 300, `later tries keep ${later} s so a slow mirror can still finish`);
   assert.match(script, /pgrep -x/);
   // apt gives up on a silent mirror after 20 s and retries, before playwright runs it
   assert.match(script, /Acquire::http::Timeout "20"/);
