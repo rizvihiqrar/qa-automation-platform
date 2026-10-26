@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" width="760" height="400" role="img" aria-labelledby="t d">
+<title id="t">One password hash blocked the API for about 70 ms; list products p95 went from 67 ms to 1 ms after the fix</title>
+<desc id="d">Top: a 70 ms block on the main thread while one login hashes, with requests that arrive during it waiting. Bottom: bars of the list products p95, 67 ms before the fix and 1 ms after.</desc>
+<rect width="760" height="400" rx="12" fill="#fcfcfb"/>
+<text x="40" y="38" font-size="18" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">One login blocked the whole API</text>
+<text x="40" y="60" font-size="13" font-weight="400" fill="#52514e" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Node runs JavaScript on one thread. bcryptjs hashed on it, and nothing else could start meanwhile.</text>
+<rect x="40" y="96" width="680" height="34" rx="4" fill="#e1e0d9"/>
+<rect x="40" y="96" width="595" height="34" rx="4" fill="#2a78d6"/>
+<text x="52" y="118" font-size="14" font-weight="600" fill="#ffffff" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">one password hash, about 70 ms</text>
+<line x1="108" y1="136" x2="108" y2="154" stroke="#52514e" stroke-width="2"/>
+<path d="M108 158 L631 158" stroke="#c3c2b7" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<line x1="227.00000000000003" y1="136" x2="227.00000000000003" y2="154" stroke="#52514e" stroke-width="2"/>
+<path d="M227.00000000000003 158 L631 158" stroke="#c3c2b7" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<line x1="363" y1="136" x2="363" y2="154" stroke="#52514e" stroke-width="2"/>
+<path d="M363 158 L631 158" stroke="#c3c2b7" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<line x1="499.00000000000006" y1="136" x2="499.00000000000006" y2="154" stroke="#52514e" stroke-width="2"/>
+<path d="M499.00000000000006 158 L631 158" stroke="#c3c2b7" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<text x="40" y="182" font-size="12" font-weight="400" fill="#52514e" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Every request that arrives during the hash (the ticks) waits until it ends</text>
+<text x="40" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">0 ms</text>
+<text x="210" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">20 ms</text>
+<text x="380" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">40 ms</text>
+<text x="550" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">60 ms</text>
+<text x="720" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="end" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">80 ms</text>
+<text x="40" y="234" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">list products, p95 (20 users, one in four iterations logs in)</text>
+<text x="40" y="280" font-size="14" font-weight="400" fill="#52514e" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">before the fix</text>
+<rect x="150" y="260" width="520" height="28" rx="4" fill="#898781"/>
+<text x="680" y="280" font-size="15" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">67 ms</text>
+<text x="40" y="332" font-size="14" font-weight="400" fill="#52514e" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">after the fix</text>
+<rect x="150" y="312" width="7.7611940298507465" height="28" rx="4" fill="#2a78d6"/>
+<text x="167.76119402985074" y="332" font-size="15" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">1 ms</text>
+<text x="40" y="386" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Fix: hash with crypto.scrypt, which runs off the main thread. Source: docs/rca/01-login-hashing-blocked-the-api.md</text>
+</svg>

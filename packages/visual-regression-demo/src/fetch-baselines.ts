@@ -13,6 +13,6 @@ if (!runId || !/^\d+$/.test(runId)) {
 }
 const artifact = mode === 'update' ? 'visual-baselines-updated' : 'visual-baselines';
 const target = fileURLToPath(new URL('../baselines/linux', import.meta.url));
-const run = spawnSync('gh', ['run', 'download', runId, '--name', artifact, '--dir', target], { stdio: 'inherit', shell: process.platform === 'win32' });
+const run = spawnSync('gh', ['run', 'download', runId, '--name', artifact, '--dir', target], { stdio: 'inherit' });
 if (run.status === 0) console.log(`\nBaselines from run ${runId} are in baselines/linux. Review the changed pictures, then commit them.`);
 process.exitCode = run.status ?? 1;
