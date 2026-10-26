@@ -2,7 +2,7 @@
 # Installs Chromium (or the browsers named as arguments: chromium firefox) and its system packages for Playwright, and survives the ways GitHub's
 # runners make that fail. Run it from the package directory.
 #  - apt can stall on a mirror (2026-10-22: 20 minutes in the middle of `apt-get update`),
-#    so each try is cut off after 300 s.
+#    so a try is cut off after 120 s (the first) or 300 s (the later ones).
 #  - Cutting a try off kills playwright but not the `apt-get` it started, which keeps
 #    downloading and holds the dpkg lock; the next try then fails at once on the lock.
 #    So before each new try this waits (up to 240 s) for any running apt or dpkg to finish.
@@ -18,8 +18,13 @@ fi
 #    the whole 240 s wait. Tries 2 and 3 then died on the lock at once (exit 100). So an orphaned
 #    apt-get is stopped instead of waited for (a running dpkg is never stopped: it is installing),
 #    and from the second try apt uses archive.ubuntu.com instead of the Azure mirror.
+#  - 2026-10-26: the install takes 21 to 42 s when the mirror is healthy, but three jobs sat on a
+#    stalled Azure mirror for the whole 300 s of try 1 and then finished in seconds on the main archive.
+#    So try 1 is cut off after 120 s (about 3 times the slowest healthy run) and the later tries keep 300 s.
 for attempt in 1 2 3; do
-  timeout -k 10 300 npx playwright install --with-deps "${@:-chromium}" && exit 0
+  limit=300
+  [ "$attempt" -gt 1 ] || limit=120
+  timeout -k 10 "$limit" npx playwright install --with-deps "${@:-chromium}" && exit 0
   echo "Browser install attempt $attempt of 3 failed."
   [ "$attempt" -lt 3 ] || break
   if ! pgrep -x dpkg >/dev/null; then
