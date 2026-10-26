@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const [runId, mode] = process.argv.slice(2);
-if (!runId || !/^\d+$/.test(runId)) {
+if (!runId || !/^\d+$/.test(runId) || (mode !== undefined && mode !== 'update')) {
   console.error('usage: npm run baselines -- <run id> [update]');
   process.exit(2);
 }

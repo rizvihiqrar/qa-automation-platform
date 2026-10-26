@@ -1,4 +1,13 @@
-import { expect, type Page } from '@playwright/test';
+import fs from 'node:fs';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
+
+// A planted-bug test compares against a baseline that tests/pages.spec.ts makes. Without one, Playwright would
+// write the BUGGY picture as the baseline, so the test stops first: it skips on a first local run and fails in CI.
+export function requireBaseline(info: TestInfo, name: string) {
+  if (fs.existsSync(info.snapshotPath(name))) return;
+  if (process.env.CI) throw new Error(`no baseline ${name}: the planted-bug tests need the page baselines committed`);
+  test.skip(true, `no baseline ${name} yet: run tests/pages.spec.ts first`);
+}
 
 export const PHONE = { width: 390, height: 844 };
 

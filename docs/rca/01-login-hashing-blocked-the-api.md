@@ -7,6 +7,13 @@
 | **Impact** | While any user logged in, every other request waited. Browsing p95 67–84 ms instead of about 1 ms. No errors, so nothing alerted |
 | **Fixed in** | Commit `4b831e7` (Day 11); unit-level guard added on Day 31 |
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/login-before-after-dark.svg">
+  <img alt="One password hash held the main thread for about 70 ms, and every request that arrived meanwhile waited. List products p95 was 67 ms before the fix and 1 ms after." src="../assets/login-before-after-light.svg">
+</picture>
+
+*One hash blocked the API for about 70 ms. The 67 ms is how long browsing waited at the 95th percentile, not the login time. Drawn by `scripts/charts.mjs`.*
+
 ## Symptom
 
 The first load run was green, but two runs didn't make sense side by side:

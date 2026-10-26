@@ -4,23 +4,23 @@
 <rect width="760" height="400" rx="12" fill="#1a1a19"/>
 <text x="40" y="38" font-size="18" font-weight="600" fill="#f0efec" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">One login blocked the whole API</text>
 <text x="40" y="60" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Node runs JavaScript on one thread. bcryptjs hashed on it, and nothing else could start meanwhile.</text>
-<rect x="40" y="96" width="680" height="34" rx="4" fill="#2c2c2a"/>
-<rect x="40" y="96" width="595" height="34" rx="4" fill="#3987e5"/>
-<text x="52" y="118" font-size="14" font-weight="600" fill="#0d0d0d" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">one password hash, about 70 ms</text>
-<line x1="108" y1="136" x2="108" y2="154" stroke="#c3c2b7" stroke-width="2"/>
-<path d="M108 158 L631 158" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
-<line x1="227.00000000000003" y1="136" x2="227.00000000000003" y2="154" stroke="#c3c2b7" stroke-width="2"/>
-<path d="M227.00000000000003 158 L631 158" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
-<line x1="363" y1="136" x2="363" y2="154" stroke="#c3c2b7" stroke-width="2"/>
-<path d="M363 158 L631 158" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
-<line x1="499.00000000000006" y1="136" x2="499.00000000000006" y2="154" stroke="#c3c2b7" stroke-width="2"/>
-<path d="M499.00000000000006 158 L631 158" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
-<text x="40" y="182" font-size="12" font-weight="400" fill="#c3c2b7" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Every request that arrives during the hash (the ticks) waits until it ends</text>
-<text x="40" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">0 ms</text>
-<text x="210" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">20 ms</text>
-<text x="380" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">40 ms</text>
-<text x="550" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">60 ms</text>
-<text x="720" y="208" font-size="12" font-weight="400" fill="#898781" text-anchor="end" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">80 ms</text>
+<rect x="40" y="100" width="680" height="34" rx="4" fill="#2c2c2a"/>
+<rect x="40" y="100" width="595" height="34" rx="4" fill="#3987e5"/>
+<text x="40" y="92" font-size="14" font-weight="600" fill="#f0efec" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">one password hash, about 70 ms</text>
+<line x1="108" y1="140" x2="108" y2="158" stroke="#c3c2b7" stroke-width="2"/>
+<path d="M108 162 L631 162" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<line x1="227.00000000000003" y1="140" x2="227.00000000000003" y2="158" stroke="#c3c2b7" stroke-width="2"/>
+<path d="M227.00000000000003 162 L631 162" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<line x1="363" y1="140" x2="363" y2="158" stroke="#c3c2b7" stroke-width="2"/>
+<path d="M363 162 L631 162" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<line x1="499.00000000000006" y1="140" x2="499.00000000000006" y2="158" stroke="#c3c2b7" stroke-width="2"/>
+<path d="M499.00000000000006 162 L631 162" stroke="#383835" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+<text x="40" y="186" font-size="12" font-weight="400" fill="#c3c2b7" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Every request that arrives during the hash (the ticks) waits until it ends</text>
+<text x="40" y="212" font-size="12" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">0 ms</text>
+<text x="210" y="212" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">20 ms</text>
+<text x="380" y="212" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">40 ms</text>
+<text x="550" y="212" font-size="12" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">60 ms</text>
+<text x="720" y="212" font-size="12" font-weight="400" fill="#898781" text-anchor="end" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">80 ms</text>
 <text x="40" y="234" font-size="14" font-weight="600" fill="#f0efec" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">list products, p95 (20 users, one in four iterations logs in)</text>
 <text x="40" y="280" font-size="14" font-weight="400" fill="#c3c2b7" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">before the fix</text>
 <rect x="150" y="260" width="520" height="28" rx="4" fill="#898781"/>

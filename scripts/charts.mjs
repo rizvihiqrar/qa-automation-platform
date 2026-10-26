@@ -15,7 +15,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const THEMES = {
   light: {
     page: '#f9f9f7', surface: '#fcfcfb', text: '#0b0b0b', text2: '#52514e', muted: '#898781', grid: '#e1e0d9', axis: '#c3c2b7',
-    series: '#2a78d6', before: '#898781', steps: ['#cde2fb', '#86b7ef', '#2a78d6'], stepText: ['#0b0b0b', '#0b0b0b', '#ffffff'],
+    series: '#2a78d6', before: '#898781', steps: ['#cde2fb', '#86b7ef', '#2a78d6'], stepText: ['#0b0b0b', '#0b0b0b', '#0b0b0b'],
   },
   dark: {
     page: '#0d0d0d', surface: '#1a1a19', text: '#f0efec', text2: '#c3c2b7', muted: '#898781', grid: '#2c2c2a', axis: '#383835',
@@ -47,10 +47,10 @@ export function loginChart(theme) {
   // Top: the main thread over time
   out.push(text(x0, 38, 'One login blocked the whole API', { size: 18, weight: 600, fill: t.text }));
   out.push(text(x0, 60, 'Node runs JavaScript on one thread. bcryptjs hashed on it, and nothing else could start meanwhile.', { size: 13, fill: t.text2 }));
-  const y = 96;
+  const y = 100;
   out.push(`<rect x="${x0}" y="${y}" width="${track}" height="34" rx="4" fill="${t.grid}"/>`);
   out.push(`<rect x="${x0}" y="${y}" width="${px(LOGIN.hashMs) - x0}" height="34" rx="4" fill="${t.series}"/>`);
-  out.push(text(x0 + 12, y + 22, `one password hash, about ${LOGIN.hashMs} ms`, { size: 14, weight: 600, fill: t.stepText[2] }));
+  out.push(text(x0, y - 8, `one password hash, about ${LOGIN.hashMs} ms`, { size: 14, weight: 600, fill: t.text }));
   // requests that arrive during the hash wait until it ends
   for (const ms of [8, 22, 38, 54]) {
     out.push(`<line x1="${px(ms)}" y1="${y + 40}" x2="${px(ms)}" y2="${y + 58}" stroke="${t.text2}" stroke-width="2"/>`);
@@ -116,7 +116,7 @@ export function heatmapChart(theme) {
       if (Number.isInteger(n) && n > 0) {
         const step = Math.min(n, 3) - 1;
         out.push(`<rect x="${x}" y="${y}" width="${cell}" height="${rh}" rx="4" fill="${t.steps[step]}"/>`);
-        out.push(text(x + cell / 2, y + rh / 2 + 6, n, { size: 17, weight: 600, fill: t.stepText[step], anchor: 'middle' }));
+        out.push(text(x + cell / 2, y + rh / 2 + 6, n, { size: 19, weight: 700, fill: t.stepText[step], anchor: 'middle' }));
       } else {
         out.push(`<rect x="${x}" y="${y}" width="${cell}" height="${rh}" rx="4" fill="${t.grid}" fill-opacity="0.5"/>`);
         out.push(text(x + cell / 2, y + rh / 2 + 5, v === '✔' ? '✔' : '–', { size: 16, weight: v === '✔' ? 700 : 400, fill: v === '✔' ? t.text : t.muted, anchor: 'middle' }));
