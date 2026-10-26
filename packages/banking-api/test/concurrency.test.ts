@@ -116,7 +116,10 @@ describe('two server processes on one database file', async () => {
 });
 
 describe('two server processes with a slow screening', async () => {
-  const servers = await startServers(2, { SCREENING_DELAY_MS: '30' });
+  // The delay is the window in which a request is still in flight, so a repeat of a key gets 409. A loaded runner
+  // can spread the requests wider than 30 ms, and a request that arrives after the first has finished is a replay
+  // (201), so the one-key test below counts replays apart instead of relying on the window.
+  const servers = await startServers(2, { SCREENING_DELAY_MS: '300' });
   const [one, two] = servers.bases as [string, string];
 
   test('BK-R24 20 transfers of 10.00 at once from 100.00, through both servers: exactly 10 pass, and the balance stops at zero', async () => {
@@ -129,14 +132,17 @@ describe('two server processes with a slow screening', async () => {
     assert.equal((await servers.get(one, `/accounts/${from}`)).body.balance, '0.00');
   });
 
-  test('BK-R21 BK-R20 one key sent to both servers at once: one 201, the rest 409, and a later retry replays it', async () => {
+  test('BK-R21 BK-R20 one key sent to both servers at once: one movement, the rest 409 or a replay of it, and a later retry replays it', async () => {
     const id = (await servers.post(one, '/accounts', { owner: 'Key', currency: 'CAD' })).body.id;
     const send = (base: string) => servers.post(base, `/accounts/${id}/deposits`, { amount: '9.00', currency: 'CAD' }, { 'Idempotency-Key': 'both-servers' });
     const replies = await Promise.all(Array.from({ length: 10 }, (_, i) => send(i % 2 ? one : two)));
-    assert.deepEqual(tally(replies), { '201': 1, '409 idempotency_key_in_use': 9 });
+    // Exactly one request did the work. A slow arrival can also be a replay (201 with the replay header), never a second movement.
+    const fresh = replies.filter((r) => r.status === 201 && r.headers.get('idempotent-replayed') !== 'true');
+    assert.equal(fresh.length, 1);
+    for (const r of replies) assert.ok(r.status === 409 || (r.status === 201 && r.headers.get('idempotent-replayed') === 'true') || r === fresh[0], `unexpected ${r.status}`);
     const retry = await send(two);
     assert.equal(retry.headers.get('idempotent-replayed'), 'true');
-    assert.deepEqual(retry.body, replies.find((r) => r.status === 201)!.body);
+    assert.deepEqual(retry.body, fresh[0]!.body);
     assert.equal((await servers.get(one, `/accounts/${id}`)).body.balance, '9.00');
   });
 
