@@ -1,0 +1,3 @@
+# Baselines made on Windows or macOS are for local runs only; the committed ones are Linux's.
+baselines/win32/
+baselines/darwin/
