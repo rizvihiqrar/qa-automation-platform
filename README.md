@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 28 packages, about 1,520 automated tests and checks, all run by one CI workflow
+- 29 packages, about 1,570 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -52,6 +52,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | Package | What it does | Checks |
 |---|---|---:|
 | [multi-user-flow-patterns](packages/multi-user-flow-patterns) | Runs several users at once to catch bugs that only appear when people share a system | 9 |
+| [visual-regression-demo](packages/visual-regression-demo) | Compares screenshots of the banking UI with baselines in light, dark and phone width, in two browsers, and proves it by planting visual bugs | 46 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios + 4 |
 | [a11y-aoda-audit](packages/a11y-aoda-audit) | Audits a demo store against the WCAG 2.0 AA standard Ontario's AODA requires, before and after fixes | 16 |
 
@@ -145,6 +146,7 @@ Each number links to where it comes from. Figures are as of 2026-10-20.
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |
 | Money, race, ledger-check and UI mistakes put back on purpose and caught, banking API | 78 of 78 | [banking-api](packages/banking-api/TECHNICAL.md#deliberate-breaks) |
+| Visual bugs planted in the banking UI and caught by the screenshot comparison (a button a few shades off, a 4 px shift, a missing button, a clipped amount, unreadable dark mode, a wrapped column) | 6 of 6 | [visual-regression-demo](packages/visual-regression-demo/TECHNICAL.md#planted-visual-bugs) |
 | Planted bugs in the course practical caught by the model answer, each by its own check only | 6 of 6 | [money-course](packages/money-course/TECHNICAL.md#the-model-answer-is-proven-against-each-bug) |
 | Requirements traced to passing tests | 18 of 18, 119 of 119 cases | [traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/) |
 | AI tests with a matching trace | 900 of 900 | [Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/) |

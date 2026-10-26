@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 738 556" width="738" height="556" role="img" aria-labelledby="t d">
+<title id="t">Scoreboard: 7 mistakes in the AI's code against 9 kinds of check</title>
+<desc id="d">A grid with one row per mistake and one column per kind of check. A number is how many tests of that kind failed when the mistake was put back; a dash means none did; a tick means the code review found it by reading.</desc>
+<rect width="738" height="556" rx="12" fill="#fcfcfb"/>
+<text x="24" y="36" font-size="18" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">What caught each mistake the AI made</text>
+<text x="24" y="58" font-size="12" font-weight="400" fill="#52514e" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Number: tests of that kind that failed with the mistake put back. Dash: none did. Tick: found by reading the code.</text>
+<text x="152" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Code review</text>
+<text x="218" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Earlier</text>
+<text x="218" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">tests</text>
+<text x="284" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Boundary</text>
+<text x="284" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">values</text>
+<text x="350" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Decision</text>
+<text x="350" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">tables</text>
+<text x="416" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Equivalence</text>
+<text x="416" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">classes</text>
+<text x="482" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Access</text>
+<text x="482" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">control</text>
+<text x="548" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">State</text>
+<text x="548" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">transitions</text>
+<text x="614" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Worked</text>
+<text x="614" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">examples</text>
+<text x="680" y="92" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Property-</text>
+<text x="680" y="107" font-size="12" font-weight="400" fill="#52514e" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">based</text>
+<text x="24" y="148" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">CR-01</text>
+<text x="76" y="148" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">defect</text>
+<rect x="120" y="118" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="152" y="148" font-size="16" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">✔</text>
+<rect x="186" y="118" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="218" y="148" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="252" y="118" width="64" height="50" rx="4" fill="#2a78d6"/>
+<text x="284" y="149" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">3</text>
+<rect x="318" y="118" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="350" y="148" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="384" y="118" width="64" height="50" rx="4" fill="#cde2fb"/>
+<text x="416" y="149" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">1</text>
+<rect x="450" y="118" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="482" y="148" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="516" y="118" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="548" y="148" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="582" y="118" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="614" y="148" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="648" y="118" width="64" height="50" rx="4" fill="#cde2fb"/>
+<text x="680" y="149" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">1</text>
+<text x="24" y="200" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">CR-02</text>
+<text x="76" y="200" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">defect</text>
+<rect x="120" y="170" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="152" y="200" font-size="16" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">✔</text>
+<rect x="186" y="170" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="218" y="200" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="252" y="170" width="64" height="50" rx="4" fill="#2a78d6"/>
+<text x="284" y="201" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">3</text>
+<rect x="318" y="170" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="350" y="200" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="384" y="170" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="416" y="200" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="450" y="170" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="482" y="200" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="516" y="170" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="548" y="200" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="582" y="170" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="614" y="200" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="648" y="170" width="64" height="50" rx="4" fill="#86b7ef"/>
+<text x="680" y="201" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">2</text>
+<text x="24" y="252" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">CR-03</text>
+<text x="76" y="252" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">defect</text>
+<rect x="120" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="152" y="252" font-size="16" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">✔</text>
+<rect x="186" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="218" y="252" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="252" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="284" y="252" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="318" y="222" width="64" height="50" rx="4" fill="#2a78d6"/>
+<text x="350" y="253" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">3</text>
+<rect x="384" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="416" y="252" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="450" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="482" y="252" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="516" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="548" y="252" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="582" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="614" y="252" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="648" y="222" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="680" y="252" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<text x="24" y="304" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">CR-04</text>
+<text x="76" y="304" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">defect</text>
+<rect x="120" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="152" y="304" font-size="16" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">✔</text>
+<rect x="186" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="218" y="304" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="252" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="284" y="304" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="318" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="350" y="304" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="384" y="274" width="64" height="50" rx="4" fill="#cde2fb"/>
+<text x="416" y="305" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">1</text>
+<rect x="450" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="482" y="304" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="516" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="548" y="304" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="582" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="614" y="304" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="648" y="274" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="680" y="304" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<text x="24" y="356" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">CR-05</text>
+<text x="76" y="356" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">gap</text>
+<rect x="120" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="152" y="356" font-size="16" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">✔</text>
+<rect x="186" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="218" y="356" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="252" y="326" width="64" height="50" rx="4" fill="#cde2fb"/>
+<text x="284" y="357" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">1</text>
+<rect x="318" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="350" y="356" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="384" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="416" y="356" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="450" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="482" y="356" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="516" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="548" y="356" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="582" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="614" y="356" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="648" y="326" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="680" y="356" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<text x="24" y="408" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">PM-01</text>
+<text x="76" y="408" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">gap</text>
+<rect x="120" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="152" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="186" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="218" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="252" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="284" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="318" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="350" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="384" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="416" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="450" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="482" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="516" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="548" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="582" y="378" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="614" y="408" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="648" y="378" width="64" height="50" rx="4" fill="#cde2fb"/>
+<text x="680" y="409" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">1</text>
+<text x="24" y="460" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">PM-02</text>
+<text x="76" y="460" font-size="11" font-weight="400" fill="#898781" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">defect</text>
+<rect x="120" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="152" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="186" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="218" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="252" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="284" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="318" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="350" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="384" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="416" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="450" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="482" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="516" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="548" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="582" y="430" width="64" height="50" rx="4" fill="#e1e0d9" fill-opacity="0.5"/>
+<text x="614" y="460" font-size="16" font-weight="400" fill="#898781" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">–</text>
+<rect x="648" y="430" width="64" height="50" rx="4" fill="#86b7ef"/>
+<text x="680" y="461" font-size="19" font-weight="700" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">2</text>
+<text x="24" y="518" font-size="12" font-weight="400" fill="#52514e" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">Tests that failed:</text>
+<rect x="150" y="506" width="28" height="18" rx="3" fill="#cde2fb"/>
+<text x="164" y="520" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">1</text>
+<rect x="220" y="506" width="28" height="18" rx="3" fill="#86b7ef"/>
+<text x="234" y="520" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">2</text>
+<rect x="290" y="506" width="28" height="18" rx="3" fill="#2a78d6"/>
+<text x="304" y="520" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">3+</text>
+</svg>

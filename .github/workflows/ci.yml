@@ -94,6 +94,8 @@ jobs:
           # Testing money in software: the course checks (the model answer against six planted bugs)
           # and the quiz page in Chromium and Firefox
           - { package: money-course,             browsers: true,  browserList: chromium firefox, command: npm test }
+          # Screenshots of the banking UI against Linux baselines, in Chromium and Firefox, plus planted visual bugs
+          - { package: visual-regression-demo,   browsers: true,  browserList: chromium firefox, command: npm test }
           - { package: graphql-test-suite,       browsers: false, command: npm test }
           - { package: postman-api-collection,   browsers: false, command: npm test }
           - { package: contract-testing-demo,    browsers: false, command: npm test }
@@ -164,6 +166,17 @@ jobs:
             packages/${{ matrix.package }}/playwright-report/
             packages/${{ matrix.package }}/reports/
             packages/${{ matrix.package }}/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # Visual regression: Playwright writes a baseline that is missing, then fails the test. This keeps
+      # the Linux baselines of a failed run, so `npm run baselines -- <run id>` can bring them back.
+      - name: Upload visual baselines
+        if: failure() && matrix.package == 'visual-regression-demo'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: packages/visual-regression-demo/baselines/linux/
           if-no-files-found: ignore
           retention-days: 7
 

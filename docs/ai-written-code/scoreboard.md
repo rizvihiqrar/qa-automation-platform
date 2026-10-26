@@ -4,6 +4,13 @@ The end of the [case study](README.md). Every mistake found in the AI's discount
 
 **In plain English:** each mistake was put back into today's fixed code, one at a time, and every test was run. A number is how many tests of that kind failed, so caught it. A dash means none did. No single technique caught everything, and the tests that were already there caught nothing.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/scoreboard-heatmap-dark.svg">
+  <img alt="A grid of seven mistakes against nine kinds of check. Each count is the number of tests of that kind that failed with the mistake put back." src="../assets/scoreboard-heatmap-light.svg">
+</picture>
+
+*The table below as a heatmap. Drawn by `scripts/charts.mjs` from that table.*
+
 ## How it was measured
 
 [`packages/qa-practice-api/scoreboard/run.mjs`](../../packages/qa-practice-api/scoreboard/run.mjs) (`npm run scoreboard`, about five minutes) runs all 308 tests on the unchanged code first (all must pass), then for each mistake in [`put-backs.mjs`](../../packages/qa-practice-api/scoreboard/put-backs.mjs) changes the code back to the AI's version, runs everything again, records which tests failed, and restores the code. The result is [`scoreboard.json`](scoreboard.json); the table below is checked against it by the root tests, row for row.

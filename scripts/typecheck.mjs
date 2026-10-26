@@ -28,6 +28,7 @@ export const PACKAGES = [
   'llm-judge-check',
   'banking-api',
   'money-course',
+  'visual-regression-demo',
   // CI demos: plain JavaScript checked with checkJs (they exist to show CI patterns)
   'contract-testing-demo',
   'mutation-testing-demo',

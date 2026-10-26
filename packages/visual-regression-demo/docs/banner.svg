@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">visual-regression-demo</title>
+  <desc id="d">Screenshot comparison for the banking UI: baselines in light, dark and phone width, in two browsers, with planted visual bugs that must be caught.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#2563eb"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="96" y="72" width="100" height="76" rx="8"/>
+    <rect x="128" y="104" width="100" height="76" rx="8" stroke="#f8fafc"/>
+  </g>
+  <text x="270" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc">visual-regression-demo</text>
+  <text x="272" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" fill="#cbd5e1">Screenshots of the banking UI, compared with baselines. Planted bugs must be seen.</text>
+</svg>

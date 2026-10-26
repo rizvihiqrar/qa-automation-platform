@@ -1,0 +1,20 @@
+{
+  "name": "visual-regression-demo",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Visual regression for the banking UI: screenshot baselines for each page in light, dark and phone width, in Chromium and Firefox, plus planted visual bugs that prove the comparison catches them",
+  "scripts": {
+    "test": "playwright test",
+    "serve": "node src/serve.ts",
+    "baselines": "node src/fetch-baselines.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2"
+  }
+}

@@ -26,6 +26,7 @@ export const PLAYWRIGHT = [
   { pkg: 'llm-judge-check', config: 'playwright.config.ts', dirs: ['evidence/'] },
   { pkg: 'money-course', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'multi-user-flow-patterns', config: 'playwright.config.ts', dirs: ['tests/'] },
+  { pkg: 'visual-regression-demo', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'qa-for-ai-features', config: 'playwright.config.ts', dirs: ['tests/'] },
   { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'] },
 ];

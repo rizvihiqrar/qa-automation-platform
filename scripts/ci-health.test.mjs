@@ -55,7 +55,7 @@ test('triggers reads every form of on:, and only workflow_dispatch alone is manu
 test('every workflow in this repo reads as the trigger its file says', () => {
   const dir = new URL('../.github/workflows/', import.meta.url);
   const manual = fs.readdirSync(dir).filter((f) => manualOnly(triggers(fs.readFileSync(new URL(f, dir), 'utf8'))));
-  assert.deepEqual(manual, ['ai-eval.yml', 'release.yml', 'variance.yml']);
+  assert.deepEqual(manual, ['ai-eval.yml', 'release.yml', 'variance.yml', 'visual-baselines.yml']);
 });
 
 test('a watched scheduled workflow that no longer exists is reported', () => {

@@ -1,0 +1,43 @@
+name: Visual baselines
+
+# Manual: remakes every screenshot baseline of packages/visual-regression-demo on a GitHub Linux
+# runner (the machine that checks them) and keeps the pictures as an artifact. Use it after a
+# deliberate change to the banking UI. Then:  npm run baselines -- <run id> update
+# Review each changed picture, commit them in a pull request, and let CI compare against them.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/visual-regression-demo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/visual-regression-demo/package-lock.json
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh" chromium firefox
+
+      # Only the page tests: the planted-bug tests compare against these same pictures and make none.
+      - name: Make the baselines
+        run: npx playwright test tests/pages.spec.ts --update-snapshots
+
+      - name: Keep the baselines
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines-updated
+          path: packages/visual-regression-demo/baselines/linux/
+          retention-days: 14
