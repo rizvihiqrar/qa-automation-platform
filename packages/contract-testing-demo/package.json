@@ -11,7 +11,7 @@
   "devDependencies": {
     "@pact-foundation/pact": "^12.0.0",
     "jest":                  "^30.5.2",
-    "node-fetch":            "^2.7.0"
+    "node-fetch":            "^3.3.2"
   },
   "//overrides": "Pact 12 pins versions with known high-severity issues; these are the fixed releases in the same major.",
   "overrides": {
