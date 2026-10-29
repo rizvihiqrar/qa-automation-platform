@@ -188,6 +188,18 @@ test('fetchRuns retries a dropped connection (run 40940825524: terminated) and s
   assert.deepEqual(waits, [2000, 4000]);
 });
 
+test('fetchRuns retries a body that drops while it is read', async () => {
+  let drops = 1;
+  const { fetchImpl: ok } = fakeGitHub([1], () => ({ total_count: 1, jobs: jobs(1) }));
+  const fetchImpl = async (url, init) => {
+    const res = await ok(url, init);
+    if (!url.includes('/jobs') || drops-- <= 0) return res;
+    return { ok: true, json: async () => { throw new TypeError('terminated'); } };
+  };
+  const [run] = await fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep });
+  assert.equal(run.jobs.length, 1);
+});
+
 test('fetchRuns gives every request a timeout', async () => {
   const signals = [];
   const { fetchImpl: ok } = fakeGitHub([1], () => ({ total_count: 1, jobs: jobs(1) }));
