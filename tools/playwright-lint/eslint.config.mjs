@@ -15,6 +15,7 @@ export const PACKAGES = [
   'multi-user-flow-patterns',
   'qa-for-ai-features',
   'qa-practice-api',
+  'synthetic-monitor',
   'visual-regression-demo',
 ];
 

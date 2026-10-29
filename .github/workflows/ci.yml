@@ -96,6 +96,8 @@ jobs:
           - { package: money-course,             browsers: true,  browserList: chromium firefox, command: npm test }
           # Screenshots of the banking UI against Linux baselines, in Chromium and Firefox, plus planted visual bugs
           - { package: visual-regression-demo,   browsers: true,  browserList: chromium firefox, command: npm test }
+          # Synthetic monitoring: the history, down and slow rules and issue logic, and the page check against a local site that misbehaves
+          - { package: synthetic-monitor,        browsers: true,  browserList: chromium firefox, command: npm test }
           - { package: graphql-test-suite,       browsers: false, command: npm test }
           - { package: postman-api-collection,   browsers: false, command: npm test }
           - { package: contract-testing-demo,    browsers: false, command: npm test }
