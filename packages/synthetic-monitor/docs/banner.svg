@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">synthetic-monitor</title>
+  <desc id="d">Scheduled browser checks on public demo sites, with uptime and load-time history, a down rule, a slow flag and a GitHub issue that opens and closes itself.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#2563eb"/>
+  <g fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="92,142 130,142 150,96 178,176 200,120 232,120" stroke="#38bdf8"/>
+    <circle cx="258" cy="120" r="7" fill="#f8fafc" stroke="none"/>
+  </g>
+  <text x="300" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc">synthetic-monitor</text>
+  <text x="302" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" fill="#cbd5e1">A real browser checks four sites every 30 minutes. Down means two failed runs.</text>
+</svg>

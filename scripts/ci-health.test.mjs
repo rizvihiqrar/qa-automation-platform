@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
+import { WATCH, assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -56,6 +56,27 @@ test('every workflow in this repo reads as the trigger its file says', () => {
   const dir = new URL('../.github/workflows/', import.meta.url);
   const manual = fs.readdirSync(dir).filter((f) => manualOnly(triggers(fs.readFileSync(new URL(f, dir), 'utf8'))));
   assert.deepEqual(manual, ['ai-eval.yml', 'release.yml', 'variance.yml', 'visual-baselines.yml']);
+});
+
+// A workflow that runs on a schedule and is not listed in WATCH can stop for 60 days (GitHub switches
+// schedules off in a quiet repo) or fail every time, and nobody is told. CI health does not watch itself.
+test('every scheduled workflow in this repo is watched for being overdue', () => {
+  const dir = new URL('../.github/workflows/', import.meta.url);
+  const scheduled = fs.readdirSync(dir)
+    .map((f) => fs.readFileSync(new URL(f, dir), 'utf8'))
+    .filter((yaml) => triggers(yaml).includes('schedule'))
+    .map((yaml) => yaml.match(/^name:[ \t]*(.+?)[ \t\r]*$/m)[1])
+    .filter((name) => name !== 'CI health');
+  const watched = Object.keys(WATCH.find((w) => w.repo === 'rizvihiqrar/qa-automation-platform').overdueAfterHours);
+  assert.deepEqual(scheduled.filter((n) => !watched.includes(n)), [], 'add it to WATCH in scripts/ci-health.mjs');
+});
+
+test('Monitor, run every 30 minutes, is overdue after 3 hours without a run', () => {
+  const { overdueAfterHours } = WATCH.find((w) => w.repo === 'rizvihiqrar/qa-automation-platform');
+  assert.equal(overdueAfterHours.Monitor, 3);
+  assert.equal(assess('Monitor', [run('success', 2.9)], overdueAfterHours, NOW).state, 'ok');
+  assert.equal(assess('Monitor', [run('success', 3.1)], overdueAfterHours, NOW).state, 'overdue');
+  assert.equal(assess('Monitor', [run('failure', 0.5)], overdueAfterHours, NOW).state, 'failing', 'a broken monitor is a problem');
 });
 
 test('a watched scheduled workflow that no longer exists is reported', () => {

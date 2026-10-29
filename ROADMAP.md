@@ -68,7 +68,7 @@ The day numbers below stay as they are, because other documents link to them. Th
 
 1. Day 53 (Python)
 2. The course "Testing money in software" (a row of its own, after Days 43–48): done 2026-10-22, pilot still to run
-3. Day 59 (done 2026-10-26), 57, 49, 52, 51, 54, 55, 47, 50, 56, 48, 58
+3. Days 59 and 57 (done 2026-10-26 and 2026-10-29), 49, 52, 51, 54, 55, 47, 50, 56, 48, 58
 4. Day 60 (retrospective, tag v2.0), always last
 
 ### Days 31–36: Test design and analysis
@@ -122,7 +122,7 @@ The day numbers below stay as they are, because other documents link to them. Th
 |---:|---|---|
 | 55 | MCP server for the platform: run a suite, list flaky-test issues, draft a triage note | ⬜ |
 | 56 | n8n alerts on a failed nightly run or a new flaky-test issue | ⬜ |
-| 57 | Synthetic monitoring: scheduled Playwright checks on public demo sites, uptime and response-time history on the dashboard | ⬜ |
+| 57 | Synthetic monitoring: scheduled Playwright checks on public demo sites, uptime and response-time history on the dashboard | ✅ [packages/synthetic-monitor](packages/synthetic-monitor): 4 sites every 30 minutes, 30 days of history on a one-commit `monitoring-data` branch, down after 2 failed runs in a row (each tried twice), slow at 3 times the site's own median, a `monitoring` issue that closes itself; the dashboard shows it and is rebuilt every 3 hours; CI health watches Monitor (3 hours). 56 package checks, 15 workflow checks, 18 more dashboard checks; PRs #110, #111, #112 |
 | 58 | Run only the affected tests, selected from code coverage | ⬜ |
 | 59 | Visual regression. Also two charts, each in a light and a dark version in the dashboard colours: a before/after SVG of the login problem (one password hash blocked the API for about 70 ms; `list products` p95 went from 67 ms to 1 ms after the fix, from [the write-up](docs/rca/01-login-hashing-blocked-the-api.md)), and the AI-written-code [scoreboard](docs/ai-written-code/scoreboard.md) as a heatmap (7 mistakes against 9 kinds of check) | ✅ [visual-regression-demo](packages/visual-regression-demo/README.md): 46 checks (23 in each of Chromium and Firefox). The banking UI on a frozen clock, a screenshot of each page in light, dark and phone width against Linux baselines made by CI, and six planted visual bugs the comparison must see. The charts are drawn by `scripts/charts.mjs` from the write-up and the scoreboard table, so they cannot drift from them |
 | 60 | Retrospective; tag v2.0 | ⬜ |
