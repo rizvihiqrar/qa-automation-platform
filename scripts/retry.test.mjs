@@ -44,7 +44,7 @@ test('a command that always fails is run 3 times, then fails', () => {
 
 test('every image pull in ci.yml goes through retry.sh', () => {
   const lines = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8').split(/\r?\n/);
-  const pulls = lines.filter((l) => /docker (compose .*)? ?pull( |$)/.test(l) && !l.trim().startsWith('#'));
+  const pulls = lines.filter((l) => /docker\b.* pull( |$)/.test(l) && !l.trim().startsWith('#'));
   assert.ok(pulls.length >= 2, `found ${pulls.length} pulls (Langfuse and ZAP)`);
   assert.deepEqual(pulls.filter((l) => !l.includes('scripts/retry.sh')), [], 'prefix the pull with `bash "$GITHUB_WORKSPACE/scripts/retry.sh"`');
 });
