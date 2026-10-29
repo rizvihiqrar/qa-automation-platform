@@ -23,11 +23,12 @@ export function normalizeRun(run, jobs) {
 
 /**
  * The slice of fetch this module uses, so tests can pass a small fake.
- * @typedef {(url: string, init: { headers: Record<string, string> }) => Promise<{ ok: boolean, status?: number, json(): Promise<any> }>} FetchLike
+ * @typedef {(url: string, init: { headers: Record<string, string>, signal?: AbortSignal }) => Promise<{ ok: boolean, status?: number, json(): Promise<any> }>} FetchLike
  */
 
 export const JOBS_PER_PAGE = 50;
 export const ATTEMPTS = 3;
+export const REQUEST_TIMEOUT_MS = 30_000;
 
 /**
  * @param {{ repo: string, token?: string, workflow?: string, limit?: number, fetchImpl?: FetchLike,
@@ -41,14 +42,23 @@ export async function fetchRuns({
   /** @type {Record<string, string>} */
   const headers = { Accept:'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  // A 5xx is GitHub's side and usually passes: try again, waiting 2 s then 4 s. Anything
-  // else (bad token, wrong repo) won't change on retry and fails at once.
+  // A 5xx or a dropped connection is GitHub's side or the network's and usually passes: try
+  // again, waiting 2 s then 4 s. Anything else (bad token, wrong repo) won't change on retry
+  // and fails at once. A body that drops mid-read ("terminated") counts as a dropped connection.
+  const retryable = (error) => Object.assign(error, { retryable: true });
   const get = async (path) => {
     for (let attempt = 1; ; attempt++) {
-      const res = await fetchImpl(`https://api.github.com${path}`, { headers });
-      if (res.ok) return res.json();
+      let res;
+      try {
+        res = await fetchImpl(`https://api.github.com${path}`, { headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+        if (res.ok) return await res.json();
+      } catch (err) {
+        if (attempt === ATTEMPTS) throw retryable(new Error(`GitHub API unreachable (${err instanceof Error ? err.message : err}) for ${path}`));
+        await sleep(2000 * attempt);
+        continue;
+      }
       const status = res.status ?? 0;
-      if (status < 500 || attempt === ATTEMPTS) throw new Error(`GitHub API returned ${status} for ${path}`);
+      if (status < 500 || attempt === ATTEMPTS) throw Object.assign(new Error(`GitHub API returned ${status} for ${path}`), { retryable: status >= 500 });
       await sleep(2000 * attempt);
     }
   };
@@ -71,7 +81,7 @@ export async function fetchRuns({
       // One run GitHub can't serve right now shouldn't take the whole dashboard down
       // (it did, 2026-10-19: a 502 on one run's jobs, every build). Leave that run out,
       // say so in the log, and fail only if nothing could be read at all.
-      if (!/returned 5\d\d/.test(String(err))) throw err;
+      if (!err?.retryable) throw err;
       warn(`::warning::Left out CI run ${run.id}: ${err instanceof Error ? err.message : err} after ${ATTEMPTS} tries`);
     }
   }

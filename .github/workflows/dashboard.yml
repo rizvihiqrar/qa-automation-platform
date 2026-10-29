@@ -22,6 +22,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A normal build takes about a minute; a stalled API must end the job, not hold it for hours.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

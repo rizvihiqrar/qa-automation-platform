@@ -128,7 +128,7 @@ test('fetchRuns reports API errors clearly', async () => {
 // number means that response fails).
 const fakeGitHub = (ids, jobsOf) => {
   const calls = [];
-  const fetchImpl = async (url) => {
+  const fetchImpl = async (url, _init) => {
     calls.push(url);
     if (url.includes('/workflows/')) {
       return { ok: true, json: async () => ({ workflow_runs: ids.map((id) => ({ id, run_number: id, conclusion: 'success', head_sha: 'a' })) }) };
@@ -173,6 +173,50 @@ test('fetchRuns does not retry or skip a 4xx: it fails at once', async () => {
   const { fetchImpl } = fakeGitHub([1, 2], () => { jobCalls++; return 404; });
   await assert.rejects(fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep }), /GitHub API returned 404/);
   assert.equal(jobCalls, 1);
+});
+
+test('fetchRuns retries a dropped connection (run 40940825524: terminated) and succeeds', async () => {
+  let drops = 2;
+  const waits = [];
+  const { fetchImpl: ok } = fakeGitHub([1], () => ({ total_count: 1, jobs: jobs(1) }));
+  const fetchImpl = async (url, init) => {
+    if (url.includes('/jobs') && drops-- > 0) throw new TypeError('terminated');
+    return ok(url, init);
+  };
+  const [run] = await fetchRuns({ repo: 'o/r', fetchImpl, sleep: async (ms) => { waits.push(ms); } });
+  assert.equal(run.jobs.length, 1);
+  assert.deepEqual(waits, [2000, 4000]);
+});
+
+test('fetchRuns retries a body that drops while it is read', async () => {
+  let drops = 1;
+  const { fetchImpl: ok } = fakeGitHub([1], () => ({ total_count: 1, jobs: jobs(1) }));
+  const fetchImpl = async (url, init) => {
+    const res = await ok(url, init);
+    if (!url.includes('/jobs') || drops-- <= 0) return res;
+    return { ok: true, json: async () => { throw new TypeError('terminated'); } };
+  };
+  const [run] = await fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep });
+  assert.equal(run.jobs.length, 1);
+});
+
+test('fetchRuns gives every request a timeout', async () => {
+  const signals = [];
+  const { fetchImpl: ok } = fakeGitHub([1], () => ({ total_count: 1, jobs: jobs(1) }));
+  await fetchRuns({ repo: 'o/r', fetchImpl: async (url, init) => { signals.push(init.signal); return ok(url, init); } });
+  assert.ok(signals.length >= 2 && signals.every((s) => s instanceof AbortSignal));
+});
+
+test('fetchRuns leaves out one run whose connection keeps dropping, and says so', async () => {
+  const warnings = [];
+  const { fetchImpl: ok } = fakeGitHub([1, 2], () => ({ total_count: 1, jobs: jobs(1) }));
+  const fetchImpl = async (url, init) => {
+    if (url.includes('/runs/2/jobs')) throw new TypeError('terminated');
+    return ok(url, init);
+  };
+  const out = await fetchRuns({ repo: 'o/r', fetchImpl, sleep: noSleep, warn: (m) => warnings.push(m) });
+  assert.deepEqual(out.map((r) => r.id), [1]);
+  assert.match(warnings[0], /Left out CI run 2: GitHub API unreachable \(terminated\)/);
 });
 
 test('fetchRuns fails when no run at all could be read', async () => {
