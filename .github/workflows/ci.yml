@@ -328,8 +328,16 @@ jobs:
           cache: npm
           cache-dependency-path: packages/llm-judge-check/package-lock.json
 
+      # Docker Hub answers 502 now and then (CI run 40954762292, 2026-10-29: postgres:17 manifest, failed
+      # at once and passed on the re-run), so the pull is tried up to 3 times.
       - name: Start Langfuse
-        run: docker compose -f langfuse/docker-compose.yml --env-file langfuse/local.env up -d --quiet-pull
+        run: |
+          for attempt in 1 2 3; do
+            docker compose -f langfuse/docker-compose.yml --env-file langfuse/local.env up -d --quiet-pull && exit 0
+            echo "Langfuse start attempt $attempt of 3 failed."
+            [ "$attempt" -lt 3 ] && sleep $((attempt * 10))
+          done
+          exit 1
 
       - run: npm ci
 
