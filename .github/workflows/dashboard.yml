@@ -1,12 +1,17 @@
 name: Dashboard
 
 # Rebuilds the CI dashboard after every CI run on main (including the nightly
-# one) and publishes it to GitHub Pages.
+# one) and publishes it to GitHub Pages. Also every 3 hours, so the uptime section
+# (the Monitor workflow writes new data every 30 minutes) is never more than 3 hours old.
+# A scheduled run reports on the latest CI run on main, like a manual one; CI health only
+# counts a missing Dashboard run after 26 hours, so the extra runs change nothing there.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  schedule:
+    - cron: '23 */3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -42,13 +47,29 @@ jobs:
           echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
           gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -p 'report-*' -D reports-raw || echo "No reports to download"
 
+      # The Monitor workflow keeps its summary on the monitoring-data branch. Only "no such branch"
+      # (exit code 2) is normal, before the first run; anything else is a warning, and the page is
+      # built without the uptime section rather than not at all.
+      - name: Fetch the monitoring summary
+        run: |
+          found=0
+          git ls-remote --exit-code --heads origin monitoring-data >/dev/null || found=$?
+          if [ "$found" -eq 0 ]; then
+            if ! { git fetch --depth 1 origin monitoring-data && git show FETCH_HEAD:summary.json > monitoring-summary.json; }; then
+              rm -f monitoring-summary.json
+              echo "::warning::The monitoring-data branch has no readable summary.json: building without the uptime section"
+            fi
+          elif [ "$found" -ne 2 ]; then
+            echo "::warning::Could not look for the monitoring-data branch (git exit code $found): building without the uptime section"
+          fi
+
       # Reports are scanned before publishing: tokens redacted, zipped data with a
       # token withheld (packages/ci-dashboard/src/reports.js). The traceability matrix
       # joins the test plan with qa-practice-api's results (src/traceability.js).
       - name: Build dashboard, reports and traceability matrix
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node packages/ci-dashboard/src/build.js --out _site --reports reports-raw --reports-run "$RUN_ID" --plan docs/test-strategy/test-plan.md
+        run: node packages/ci-dashboard/src/build.js --out _site --reports reports-raw --reports-run "$RUN_ID" --plan docs/test-strategy/test-plan.md --monitoring monitoring-summary.json
 
       # The course quiz (packages/money-course/quiz) is a static page, published at /course/.
       - name: Add the course quiz
