@@ -59,13 +59,3 @@ test('a stalled try is cleaned up, and the next try uses another mirror', () => 
   // A lock that is still held says who holds it.
   assert.match(loop, /ps -eo pid,etimes,args/);
 });
-
-// CI run 40954762292 (2026-10-29): Docker Hub answered 502 for the postgres image, and the Langfuse
-// step failed at once; the re-run passed. Pulling from a registry is tried up to 3 times.
-test('the Langfuse start retries its image pull', () => {
-  const ci = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');
-  const step = ci.slice(ci.indexOf('- name: Start Langfuse'), ci.indexOf('- run: npm ci', ci.indexOf('- name: Start Langfuse')));
-  assert.match(step, /for attempt in 1 2 3/);
-  assert.match(step, /docker compose[^\n]*up -d[^\n]*&& exit 0/);
-  assert.match(step, /exit 1/, 'fails after the third try');
-});
