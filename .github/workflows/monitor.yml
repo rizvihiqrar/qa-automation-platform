@@ -1,0 +1,77 @@
+name: Monitor
+
+# Synthetic monitoring (packages/synthetic-monitor): every 30 minutes, open four public demo
+# sites in a real browser and record whether each loaded and how long it took.
+#
+# - The history (30 days) lives on the monitoring-data branch, one file each run appends to, so
+#   main stays free of monitoring commits. The dashboard reads it from there.
+# - A site that is down is a result, not a failure: this workflow stays green and the alert is
+#   a GitHub issue (label monitoring), closed again when the site passes. The workflow fails only
+#   when the monitor itself breaks (no browser, no connection, an unreadable history file), so
+#   CI health does not turn red for somebody else's outage.
+# - The cron minute is off the hour on purpose: GitHub delays and drops runs queued at :00.
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # push the history to the monitoring-data branch
+  issues: write     # open and close the monitoring issues
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false   # a run that is saving must finish before the next one reads
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/synthetic-monitor/package-lock.json
+
+      - name: Install
+        working-directory: packages/synthetic-monitor
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: packages/synthetic-monitor
+        run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh"
+
+      # The data branch is checked out beside the code as a second working tree, or started
+      # empty the first time. Nothing here touches main.
+      - name: Check out the history
+        run: |
+          if git ls-remote --exit-code --heads origin monitoring-data >/dev/null; then
+            git fetch --depth 1 origin monitoring-data
+            git worktree add --detach monitoring-data FETCH_HEAD
+          else
+            git worktree add --orphan -b monitoring-data monitoring-data
+          fi
+
+      - name: Check the sites
+        working-directory: packages/synthetic-monitor
+        run: node src/run.ts --data "$GITHUB_WORKSPACE/monitoring-data"
+
+      # Saved before the alert step, so a problem with issues never loses a result.
+      - name: Save the history to the monitoring-data branch
+        working-directory: monitoring-data
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          [ -f README.md ] || printf '%s\n' '# monitoring-data' '' 'Written by the Monitor workflow in rizvihiqrar/qa-automation-platform. history.json is the last 30 days of checks; summary.json is what the dashboard shows. Do not edit by hand.' > README.md
+          git add -A
+          git commit -q -m "Monitor run $GITHUB_RUN_ID"
+          git push origin HEAD:refs/heads/monitoring-data
+
+      - name: Open and close the monitoring issues
+        working-directory: packages/synthetic-monitor
+        run: node src/alert.ts --data "$GITHUB_WORKSPACE/monitoring-data" --repo "$GITHUB_REPOSITORY" --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
