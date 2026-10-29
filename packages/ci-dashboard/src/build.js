@@ -9,7 +9,7 @@ import { spawnSync } from 'child_process';
 import { fetchRuns } from './github.js';
 import { computeMetrics } from './metrics.js';
 import { renderHtml } from './render.js';
-import { renderMonitoring } from './monitoring.js';
+import { loadMonitoring } from './monitoring.js';
 import { buildReports, renderReportsPage, tracesEntry } from './reports.js';
 import { writeTraceability, TRACED_SUITE, RESULTS_FILE } from './traceability.js';
 
@@ -71,17 +71,7 @@ try {
     }
   }
 
-  let monitoringHtml = '';
-  if (monitoringFile && fs.existsSync(monitoringFile)) {
-    try {
-      const summary = JSON.parse(fs.readFileSync(monitoringFile, 'utf8'));
-      monitoringHtml = renderMonitoring(summary, generatedAt);
-      fs.writeFileSync(path.join(out, 'monitoring.json'), JSON.stringify(summary, null, 2));
-    } catch (err) {
-      // A bad monitoring file must not stop the CI dashboard.
-      console.warn(`::warning::Left out the monitoring section: ${err instanceof Error ? err.message : err}`);
-    }
-  }
+  const monitoringHtml = loadMonitoring(monitoringFile, generatedAt, out);
 
   fs.writeFileSync(path.join(out, 'index.html'), renderHtml(metrics, { repo, generatedAt, reportsHref, tracesHref, monitoringHtml }));
   fs.writeFileSync(path.join(out, 'metrics.json'), JSON.stringify(metrics, null, 2));

@@ -1,7 +1,10 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeMetrics } from '../src/metrics.js';
-import { renderMonitoring, sparkline, STALE_AFTER_MS } from '../src/monitoring.js';
+import { loadMonitoring, renderMonitoring, sparkline, STALE_AFTER_MS } from '../src/monitoring.js';
 import { PAGE_STYLE, renderHtml } from '../src/render.js';
 
 const site = (over = {}) => ({
@@ -37,11 +40,46 @@ test('a slow site is marked Slow but is still Up', () => {
   assert.equal(renderMonitoring(summary([site()]), NOW).includes('Slow</span>'), false);
 });
 
-test('a monitor that has not reported for over 3 hours says the numbers are out of date', () => {
-  assert.equal(STALE_AFTER_MS, 3 * 3600_000);
-  const stale = renderMonitoring(summary([site()], '2026-10-29T08:00:00.000Z'), NOW);
-  assert.match(stale, /has not reported for more than 3 hours/);
-  assert.doesNotMatch(renderMonitoring(summary([site()], '2026-10-29T09:30:00.000Z'), NOW), /has not reported/); // exactly 3 hours
+test('a monitor that has not reported for over 90 minutes says the numbers may be out of date', () => {
+  assert.equal(STALE_AFTER_MS, 90 * 60_000);
+  const stale = renderMonitoring(summary([site()], '2026-10-29T10:59:00.000Z'), NOW); // 91 minutes
+  assert.match(stale, /has not reported for more than 90 minutes/);
+  assert.doesNotMatch(renderMonitoring(summary([site()], '2026-10-29T11:00:00.000Z'), NOW), /has not reported/); // exactly 90
+});
+
+test('a missing or unreadable check time counts as out of date, not as fresh', () => {
+  assert.match(renderMonitoring(summary([site()], undefined), NOW), /has not reported/);
+  assert.match(renderMonitoring(summary([site()], 'last Tuesday'), NOW), /has not reported/);
+  assert.match(renderMonitoring(summary([site()], undefined), NOW), /Last check unknown/);
+});
+
+test('a missing uptime shows a dash, and a status the page does not know is shown as it is', () => {
+  const html = renderMonitoring(summary([site({ uptimePct: undefined, status: 'paused' })]), NOW);
+  assert.doesNotMatch(html, /undefined|null/);
+  assert.match(html, /status warning[^>]*><span class="icon" aria-hidden="true">\?<\/span>paused/);
+});
+
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'dash-'));
+
+test('loadMonitoring: a good file gives the section and is published as monitoring.json', () => {
+  const dir = tmp();
+  const file = path.join(dir, 'summary.json');
+  fs.writeFileSync(file, JSON.stringify(summary([site()])));
+  assert.match(loadMonitoring(file, NOW, dir), /Uptime of public demo sites/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'monitoring.json'), 'utf8')).sites[0].site, 'saucedemo');
+});
+
+test('loadMonitoring: no file, a broken file or an empty summary leave the section out without failing', () => {
+  const dir = tmp();
+  const warnings = [];
+  assert.equal(loadMonitoring(null, NOW, dir), '');
+  assert.equal(loadMonitoring(path.join(dir, 'missing.json'), NOW, dir), '');
+  fs.writeFileSync(path.join(dir, 'broken.json'), '{"sites": [');
+  assert.equal(loadMonitoring(path.join(dir, 'broken.json'), NOW, dir, (m) => warnings.push(m)), '');
+  assert.match(warnings[0], /::warning::Left out the monitoring section/);
+  fs.writeFileSync(path.join(dir, 'empty.json'), '[]');
+  assert.equal(loadMonitoring(path.join(dir, 'empty.json'), NOW, dir), '');
+  assert.equal(fs.existsSync(path.join(dir, 'monitoring.json')), false, 'a file the page does not show is not published');
 });
 
 test('nothing to show when there is no summary or no site', () => {
