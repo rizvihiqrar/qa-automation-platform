@@ -1,0 +1,21 @@
+{
+  "name": "synthetic-monitor",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Synthetic monitoring: scheduled Playwright checks on public demo sites, with an uptime and response-time history, a down rule (2 failed runs in a row), a slow flag (3 times the site's own median) and a GitHub issue that opens and closes itself",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.ts && playwright test",
+    "test:unit": "node --test tests/unit/*.test.ts",
+    "monitor": "node src/run.ts",
+    "alert": "node src/alert.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2"
+  }
+}

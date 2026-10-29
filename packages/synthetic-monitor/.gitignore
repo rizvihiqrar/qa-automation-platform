@@ -1,0 +1,5 @@
+node_modules/
+playwright-report/
+test-results/
+# Where a local run keeps its history; the real history lives on the monitoring-data branch.
+data/
