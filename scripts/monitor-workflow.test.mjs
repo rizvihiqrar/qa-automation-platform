@@ -84,3 +84,21 @@ test('has a time limit, so a stalled run cannot hold the next ones', () => {
   assert.match(code, /timeout-minutes: (\d+)/);
   assert.ok(Number(code.match(/timeout-minutes: (\d+)/)[1]) <= 15);
 });
+
+// The Dashboard workflow shows the monitoring history (packages/ci-dashboard/src/monitoring.js).
+const dashboard = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'dashboard.yml'), 'utf8')
+  .split(/\r?\n/).filter((l) => !l.trim().startsWith('#')).join('\n');
+
+test('the dashboard is rebuilt on a schedule too, so the uptime section is never old', () => {
+  assert.ok(triggers(dashboard).includes('schedule'));
+  const hours = Number(dashboard.match(/cron:\s*'\d+ \*\/(\d+) \* \* \*'/)?.[1]);
+  assert.ok(hours >= 1 && hours <= 3, `rebuilt every ${hours} hours`);
+});
+
+test('the dashboard fetches the summary from monitoring-data, and a missing or broken one never fails the build', () => {
+  assert.match(dashboard, /git show FETCH_HEAD:summary\.json > monitoring-summary\.json/);
+  assert.match(dashboard, /if ! \{ git fetch --depth 1 origin monitoring-data && git show/, 'a failed fetch or show is caught (the step runs under bash -e)');
+  assert.match(dashboard, /elif \[ "\$found" -ne 2 \]; then\s+echo "::warning::/, 'only "no such branch" is silent');
+  assert.match(dashboard, /--monitoring monitoring-summary\.json/);
+  assert.ok(dashboard.indexOf('monitoring-summary.json') < dashboard.indexOf('node packages/ci-dashboard/src/build.js'));
+});

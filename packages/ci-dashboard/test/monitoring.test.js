@@ -48,14 +48,15 @@ test('a monitor that has not reported for over 90 minutes says the numbers may b
 });
 
 test('a missing or unreadable check time counts as out of date, not as fresh', () => {
-  assert.match(renderMonitoring(summary([site()], undefined), NOW), /has not reported/);
+  assert.match(renderMonitoring({ sites: [site()] }, NOW), /has not reported/);
   assert.match(renderMonitoring(summary([site()], 'last Tuesday'), NOW), /has not reported/);
-  assert.match(renderMonitoring(summary([site()], undefined), NOW), /Last check unknown/);
+  assert.match(renderMonitoring({ sites: [site()] }, NOW), /Last check unknown/);
 });
 
 test('a missing uptime shows a dash, and a status the page does not know is shown as it is', () => {
   const html = renderMonitoring(summary([site({ uptimePct: undefined, status: 'paused' })]), NOW);
   assert.doesNotMatch(html, /undefined|null/);
+  assert.match(html, /<td class="num">—<\/td><td class="num">2100 ms/); // uptime is a dash
   assert.match(html, /status warning[^>]*><span class="icon" aria-hidden="true">\?<\/span>paused/);
 });
 
