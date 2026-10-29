@@ -281,6 +281,7 @@ jobs:
 
       - name: ZAP scan
         run: |
+          bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet ghcr.io/zaproxy/zaproxy:2.17.0
           mkdir -p zap-report && chmod 777 zap-report
           cp ../api-drift-checker/spec/qa-practice-api.openapi.json zap/rules.tsv zap-report/
           docker run --rm --network host -v "$PWD/zap-report:/zap/wrk:rw" -e ZAP_AUTH_HEADER_VALUE \
@@ -328,8 +329,12 @@ jobs:
           cache: npm
           cache-dependency-path: packages/llm-judge-check/package-lock.json
 
+      # Only the image pull is retried (Docker Hub answers 502 now and then: CI run 40954762292); a real
+      # compose error then fails the single `up` at once, with its own message.
       - name: Start Langfuse
-        run: docker compose -f langfuse/docker-compose.yml --env-file langfuse/local.env up -d --quiet-pull
+        run: |
+          bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker compose -f langfuse/docker-compose.yml --env-file langfuse/local.env pull --quiet
+          docker compose -f langfuse/docker-compose.yml --env-file langfuse/local.env up -d --quiet-pull
 
       - run: npm ci
 
