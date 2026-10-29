@@ -2,6 +2,7 @@
   "name": "contract-testing-demo",
   "version": "1.0.0",
   "description": "Consumer-driven contract testing with Pact.js — defines API contracts between a frontend consumer and a REST API provider",
+  "engines": { "node": ">=18" },
   "scripts": {
     "test:consumer": "jest consumer/",
     "test:provider": "jest provider/",
@@ -10,8 +11,7 @@
   },
   "devDependencies": {
     "@pact-foundation/pact": "^12.0.0",
-    "jest":                  "^30.5.2",
-    "node-fetch":            "^2.7.0"
+    "jest":                  "^30.5.2"
   },
   "//overrides": "Pact 12 pins versions with known high-severity issues; these are the fixed releases in the same major.",
   "overrides": {
