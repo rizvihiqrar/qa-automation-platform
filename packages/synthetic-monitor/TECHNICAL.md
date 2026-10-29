@@ -131,7 +131,7 @@ Each run installs the browser through the shared install script, checks out the 
 
 The [Dashboard workflow](../../.github/workflows/dashboard.yml) fetches `summary.json` from that branch and rebuilds every 3 hours as well as after CI, so the section is never more than 3 hours old. Its rule for "the monitor has stopped" is 90 minutes without a report, checked when the page is built.
 
-[CI health](../../scripts/ci-health.mjs) watches Monitor: failing, or no run for 3 hours, is a problem. [CI recheck](../../.github/workflows/ci-recheck.yml) re-runs a failed Monitor once. A down site is neither: it is a result and an issue.
+[CI health](../../scripts/ci-health.mjs) watches Monitor: failing, or no run for 3 hours, is a problem. (The dashboard says "stopped" sooner, at 90 minutes, because it only asks whether the numbers on the page are fresh; CI health allows for GitHub delaying scheduled runs before it raises an issue.) [CI recheck](../../.github/workflows/ci-recheck.yml) re-runs a failed Monitor once. A down site is neither: it is a result and an issue.
 
 The checks that keep this true are in [`scripts/monitor-workflow.test.mjs`](../../scripts/monitor-workflow.test.mjs) (15 of them: schedule and cron, no hidden failures, the only push goes to `monitoring-data`, save before alert, one commit, only a missing branch starts a history, the dashboard step) and in [`scripts/ci-health.test.mjs`](../../scripts/ci-health.test.mjs) (every scheduled workflow must be watched).
 

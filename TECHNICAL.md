@@ -81,7 +81,7 @@ The `.github/workflows` folders inside `matrix-build-demo` and `pipeline-templat
 
 ## CI workflows
 
-Nine workflows live in [`.github/workflows`](.github/workflows). Only `ci.yml` runs the tests; the others read its results.
+Eleven workflows live in [`.github/workflows`](.github/workflows). Only `ci.yml` runs the tests; the others read its results (or, for Monitor, watch public sites).
 
 | Workflow | Runs when | What it does |
 |---|---|---|

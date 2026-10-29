@@ -19,12 +19,12 @@ import { onMain } from './run-select.mjs';
 const HOUR = 3600_000;
 
 // Scheduled workflows (and the Dashboard, rebuilt after every CI run on main and every
-// 3 hours) and how long after their last run they count as overdue. Monitor runs every
+// 3 hours: overdue after 6) and how long after their last run they count as overdue. Monitor runs every
 // 30 minutes, so 3 hours is six missed runs: a monitor that stopped (GitHub also switches
 // schedules off after 60 days without activity) must not look fine.
 // scripts/ci-health.test.mjs fails when a scheduled workflow is missing from this list.
 export const WATCH = [
-  { repo: 'rizvihiqrar/qa-automation-platform', overdueAfterHours: { CI: 26, Dashboard: 26, Mutation: 8 * 24, Monitor: 3 } },
+  { repo: 'rizvihiqrar/qa-automation-platform', overdueAfterHours: { CI: 26, Dashboard: 6, Mutation: 8 * 24, Monitor: 3 } },
   { repo: 'rizvihiqrar/cicd-pipeline-demo', overdueAfterHours: {} },
   { repo: 'rizvihiqrar/rizvihiqrar', overdueAfterHours: { 'Refresh screenshots': 8 * 24 } },
 ];
