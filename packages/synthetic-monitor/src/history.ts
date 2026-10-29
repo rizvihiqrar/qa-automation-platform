@@ -52,7 +52,8 @@ const DAY = 86_400_000;
 /** Adds a run and drops anything older than KEEP_DAYS before it. */
 export function append(history: History, run: Run, keepDays = KEEP_DAYS): History {
   const cutoff = Date.parse(run.t) - keepDays * DAY;
-  return { runs: [...history.runs, run].filter((r) => Date.parse(r.t) >= cutoff) };
+  // An unreadable time compares false either way, so such a run is kept rather than wiping the history.
+  return { runs: [...history.runs, run].filter((r) => !(Date.parse(r.t) < cutoff)) };
 }
 
 export function median(values: number[]): number | null {
@@ -75,7 +76,7 @@ export function summarize(history: History): SiteSummary[] {
 
     // Slow is judged against the passing runs before this one, so a very slow load cannot lift its own median.
     const before = seen.slice(0, -1).filter((s) => s.ok && s.ms !== null).map((s) => s.ms!);
-    const medianMs = median(before.length ? before : seen.filter((s) => s.ok && s.ms !== null).map((s) => s.ms!));
+    const medianMs = median(before);
     const slow = last.ok && last.ms !== null && before.length >= MIN_SAMPLES && medianMs !== null && last.ms > SLOW_FACTOR * medianMs;
 
     return {

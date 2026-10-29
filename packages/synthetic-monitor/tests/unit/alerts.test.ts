@@ -54,10 +54,23 @@ test('applyAlerts lists the open monitoring issues, then opens and closes throug
   };
   applyAlerts([summary('saucedemo', 'down'), summary('playwright.dev', 'up')], gh, 'o/r', 'https://run');
   assert.deepEqual(calls[0]!.slice(0, 7), ['issue', 'list', '-R', 'o/r', '--label', 'monitoring', '--state']);
-  const create = calls.find((c) => c[1] === 'create')!;
+  const create = calls.find((c) => c[0] === 'issue' && c[1] === 'create')!;
   assert.ok(create.includes('Monitor: saucedemo is down') && create.includes('monitoring'));
   assert.ok(create.some((a) => a.includes('https://run')));
   const close = calls.find((c) => c[1] === 'close')!;
   assert.equal(close[2], '8');
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 4);
+  assert.ok(calls.findIndex((c) => c[0] === 'label') < calls.findIndex((c) => c[0] === 'issue' && c[1] === 'create'), 'the label is made before an issue uses it');
+});
+
+test('the label is only made when an issue is going to be opened', () => {
+  const calls: string[][] = [];
+  applyAlerts([summary('saucedemo', 'up')], (args) => { calls.push(args); return '[]'; }, 'o/r');
+  assert.deepEqual(calls.map((c) => c[0]), ['issue']);
+});
+
+test('an open issue for a site that is no longer watched is closed', () => {
+  const [a] = planAlerts([summary('playwright.dev', 'up')], [{ number: 9, title: issueTitle('old-site') }]);
+  assert.deepEqual(a && { type: a.type, number: a.type === 'close' ? a.number : null }, { type: 'close', number: 9 });
+  assert.match(a!.type === 'close' ? a!.comment : '', /no longer monitored/);
 });

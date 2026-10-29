@@ -25,7 +25,8 @@ async function attempt(browser: Browser, site: Site, timeoutMs: number): Promise
     if (response.status() >= 400) return { ok: false, error: `HTTP ${response.status()}` };
     const title = await page.title();
     if (!site.title.test(title)) return { ok: false, error: `title was "${title.slice(0, 80)}", expected ${site.title}` };
-    await page.locator(site.selector).first().waitFor({ state: 'visible', timeout: timeoutMs });
+    // One deadline for the whole attempt: the element gets what the load left of it.
+    await page.locator(site.selector).first().waitFor({ state: 'visible', timeout: Math.max(1, timeoutMs - ms) });
     return { ok: true, ms };
   } catch (err) {
     return { ok: false, error: shorten(err instanceof Error ? err.message : String(err)) };

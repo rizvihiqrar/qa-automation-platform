@@ -45,5 +45,11 @@ export function planAlerts(summaries: SiteSummary[], openIssues: OpenIssue[], ru
       }
     }
   }
+  // An issue for a site that is no longer watched (renamed or removed) would never see a recovery.
+  const watched = new Set(summaries.map((s) => issueTitle(s.site)));
+  for (const issue of openIssues) {
+    const site = issue.title.match(/^Monitor: (.+) is down$/)?.[1];
+    if (site && !watched.has(issue.title)) actions.push({ type: 'close', site, number: issue.number, comment: `${site} is no longer monitored. Closing.` });
+  }
   return actions;
 }

@@ -92,6 +92,19 @@ test('the history keeps 30 days: older runs are dropped when a new one is added'
   assert.deepEqual(kept, [edge.t, fresh.t]);
 });
 
+test('a run with an unreadable time does not wipe the history', () => {
+  const kept = append(history(pass(1), pass(2)), { t: 'not a date', results: { demo: pass(3) } }).runs;
+  assert.equal(kept.length, 3);
+  const first = history(pass(1)).runs[0]!;
+  assert.equal(append({ runs: [first, { ...first, t: 'garbage' }] }, run(1, pass(2))).runs.length, 3);
+});
+
+test('the first run has no median yet: it is not judged against itself', () => {
+  const s = one(history(pass(400)));
+  assert.equal(s.medianMs, null);
+  assert.equal(s.latestMs, 400);
+});
+
 test('append does not change the history it was given', () => {
   const before = history(pass(1));
   append(before, run(1, pass(2)));
