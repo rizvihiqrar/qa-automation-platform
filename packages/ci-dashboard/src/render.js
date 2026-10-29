@@ -76,6 +76,11 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .status { white-space: nowrap; }
 .status .icon { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700; margin-right: 6px; }
 .status.good .icon { background: var(--good); } .status.warning .icon { background: var(--warning); color: #0b0b0b; } .status.critical .icon { background: var(--critical); }
+svg.spark { width: 160px; height: 28px; }
+.spark path { fill: none; stroke: var(--series-1); stroke-width: 1.5; stroke-linejoin: round; }
+.spark circle { fill: var(--series-1); }
+.spark .miss { fill: var(--critical); }
+.stale { display: block; white-space: normal; margin: 8px 0; font-size: 14px; }
 details { margin-top: 8px; } summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
 footer { color: var(--text-muted); font-size: 13px; margin-top: 24px; }`;
 
@@ -140,7 +145,7 @@ export function statusOf(p) {
   return { cls: 'good', icon: '✓', label: 'Stable' };
 }
 
-export function renderHtml(metrics, { repo, generatedAt, reportsHref = null, tracesHref = null }) {
+export function renderHtml(metrics, { repo, generatedAt, reportsHref = null, tracesHref = null, monitoringHtml = '' }) {
   const { overall, packages, trend } = metrics;
   const tiles = [
     [`CI runs on ${overall.branch}`, String(overall.runs)],
@@ -185,6 +190,8 @@ ${PAGE_STYLE}
   </section>
 
   ${barChart({ title: 'Median job time by package', subtitle: 'Slowest first; hover or focus a bar for the 90th percentile', rows: byDuration })}
+
+  ${monitoringHtml}
 
   <section class="card wide">
     <h2>Packages</h2>

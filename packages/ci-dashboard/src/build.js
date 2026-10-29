@@ -9,6 +9,7 @@ import { spawnSync } from 'child_process';
 import { fetchRuns } from './github.js';
 import { computeMetrics } from './metrics.js';
 import { renderHtml } from './render.js';
+import { renderMonitoring } from './monitoring.js';
 import { buildReports, renderReportsPage, tracesEntry } from './reports.js';
 import { writeTraceability, TRACED_SUITE, RESULTS_FILE } from './traceability.js';
 
@@ -25,6 +26,9 @@ const reportsRun = Number(arg('--reports-run', '0'));
 // --plan <test-plan.md>: also publish the traceability matrix under <out>/reports/traceability,
 // with results from that run's qa-practice-api report. See src/traceability.js.
 const planFile = arg('--plan', null);
+// --monitoring <summary.json>: what packages/synthetic-monitor wrote to the monitoring-data branch;
+// shown as a section on the page and published as <out>/monitoring.json. Missing or unreadable: left out.
+const monitoringFile = arg('--monitoring', null);
 
 let token = process.env.GITHUB_TOKEN;
 if (!token) {
@@ -67,7 +71,19 @@ try {
     }
   }
 
-  fs.writeFileSync(path.join(out, 'index.html'), renderHtml(metrics, { repo, generatedAt, reportsHref, tracesHref }));
+  let monitoringHtml = '';
+  if (monitoringFile && fs.existsSync(monitoringFile)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(monitoringFile, 'utf8'));
+      monitoringHtml = renderMonitoring(summary, generatedAt);
+      fs.writeFileSync(path.join(out, 'monitoring.json'), JSON.stringify(summary, null, 2));
+    } catch (err) {
+      // A bad monitoring file must not stop the CI dashboard.
+      console.warn(`::warning::Left out the monitoring section: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  fs.writeFileSync(path.join(out, 'index.html'), renderHtml(metrics, { repo, generatedAt, reportsHref, tracesHref, monitoringHtml }));
   fs.writeFileSync(path.join(out, 'metrics.json'), JSON.stringify(metrics, null, 2));
   console.log(`${metrics.overall.runs} runs, ${metrics.overall.packages} packages, ${metrics.overall.flakyJobs} flaky job result(s) -> ${path.join(out, 'index.html')}`);
 } catch (err) {
