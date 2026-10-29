@@ -5,7 +5,7 @@
 
 const { PactV3, MatchersV3 } = require('@pact-foundation/pact');
 const { like, eachLike, integer, string } = MatchersV3;
-const fetch = require('node-fetch');
+// fetch is built into Node 18 and later, so the demo needs no HTTP client dependency.
 const path = require('path');
 
 const provider = new PactV3({
