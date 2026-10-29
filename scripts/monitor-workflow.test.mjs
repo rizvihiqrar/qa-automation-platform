@@ -25,7 +25,7 @@ test('the schedule is every 30 minutes, off the hour', () => {
   const cron = code.match(/cron:\s*'([^']+)'/)?.[1];
   assert.match(cron ?? '', /^\d+,\d+ \* \* \* \*$/, 'two minutes an hour');
   const [a, b] = cron.split(' ')[0].split(',').map(Number);
-  assert.equal(b - a, 30);
+  assert.equal((((b - a) % 60) + 60) % 60, 30, 'the two minutes are half an hour apart');
   assert.ok(a !== 0 && b !== 0, 'GitHub delays and drops runs queued at :00');
 });
 
@@ -49,12 +49,30 @@ test('a down site cannot fail the workflow: no step hides a failure and none tur
 test('pushes only to the monitoring-data branch, never to main', () => {
   const pushes = code.split('\n').filter((l) => /git push/.test(l));
   assert.equal(pushes.length, 1);
-  assert.match(pushes[0], /refs\/heads\/monitoring-data$/);
+  assert.match(pushes[0], /git push --force origin HEAD:refs\/heads\/monitoring-data$/);
   assert.doesNotMatch(code, /git (checkout|switch) main|refs\/heads\/main/);
 });
 
 test('the history is saved before the alert step, so an issue problem never loses a result', () => {
-  assert.ok(at('node src/run.ts') < at('git push') && at('git push') < at('node src/alert.ts'));
+  assert.ok(at('node src/run.ts') < at('git push --force') && at('git push --force') < at('node src/alert.ts'));
+});
+
+test('the alert step still runs when saving failed, but not when the check itself broke', () => {
+  assert.match(code, /id: check/);
+  assert.match(code, /if: always\(\) && steps\.check\.outcome == 'success'/);
+});
+
+test('only a missing branch starts a new history: any other lookup failure stops the run', () => {
+  assert.match(code, /elif \[ "\$found" -eq 2 \]; then\s+git worktree add --orphan/);
+  assert.match(code, /else\s+echo "::error::[^\n]*\s+exit "\$found"/);
+});
+
+test('the branch keeps one commit: each run replaces the last', () => {
+  assert.match(code, /git commit -q --amend/);
+});
+
+test('a fork does not run its own copy', () => {
+  assert.match(code, /if: github\.repository == 'rizvihiqrar\/qa-automation-platform'/);
 });
 
 test('installs the browser through the shared script', () => {
