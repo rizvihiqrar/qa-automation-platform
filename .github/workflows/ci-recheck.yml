@@ -14,7 +14,7 @@ name: CI recheck
 # Never more than one re-run: re-running until green would hide real failures.
 on:
   workflow_run:
-    workflows: [CI, Dashboard, Flaky tests, Mutation, CI health]
+    workflows: [CI, Dashboard, Flaky tests, Mutation, CI health, Monitor]
     types: [completed]
     branches: [main]
   workflow_dispatch:
