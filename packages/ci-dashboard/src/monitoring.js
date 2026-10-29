@@ -45,7 +45,7 @@ export function sparkline(series, { width = 160, height = 28 } = {}) {
 }
 
 /**
- * @param {{ generatedAt: string, sites: Array<any> } | null} summary what the monitor wrote
+ * @param {{ generatedAt?: string, sites: Array<any> } | null} summary what the monitor wrote
  * @param {string} now when the dashboard is being built (ISO)
  */
 export function renderMonitoring(summary, now) {
