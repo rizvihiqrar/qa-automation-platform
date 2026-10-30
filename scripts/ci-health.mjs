@@ -146,12 +146,27 @@ export function report(results, now, packages = []) {
   return { problems, markdown: lines.join('\n') + '\n' };
 }
 
-async function api(url, token) {
-  const res = await fetch(`https://api.github.com${url}`, {
-    headers: { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
-  if (!res.ok) throw new Error(`${url}: ${res.status} ${await res.text()}`);
-  return res.json();
+// A dropped connection or a 5xx from GitHub is retried a few times: one such blip on
+// 2026-10-30 ("fetch failed: other side closed") failed the whole daily check.
+// A request that hangs is cut off after timeoutMs and retried too.
+export async function api(url, token, { fetchImpl = fetch, tries = 4, waitMs = 2000, timeoutMs = 30000 } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    let res;
+    try {
+      res = await fetchImpl(`https://api.github.com${url}`, {
+        headers: { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      if (attempt >= tries) throw err;
+    }
+    if (res && !(res.status >= 500 && attempt < tries)) {
+      if (!res.ok) throw new Error(`${url}: ${res.status} ${await res.text()}`);
+      return res.json();
+    }
+    await res?.text(); // free the connection before trying again
+    await new Promise((r) => setTimeout(r, waitMs * attempt));
+  }
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

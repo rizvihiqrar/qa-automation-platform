@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { WATCH, assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
+import { WATCH, api, assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -166,4 +166,42 @@ test('the workflow runs after CI on main without emailing, and keeps the status 
   assert.match(status, /^- name: Post the daily status\s+if: \$\{\{ github\.event_name != 'workflow_run' \}\}/);
   assert.match(status, /--state all/);
   assert.match(status, /gh issue close "\$status"/);
+});
+
+test('api retries a dropped connection and a 5xx, then returns the data', async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls++;
+    if (calls === 1) throw new TypeError('fetch failed');
+    if (calls === 2) return { ok: false, status: 502, text: async () => 'bad gateway' };
+    return { ok: true, status: 200, json: async () => ({ fine: true }) };
+  };
+  assert.deepEqual(await api('/x', 't', { fetchImpl, waitMs: 0 }), { fine: true });
+  assert.equal(calls, 3);
+});
+
+test('api gives up after the last try and does not retry a 404', async () => {
+  let calls = 0;
+  const down = async () => { calls++; throw new TypeError('fetch failed'); };
+  await assert.rejects(api('/x', 't', { fetchImpl: down, tries: 3, waitMs: 0 }), /fetch failed/);
+  assert.equal(calls, 3);
+  calls = 0;
+  const missing404 = async () => { calls++; return { ok: false, status: 404, text: async () => 'nope' }; };
+  await assert.rejects(api('/x', 't', { fetchImpl: missing404, waitMs: 0 }), /404/);
+  assert.equal(calls, 1);
+});
+
+test('api throws the 5xx body when the last try is still a 5xx, and waits longer each time', async () => {
+  const waits = [];
+  const realSet = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms) => { waits.push(ms); return realSet(fn, 0); };
+  try {
+    let calls = 0;
+    const bad = async () => { calls++; return { ok: false, status: 503, text: async () => 'unavailable' }; };
+    await assert.rejects(api('/x', 't', { fetchImpl: bad, tries: 3, waitMs: 10 }), /503 unavailable/);
+    assert.equal(calls, 3);
+    assert.deepEqual(waits, [10, 20]);
+  } finally {
+    globalThis.setTimeout = realSet;
+  }
 });
