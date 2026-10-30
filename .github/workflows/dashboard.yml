@@ -42,6 +42,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
+          # A dropped connection or HTTP 5xx from api.github.com must not fail the job (CI health run
+          # 41061482935). Creating an issue is not retried: a lost reply would leave two issues.
+          gh() { if [ "$1 $2" = "issue create" ]; then command gh "$@"; else bash "$GITHUB_WORKSPACE/scripts/retry.sh" command gh "$@"; fi; }
           # Filtered here, not by GitHub: see flaky.yml and scripts/workflow-run-list.test.mjs.
           [ -n "$RUN_ID" ] || RUN_ID=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --limit 100 --json databaseId,headBranch,status -q '[.[] | select(.headBranch == "main" and .status == "completed")][0].databaseId')
           echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"

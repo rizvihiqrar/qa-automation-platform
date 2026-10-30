@@ -46,6 +46,9 @@ jobs:
     steps:
       - name: Re-run the failed jobs once
         run: |
+          # A dropped connection or HTTP 5xx from api.github.com must not fail the job (CI health run
+          # 41061482935). Creating an issue is not retried: a lost reply would leave two issues.
+          gh() { if [ "$1 $2" = "issue create" ]; then command gh "$@"; else bash "$GITHUB_WORKSPACE/scripts/retry.sh" command gh "$@"; fi; }
           gh run rerun ${{ github.event.workflow_run.id }} --failed -R "$GITHUB_REPOSITORY"
           echo "${{ github.event.workflow_run.name }} run ${{ github.event.workflow_run.id }} failed; failed jobs re-run once to tell a real failure from a flaky one." >> "$GITHUB_STEP_SUMMARY"
 
@@ -73,6 +76,9 @@ jobs:
       - name: Post on the ci-health issue
         if: env.POST == 'true'
         run: |
+          # A dropped connection or HTTP 5xx from api.github.com must not fail the job (CI health run
+          # 41061482935). Creating an issue is not retried: a lost reply would leave two issues.
+          gh() { if [ "$1 $2" = "issue create" ]; then command gh "$@"; else bash "$GITHUB_WORKSPACE/scripts/retry.sh" command gh "$@"; fi; }
           gh label create ci-health --color B60205 --description "A workflow on main is failing or overdue" --force
           open=$(gh issue list --label ci-health --state open --json number -q '.[0].number')
           if [ -z "$open" ]; then

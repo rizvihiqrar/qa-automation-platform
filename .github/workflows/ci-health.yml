@@ -55,6 +55,9 @@ jobs:
         env:
           PROBLEMS: ${{ steps.check.outcome == 'failure' }}
         run: |
+          # A dropped connection or HTTP 5xx from api.github.com must not fail the job (CI health run
+          # 41061482935). Creating an issue is not retried: a lost reply would leave two issues.
+          gh() { if [ "$1 $2" = "issue create" ]; then command gh "$@"; else bash "$GITHUB_WORKSPACE/scripts/retry.sh" command gh "$@"; fi; }
           gh label create ci-health --color B60205 --description "A workflow on main is failing or overdue" --force
           open=$(gh issue list --label ci-health --state open --json number -q '.[0].number')
           if [ "$PROBLEMS" = "true" ]; then
@@ -75,6 +78,9 @@ jobs:
       - name: Post the daily status
         if: ${{ github.event_name != 'workflow_run' }}
         run: |
+          # A dropped connection or HTTP 5xx from api.github.com must not fail the job (CI health run
+          # 41061482935). Creating an issue is not retried: a lost reply would leave two issues.
+          gh() { if [ "$1 $2" = "issue create" ]; then command gh "$@"; else bash "$GITHUB_WORKSPACE/scripts/retry.sh" command gh "$@"; fi; }
           gh label create ci-status --color 0E8A16 --description "Daily CI status report" --force
           status=$(gh issue list --label ci-status --state all --json number -q '.[0].number')
           if [ -z "$status" ]; then
