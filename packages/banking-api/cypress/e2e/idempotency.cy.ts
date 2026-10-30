@@ -62,11 +62,15 @@ describe('one movement per filled form', () => {
       cy.get(`${form('deposit')} [data-cy=submit]`).click();
       cy.get(`${form('deposit')} [data-cy=status]`).should('have.text', 'Deposited 5.00 CAD.');
       cy.get(`${form('deposit')} [data-cy=error]`).should('be.empty');
-      cy.get('@deposit.all').should('have.length', 2).then((calls) => {
-        const [first, second] = calls as unknown as { request: { headers: Record<string, string> }; response: { headers: Record<string, string> } }[];
-        expect(first!.request.headers['idempotency-key'], 'a key is sent').to.match(/^[0-9a-f-]{36}$/);
-        expect(second!.request.headers['idempotency-key'], 'the retry reuses it').to.equal(first!.request.headers['idempotency-key']);
-        expect(second!.response.headers['idempotent-replayed']).to.equal('true');
+      // A call is listed as soon as it is sent and its reply is added later, so the reply is
+      // asserted inside should(), which retries, not read after it.
+      type Sent = { request: { headers: Record<string, string> }; response?: { headers: Record<string, string> } };
+      cy.get('@deposit.all').should((all) => {
+        const sent = all as unknown as Sent[];
+        expect(sent).to.have.length(2);
+        expect(sent[1]!.response?.headers['idempotent-replayed'], 'the retry is a replay').to.equal('true');
+        expect(sent[0]!.request.headers['idempotency-key'], 'a key is sent').to.match(/^[0-9a-f-]{36}$/);
+        expect(sent[1]!.request.headers['idempotency-key'], 'the retry reuses it').to.equal(sent[0]!.request.headers['idempotency-key']);
       });
       cy.get('[data-cy=entry]').should('have.length', 1);
       cy.statementOf(id).its('balance').should('equal', '5.00');
