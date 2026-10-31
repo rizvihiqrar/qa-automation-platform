@@ -7,13 +7,6 @@
     "review_by": "2027-01-18"
   },
   {
-    "package": "postman-api-collection",
-    "advisory": "GHSA-86w9-cpqp-85rv",
-    "library": "node-forge",
-    "reason": "RSA PKCS#1 v1.5 signature verification, inside Newman's runtime for certificate and signing auth types. The collection uses neither (one bearer header). 1.4.0, the latest release, is still affected.",
-    "review_by": "2027-01-18"
-  },
-  {
     "package": "llm-judge-check",
     "advisory": "GHSA-c475-qrg2-pj4r",
     "library": "basic-ftp",
