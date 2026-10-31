@@ -241,7 +241,9 @@ test('every repo\'s rows go through settle before the report is built', () => {
   assert.match(src, /results\.push\(\{ repo, rows: settle\(rows\) \}\)/);
 });
 
-test('the reactive names match the workflow files', () => {
-  const yml = fs.readFileSync(new URL('../.github/workflows/ci-recheck.yml', import.meta.url), 'utf8');
-  for (const name of REACTIVE) assert.match(yml, new RegExp(`^name: ${name}\\s*$`, 'm'), `${name} must be the name of a workflow file`);
+test('the reactive names match a workflow file', () => {
+  const dir = new URL('../.github/workflows/', import.meta.url);
+  const names = fs.readdirSync(dir).filter((f) => f.endsWith('.yml'))
+    .map((f) => fs.readFileSync(new URL(f, dir), 'utf8').match(/^name:\s*(.+?)\s*$/m)?.[1]);
+  for (const name of REACTIVE) assert.ok(names.includes(name), `${name} must be the name of a workflow file`);
 });
