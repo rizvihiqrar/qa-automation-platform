@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { WATCH, api, assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, report, rerunRow, reruns, triggers } from './ci-health.mjs';
+import { WATCH, api, assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, REACTIVE, report, rerunRow, reruns, settle, triggers } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -204,4 +204,44 @@ test('api throws the 5xx body when the last try is still a 5xx, and waits longer
   } finally {
     globalThis.setTimeout = realSet;
   }
+});
+
+// 2026-10-31: CI recheck confirmed a failure, CI went green after the fix, and the ci-health
+// issue stayed open because nothing re-runs CI recheck and its latest run was still the failure.
+const failingRecheck = { workflow: 'CI recheck', state: 'failing', conclusion: 'failure', url: 'https://example.test/r', at: '2026-10-31T09:28:00Z', event: 'workflow_run', passed: 4, total: 5 };
+const okRow = (workflow) => ({ workflow, state: 'ok', conclusion: 'success' });
+
+test('a failed CI recheck stops counting once every other workflow is green', () => {
+  const rows = settle([okRow('CI'), okRow('Dashboard'), failingRecheck]);
+  const recheck = rows.find((r) => r.workflow === 'CI recheck');
+  assert.equal(recheck.state, 'resolved');
+  assert.ok(!PROBLEMS.includes(recheck.state));
+  const { problems, markdown } = report([{ repo: 'me/a', rows }], new Date(NOW));
+  assert.equal(problems.length, 0);
+  assert.match(markdown, /^All green[\s\S]*\| CI recheck \| resolved: diagnosed a failure on main/);
+});
+
+test('a failed CI recheck stays failing while anything else is still a problem', () => {
+  for (const bad of ['failing', 'overdue', 'missing', 're-run']) {
+    const rows = settle([{ ...okRow('CI'), state: bad }, failingRecheck]);
+    assert.equal(rows.find((r) => r.workflow === 'CI recheck').state, 'failing', bad);
+  }
+});
+
+test('only the reactive workflow is settled, and only its failures', () => {
+  const rows = settle([{ ...okRow('CI'), state: 'failing' }, okRow('Dashboard')]);
+  assert.equal(rows[0].state, 'failing', 'a real failing workflow is never settled');
+  assert.deepEqual(settle([okRow('CI recheck')]), [okRow('CI recheck')], 'a passing recheck is left alone');
+  const lookalike = settle([okRow('CI'), { ...failingRecheck, workflow: 'Monitor' }]);
+  assert.equal(lookalike[1].state, 'failing', 'a workflow that merely failed is not reactive');
+});
+
+test('every repo\'s rows go through settle before the report is built', () => {
+  const src = fs.readFileSync(new URL('./ci-health.mjs', import.meta.url), 'utf8');
+  assert.match(src, /results\.push\(\{ repo, rows: settle\(rows\) \}\)/);
+});
+
+test('the reactive names match the workflow files', () => {
+  const yml = fs.readFileSync(new URL('../.github/workflows/ci-recheck.yml', import.meta.url), 'utf8');
+  for (const name of REACTIVE) assert.match(yml, new RegExp(`^name: ${name}\\s*$`, 'm'), `${name} must be the name of a workflow file`);
 });

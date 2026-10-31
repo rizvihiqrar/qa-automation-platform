@@ -74,6 +74,23 @@ export function assess(name, runs, overdueAfterHours, now, { manual = false } = 
 
 export const PROBLEMS = ['failing', 'overdue', 'missing', 're-run'];
 
+// Workflows that only run in reaction to another workflow's failure. Their latest run is a
+// diagnosis, not the state of main, and nothing re-runs them once the failure is fixed.
+// 2026-10-31: CI recheck confirmed the audit failure, CI went green after the fix, and the
+// ci-health issue stayed open for good because CI recheck's latest run was still that failure.
+export const REACTIVE = ['CI recheck'];
+
+// A reactive workflow's failure stops counting once every other workflow in the repo is
+// free of problems: whatever it diagnosed has been fixed. While anything else is still a
+// problem it stays failing, so a confirmed failure is never hidden.
+export function settle(rows) {
+  const others = rows.filter((r) => !REACTIVE.includes(r.workflow));
+  if (others.some((r) => PROBLEMS.includes(r.state))) return rows;
+  return rows.map((r) => REACTIVE.includes(r.workflow) && r.state === 'failing'
+    ? { ...r, state: 'resolved', detail: 'diagnosed a failure on main; every other workflow is green now' }
+    : r);
+}
+
 // Runs on main whose latest attempt started within the window and that needed more
 // than one attempt. The daily check looks back 25 hours, so a late start misses nothing.
 export const RERUN_WINDOW_HOURS = 25;
@@ -132,7 +149,7 @@ export function report(results, now, packages = []) {
     '| Repo | Workflow | State | Passed on main | Last run on main |',
     '|---|---|---|---|---|',
     ...results.flatMap(({ repo, rows }) => rows.map((r) => {
-      const state = PROBLEMS.includes(r.state) ? `**${r.state}**${r.detail ? `: ${r.detail}` : ''}` : r.state === 'fixed' ? `fixed: ${r.detail}` : r.state;
+      const state = PROBLEMS.includes(r.state) ? `**${r.state}**${r.detail ? `: ${r.detail}` : ''}` : ['fixed', 'resolved'].includes(r.state) ? `${r.state}: ${r.detail}` : r.state;
       const last = r.url ? `[${r.conclusion}, ${r.at.slice(0, 16).replace('T', ' ')} UTC](${r.url}) (${r.event})` : (r.detail ?? '');
       return `| ${repo.split('/')[1]} | ${r.workflow} | ${state} | ${passRate(r.passed, r.total)} | ${last} |`;
     })),
@@ -200,7 +217,7 @@ if (isMain) {
       }
     }
     rows.push(...missing(active.map((w) => w.name), overdueAfterHours));
-    results.push({ repo, rows });
+    results.push({ repo, rows: settle(rows) });
   }
   // Per-package pass rates from the published dashboard; the report still goes out without them.
   const packages = await fetch(METRICS_URL).then((r) => (r.ok ? r.json() : {})).then((m) => m.packages ?? []).catch(() => []);
