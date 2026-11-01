@@ -3,6 +3,7 @@ import { seedAdmin } from './db/seed.ts';
 
 const admin = await seedAdmin();
 if (admin) console.log(`Admin account: ${admin.email}`);
+console.log(`Store: ${process.env.DATABASE_URL ? 'Postgres (DATABASE_URL)' : 'in memory'}`);
 
 const PORT = process.env.PORT || 4000;
 const server = app.listen(PORT, () => console.log(`qa-practice-api running on http://localhost:${PORT}`));

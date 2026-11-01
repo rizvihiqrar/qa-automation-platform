@@ -88,6 +88,9 @@ jobs:
           - { package: mutation-testing-demo,    browsers: false, command: npm test && npm run test:mutation }
           # API
           - { package: qa-practice-api,          browsers: false, command: npm test && npm run test:properties }
+          # Day 49: the same suite on a real Postgres that Testcontainers starts in Docker,
+          # plus the race tests' locks and the Postgres-only checks in tests/postgres
+          - { package: qa-practice-api, name: qa-practice-api-postgres, browsers: false, postgres: true, command: npm run test:postgres }
           - { package: banking-api,              browsers: false, command: npm test && npm run demo && npm run race -- raced.db && npm run check -- --db raced.db }
           # The banking UI in Cypress, in Chrome and then Firefox; each run starts the server
           # on a fresh ui.db and ends with the SQL ledger checks on it
@@ -157,8 +160,19 @@ jobs:
         if: matrix.k6
         uses: grafana/setup-k6-action@v1
 
+      # Pulled here through retry.sh (Docker Hub answers 502 now and then), so
+      # Testcontainers finds the image already on the runner. The tag must match
+      # POSTGRES_IMAGE in packages/qa-practice-api/scripts/with-postgres.ts.
+      - name: Pull Postgres image
+        if: matrix.postgres
+        run: bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet postgres:17-alpine
+
       - name: Test
         run: ${{ steps.scope.outputs.scope == 'smoke' && matrix.smoke || matrix.command }}
+        env:
+          # Testcontainers' clean-up container (Ryuk) would be one more image pull; the
+          # runner is thrown away after the job, and with-postgres.ts stops its container.
+          TESTCONTAINERS_RYUK_DISABLED: ${{ matrix.postgres && 'true' || 'false' }}
 
       - name: Upload reports
         if: always()

@@ -5,8 +5,15 @@ import { ADMIN } from './tests/admin.ts';
 // each Stryker worker starts its own server on its own port.
 const port = 4000 + Number(process.env.STRYKER_MUTATOR_WORKER ?? 0);
 
+// Set by scripts/with-postgres.ts (npm run test:postgres): the server uses Postgres
+// instead of its in-memory store, and the Postgres-only tests in tests/postgres run.
+const { DATABASE_URL } = process.env;
+
 export default defineConfig({
   testDir: './tests',
+  // Anchored to this package's tests folder: a plain 'postgres/**' also matched a
+  // checkout path with a folder named postgres in it, and skipped every test.
+  testIgnore: DATABASE_URL ? [] : [/[\\/]tests[\\/]postgres[\\/]/],
   failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   timeout: 30000,
   fullyParallel: true,
@@ -19,8 +26,13 @@ export default defineConfig({
   webServer: {
     command: 'node src/server.ts',
     port,
-    reuseExistingServer: !process.env.CI,
-    env: { NODE_ENV: 'test', PORT: String(port), ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password },
+    // Never reuse a server already running on the port when testing Postgres: it
+    // could be an in-memory one.
+    reuseExistingServer: !process.env.CI && !DATABASE_URL,
+    env: {
+      NODE_ENV: 'test', PORT: String(port), ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password,
+      ...(DATABASE_URL ? { DATABASE_URL } : {}),
+    },
   },
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],

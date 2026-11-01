@@ -16,6 +16,26 @@ test('a changed Playwright spec runs 3 times through its own config, with no ret
   assert.deepEqual(args.slice(-1), ['tests/cart.spec.ts']);
 });
 
+// The PR that added tests/postgres would have failed burn-in: the plain run skips
+// that folder (no DATABASE_URL), so Playwright found no tests (code review, Day 49).
+test('qa-practice-api Postgres specs run inside Testcontainers; the race tests run on both stores', () => {
+  const groups = plan([
+    'packages/qa-practice-api/tests/postgres/postgres.spec.ts',
+    'packages/qa-practice-api/tests/concurrency.spec.ts',
+    'packages/qa-practice-api/tests/orders.spec.ts',
+  ]);
+  assert.deepEqual(groups.map((g) => [g.key, g.files]), [
+    ['qa-practice-api/playwright.config.ts on Postgres', ['tests/postgres/postgres.spec.ts', 'tests/concurrency.spec.ts']],
+    ['qa-practice-api/playwright.config.ts', ['tests/concurrency.spec.ts', 'tests/orders.spec.ts']],
+  ]);
+  const [pull, run] = commands(groups[0]);
+  assert.deepEqual(pull[2].slice(1), ['docker', 'pull', '--quiet', 'postgres:17-alpine']);
+  assert.match(pull[2][0], /retry\.sh$/);
+  assert.deepEqual([run[1], run[2].slice(0, 2)], ['node', ['scripts/with-postgres.ts', 'npx']]);
+  assert.ok(run[2].includes('--repeat-each=3') && run[2].includes('--retries=0'));
+  assert.equal(run[3].TESTCONTAINERS_RYUK_DISABLED, 'true');
+});
+
 test('specs are grouped by the config that runs them', () => {
   const groups = plan([
     'packages/ai-test-generator/tests/regression/cart.spec.js',

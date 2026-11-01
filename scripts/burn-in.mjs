@@ -29,7 +29,10 @@ export const PLAYWRIGHT = [
   { pkg: 'synthetic-monitor', config: 'playwright.config.ts', dirs: ['tests/browser/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'visual-regression-demo', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'qa-for-ai-features', config: 'playwright.config.ts', dirs: ['tests/'] },
-  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'] },
+  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'], skip: ['tests/postgres/'] },
+  // On a Postgres that Testcontainers starts (playwright.config.ts runs tests/postgres
+  // only then). The race tests run here too: only on Postgres can they fail.
+  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/postgres/', 'tests/concurrency.spec.ts'], postgres: true },
 ];
 export const CYPRESS = [{ pkg: 'banking-api', dirs: ['cypress/e2e/'] }];
 
@@ -50,8 +53,9 @@ export function plan(files) {
     if (!m) continue;
     const [, pkg, rel] = m;
     for (const s of PLAYWRIGHT) {
-      if (s.pkg === pkg && PLAYWRIGHT_SPEC.test(rel) && s.dirs.some((d) => rel.startsWith(d))) {
-        add(`${pkg}/${s.config}`, () => ({ runner: 'playwright', pkg, config: s.config, browsers: s.browsers }), rel);
+      if (s.pkg === pkg && PLAYWRIGHT_SPEC.test(rel) && s.dirs.some((d) => rel.startsWith(d)) && !s.skip?.some((d) => rel.startsWith(d))) {
+        const key = `${pkg}/${s.config}${s.postgres ? ' on Postgres' : ''}`;
+        add(key, () => ({ runner: 'playwright', pkg, config: s.config, browsers: s.browsers, postgres: s.postgres }), rel);
       }
     }
     for (const s of CYPRESS) {
@@ -66,12 +70,14 @@ export function plan(files) {
 // The commands for one group, as [label, command, args, env] in run order.
 export function commands(group) {
   if (group.runner === 'playwright') {
-    return [[
-      `${group.pkg} (${group.config}) x${REPEATS}`,
-      'npx',
-      ['playwright', 'test', '-c', group.config, `--repeat-each=${REPEATS}`, '--retries=0', '--reporter=list', ...group.files],
-      {},
-    ]];
+    const args = ['playwright', 'test', '-c', group.config, `--repeat-each=${REPEATS}`, '--retries=0', '--reporter=list', ...group.files];
+    if (!group.postgres) return [[`${group.pkg} (${group.config}) x${REPEATS}`, 'npx', args, {}]];
+    // The image is pulled through retry.sh first (as the CI job does), so
+    // Testcontainers finds it on the runner; its clean-up container is not needed.
+    return [
+      [`${group.pkg} Postgres image`, 'bash', [path.join(ROOT, 'scripts', 'retry.sh'), 'docker', 'pull', '--quiet', postgresImage()], {}],
+      [`${group.pkg} (${group.config}) on Postgres x${REPEATS}`, 'node', ['scripts/with-postgres.ts', 'npx', ...args], { TESTCONTAINERS_RYUK_DISABLED: 'true' }],
+    ];
   }
   const out = [];
   for (const browser of CYPRESS_BROWSERS) {
@@ -85,6 +91,14 @@ export function commands(group) {
     }
   }
   return out;
+}
+
+// The tag packages/qa-practice-api/scripts/with-postgres.ts starts.
+export function postgresImage() {
+  const launcher = fs.readFileSync(path.join(ROOT, 'packages', 'qa-practice-api', 'scripts', 'with-postgres.ts'), 'utf8');
+  const image = launcher.match(/POSTGRES_IMAGE = '([^']+)'/)?.[1];
+  if (!image) throw new Error('POSTGRES_IMAGE not found in with-postgres.ts');
+  return image;
 }
 
 function changedFiles() {
