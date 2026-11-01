@@ -110,7 +110,7 @@ The day numbers below stay as they are, because other documents link to them. Th
 
 | Day | Work | Status |
 |---:|---|---|
-| 49 | Docker and Testcontainers: qa-practice-api on real Postgres in CI | ⬜ |
+| 49 | Docker and Testcontainers: qa-practice-api on real Postgres in CI | ✅ 2026-11-04: [store design](packages/qa-practice-api/TECHNICAL.md). The store became async with transactions and row locks (PR #126), then a Postgres store chosen by `DATABASE_URL`, run in CI as `qa-practice-api-postgres` on a Testcontainers Postgres 17 (PR #127). All 300 tests pass on both stores; 8 concurrency tests (6 fail on Postgres with the locks removed: ten buyers all got the last item) and 8 Postgres-only checks (schema rules, a second server, rollback, lock wait, exact money, oversized ids). The banking ledger on Postgres is a later day reusing the launcher |
 | 50 | Event-driven backend: a queue between two services; ordering, retries, duplicates, dead-letter queue | ⬜ |
 | 51 | Resilience: Toxiproxy injects latency, dropped connections and timeouts; tests prove retries and timeouts work | ⬜ |
 | 52 | Observability: OpenTelemetry traces and metrics from qa-practice-api; tests assert on traces | ⬜ |

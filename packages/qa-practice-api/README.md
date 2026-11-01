@@ -4,12 +4,12 @@ A purpose-built REST API for QA automation practice. Unlike third-party public A
 
 **In plain English:** A small online-shop backend (users, products, orders) built for practising testing. Other packages in this repo test it, and they have found and fixed real bugs in it.
 
-Built with Node.js and Express, in strict TypeScript that Node 24 runs directly (no build step). No database or external services required. Spins up in seconds.
+Built with Node.js and Express, in strict TypeScript that Node 24 runs directly (no build step). Keeps its data in memory by default, so it needs nothing else and starts in seconds; set `DATABASE_URL` and it uses Postgres instead. The same tests run on both ([how the store works](TECHNICAL.md)).
 
 ## Stack
 
 - **Runtime:** Node.js 24 + Express, TypeScript run by Node's type stripping
-- **Data:** an in-memory store (`src/db/store.ts`): typed tables of users, products and orders, reset on every restart
+- **Data:** an in-memory store (`src/db/memory.ts`), reset on every restart, or Postgres (`src/db/postgres.ts`) when `DATABASE_URL` is set; Testcontainers starts a throwaway Postgres in Docker for the tests
 - **Auth:** JWT (`jsonwebtoken`, HS256, checked against the account on every request) + scrypt password hashing (Node's built-in `crypto.scrypt`, which runs off the event loop; see [k6-performance](../k6-performance) for why it replaced bcryptjs)
 - **Tests:** Playwright API mode (no browser)
 - **CI:** GitHub Actions, as one job in the monorepo pipeline
@@ -28,13 +28,14 @@ npm run dev            # with --watch restart
 npm test               # full suite (starts server automatically)
 npm run test:smoke     # @smoke tagged tests only
 npm run test:properties  # 17 fast-check properties, about 10 seconds
+npm run test:postgres  # the suite on a fresh Postgres in Docker (needs Docker running)
 npm run scoreboard     # put each of the AI's mistakes back, record what catches it
 npm run test:mutation  # Stryker; MUTATION_TESTS=designed or properties (see stryker.config.mjs)
 ```
 
-The data lives in memory, so each run starts with an empty store and no state leaks between runs. The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
+`npm test` uses the in-memory store, so each run starts empty and no state leaks between runs. `npm run test:postgres` starts a fresh Postgres 17 container with Testcontainers, runs the same suite against it plus 8 Postgres-only checks, and removes the container; CI runs both (`qa-practice-api` and `qa-practice-api-postgres`). The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
 
-300 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 4 unit tests of the sign-in limiter, 1 keep-alive check and 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
+300 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 4 unit tests of the sign-in limiter, 1 keep-alive check and 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment). On Postgres, 8 more in [tests/postgres](tests/postgres/postgres.spec.ts) (308 in all): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, and an id too big for the column is a 404. With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
 
 The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
 
@@ -133,7 +134,8 @@ These are intentional behaviours worth writing tests for:
 | Variable | Default | Notes |
 |---|---|---|
 | `PORT` | `4000` | Server port |
-| `JWT_SECRET` | random, per start | Set it to keep tokens valid across restarts (pointless here, since the data doesn't survive one). It used to default to a fixed string written in this file, so anyone could sign a token |
+| `DATABASE_URL` | none: data in memory | A Postgres connection string. The server creates its tables if they are missing, so a restart keeps the data; `npm run test:postgres` sets it for the tests |
+| `JWT_SECRET` | random, per start | Set it to keep tokens valid across restarts (worth it only with `DATABASE_URL`, where accounts survive one). It used to default to a fixed string written in this file, so anyone could sign a token |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | none | Both set: the server creates this admin at start-up. Neither set: there is no admin |
 
 The tests read two more, both with throwaway test-only defaults in `tests/admin.ts` (see `.env.example`): `QA_PRACTICE_ADMIN_PASSWORD`, the admin password the test server is seeded with, and `QA_PRACTICE_PASSWORD`, for the customer accounts the tests register.

@@ -6,8 +6,9 @@ import type { User } from '../db/store.ts';
 import { handle } from './handle.ts';
 
 // The fallback used to be a fixed string, published in this repository, so anyone
-// could sign a token for any user id. A random one per process costs nothing here:
-// the store is in memory, so no account outlives a restart for its token to need.
+// could sign a token for any user id. A random one per process costs nothing with
+// the in-memory store, where no account outlives a restart. On Postgres accounts do
+// outlive it, so set JWT_SECRET there if tokens should survive a restart too.
 const SECRET = process.env.JWT_SECRET || randomBytes(32).toString('hex');
 
 export interface TokenPayload {
