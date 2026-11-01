@@ -157,7 +157,7 @@ TestRail gives each case a number when the CSV is imported (C101 is 101). [`exam
 
 `src/mock.ts` is one small server that speaks the parts of both APIs the kit uses, on a port Node picks, so it can run in CI. It answers as the documentation describes: 401 for a wrong key or token, TestRail's `{"error": ...}` for an unknown run, a case that is not in the run or a bad time, Jira's `{"errorMessages", "errors"}` for an unknown project or a description that is not a document, and a 429 with `Retry-After` on request. The kit retries a 429 up to twice, waiting at most five seconds each time.
 
-A mock shows what the kit sends and how it handles the documented answers. It cannot show that the real services accept the same request, which is why the README keeps "not run against a live service" in its table.
+A mock shows what the kit sends and how it handles the documented answers. It cannot show that the real services accept the same request, which is why the README says which parts were run live and which were not.
 
 ### Security
 
@@ -284,7 +284,7 @@ They are original and general, written from standard accounting practice. Nothin
 No. The CSV matches the reviewed import file byte for byte, but no TestRail instance was used, so the import itself is unverified.
 
 ### Has it been run against live TestRail or Jira?
-No. Both are tested against a local mock that follows the documented API, and the README says so. The TestRail side is mock only by choice, with no trial account. A live proof on a free Jira site is planned as a follow-up; until it runs, treat the Jira request as matching the documentation but unproven.
+Jira yes, once; TestRail no. The TestRail side is tested against a local mock only, by choice, with no trial account. The Jira creator was run on 2026-11-01 against a free Jira Cloud site (Free plan, team-managed project, Bug work type): `--dry-run` first, then one real issue from a results file cut down to a single failed case. Jira accepted `POST /rest/api/3/issue` on the first real request, the key was written back to the results file, and the issue showed the heading, the numbered steps and the High priority the kit maps from severity high. The mock was not changed afterwards; the live run did not show a difference for this request. It proves one request shape on one plan: the 400, 401 and 429 answers were not tried live, and other plans or classic projects may require more fields. The token went in an environment variable for one window only.
 
 ### Why does one weak failure report stop every issue?
 Filing part of a batch and stopping makes a re-run confusing. Checking every report first, and filing nothing until all are ready, means the fix is to improve the reports and run again.
