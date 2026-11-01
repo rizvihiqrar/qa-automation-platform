@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">test-management-kit</title>
+  <desc id="d">Test cases kept as plain data, checked by a validator, and exported to TestRail, any other tool, or a Markdown report.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#2563eb"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="94" y="56" width="112" height="100" rx="10"/>
+    <path d="M114 88l12 12 20-24"/>
+    <path d="M162 90h28"/>
+    <path d="M114 122l12 12 20-24"/>
+    <path d="M162 124h28"/>
+  </g>
+  <text x="250" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="64" font-weight="700" fill="#f8fafc">test-management-kit</text>
+  <text x="252" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#cbd5e1">Test cases as plain data. One source, many tools.</text>
+</svg>

@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 30 packages, about 1,640 automated tests and checks, all run by one CI workflow
+- 31 packages, about 1,700 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -42,7 +42,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 - A release gate that blocks a deployment, with reasons, when a rule is broken
 - A daily CI health check, and an automatic one-time re-run when CI fails on main
 - Uptime monitoring: a real browser checks four public sites every 30 minutes, the history sits on the dashboard, and a site that fails twice in a row opens a GitHub issue that closes itself on recovery
-- Strict TypeScript in ten packages, type-checked in CI with no build step
+- Strict TypeScript in fifteen packages, type-checked in CI with no build step
 
 ## The packages
 

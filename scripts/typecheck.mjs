@@ -30,6 +30,7 @@ export const PACKAGES = [
   'money-course',
   'visual-regression-demo',
   'synthetic-monitor',
+  'test-management-kit',
   // CI demos: plain JavaScript checked with checkJs (they exist to show CI patterns)
   'contract-testing-demo',
   'mutation-testing-demo',

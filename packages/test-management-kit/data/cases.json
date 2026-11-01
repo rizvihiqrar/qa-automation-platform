@@ -1,0 +1,559 @@
+{
+  "suite": "Business accounting",
+  "sections": [
+    {
+      "id": "OTC",
+      "name": "Order to Cash (Sales and Receipts)"
+    },
+    {
+      "id": "P2P",
+      "name": "Procure to Pay (Purchasing and Payables)"
+    },
+    {
+      "id": "R2R",
+      "name": "Record to Report (Ledger and Close)"
+    },
+    {
+      "id": "INV",
+      "name": "Inventory"
+    },
+    {
+      "id": "FA",
+      "name": "Fixed Assets"
+    },
+    {
+      "id": "HTP",
+      "name": "Hire to Pay (Payroll)"
+    },
+    {
+      "id": "TAX",
+      "name": "Sales Tax"
+    },
+    {
+      "id": "CTL",
+      "name": "Controls and Data"
+    }
+  ],
+  "cases": [
+    {
+      "id": "OTC-001",
+      "section": "OTC",
+      "title": "Invoice paid in part, then in full",
+      "description": "Create and post an invoice, apply a partial payment and check the balance, then apply the remainder.",
+      "expectedResult": "The balance falls after each payment, and the invoice shows as paid in the customer account and the receipts register.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-002",
+      "section": "OTC",
+      "title": "Credit note against an invoice",
+      "description": "Issue a credit note for part of a posted invoice and apply it.",
+      "expectedResult": "The invoice balance falls by the credit, and the revenue and tax postings reverse in proportion.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-003",
+      "section": "OTC",
+      "title": "Tax and rounding on a multi-line invoice",
+      "description": "Enter an invoice with many small lines, a mix of taxable and exempt items, and a discount. Compare line-level and invoice-level tax.",
+      "expectedResult": "Tax follows the documented rounding rule, and the total equals the sum of its parts to the cent.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-004",
+      "section": "OTC",
+      "title": "Pricing: discounts and markups",
+      "description": "Apply a percentage discount, then a fixed discount, then a customer price list or markup, to an invoice.",
+      "expectedResult": "Each adjustment calculates correctly on its own and in combination, and the invoice shows what was applied.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-005",
+      "section": "OTC",
+      "title": "Recurring invoice run",
+      "description": "Set up a recurring invoice (monthly, with one price change), run it for three periods, and review the results.",
+      "expectedResult": "One invoice is created per period, with the right dates and amounts, and a rerun creates no duplicates.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-006",
+      "section": "OTC",
+      "title": "Customer statement and aging agree with open invoices",
+      "description": "Run the customer statement and the aging report, and compare them with the list of open invoices.",
+      "expectedResult": "Both show the same open items, and every item sits in the right aging bucket.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "OTC-007",
+      "section": "OTC",
+      "title": "Duplicate invoice number is refused",
+      "description": "Enter a second invoice with the number of one already posted.",
+      "expectedResult": "The system refuses it or warns clearly, and no duplicate is posted.",
+      "priority": "Medium",
+      "type": "Negative",
+      "references": []
+    },
+    {
+      "id": "OTC-008",
+      "section": "OTC",
+      "title": "Milestone or progress billing",
+      "description": "Bill a contract in stages: a deposit, a percentage of completion, and a final invoice.",
+      "expectedResult": "Amounts billed to date never exceed the contract value, and each stage is posted to the right period.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-009",
+      "section": "OTC",
+      "title": "Invoice delivery by email",
+      "description": "Email two invoices, one to a separate billing contact, and check the invoice register.",
+      "expectedResult": "The right address receives each invoice, and the register shows both as sent.",
+      "priority": "Medium",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "OTC-010",
+      "section": "OTC",
+      "title": "Overpayment and unapplied cash",
+      "description": "Receive a payment larger than the invoice, then one with no invoice to match.",
+      "expectedResult": "The excess is held as unapplied credit, can be applied later, and the customer balance is correct.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-011",
+      "section": "OTC",
+      "title": "Bad debt write-off",
+      "description": "Write off an uncollectable invoice, then receive a late payment for it.",
+      "expectedResult": "The write-off posts to the expense account, and the late payment reverses it correctly.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-012",
+      "section": "OTC",
+      "title": "Foreign currency invoice paid at a different rate",
+      "description": "Issue an invoice in a foreign currency and receive payment after the exchange rate has changed.",
+      "expectedResult": "The exchange gain or loss is posted, and the customer balance clears to zero in both currencies.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-001",
+      "section": "P2P",
+      "title": "Three-way match mismatch is flagged",
+      "description": "Receive part of an order, then enter a bill for a different quantity or price.",
+      "expectedResult": "The mismatch is flagged before payment, and the approver sees the difference.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "P2P-002",
+      "section": "P2P",
+      "title": "Bill batch with and without an order, including a split allocation",
+      "description": "Enter a batch of bills: some matched to an order, some not, and one split across several accounts.",
+      "expectedResult": "Each bill posts with the right allocation, and the batch review lists them correctly.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-003",
+      "section": "P2P",
+      "title": "Payment run selected by due date and supplier",
+      "description": "Build a payment run by due date, for one supplier and for all suppliers, and select bills from several suppliers.",
+      "expectedResult": "Totals follow the selection, and only bills that are due and approved are offered.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-004",
+      "section": "P2P",
+      "title": "Print, cancel and reinstate a payment",
+      "description": "Print payments for a set of bills, cancel one, and reinstate it.",
+      "expectedResult": "The payment register is correct after each step, the bill reopens on cancel, and the audit shows both actions.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-005",
+      "section": "P2P",
+      "title": "Duplicate payment is prevented",
+      "description": "Select the same bill twice in one payment, then try to pay a bill that was already paid.",
+      "expectedResult": "A clear warning blocks both, and each bill is paid once.",
+      "priority": "High",
+      "type": "Negative",
+      "references": []
+    },
+    {
+      "id": "P2P-006",
+      "section": "P2P",
+      "title": "Create purchase orders with each line type",
+      "description": "Create orders with a stocked item, a non-stocked item, a service, and a comment line.",
+      "expectedResult": "All lines save correctly, and the order total is right.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-007",
+      "section": "P2P",
+      "title": "Receive an order in full and in part",
+      "description": "Receive one order fully and another partially.",
+      "expectedResult": "Quantities received and outstanding are right, and the order status follows.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-008",
+      "section": "P2P",
+      "title": "Revise, cancel and close an order",
+      "description": "Revise a released order, cancel another, and close a third with a quantity still open.",
+      "expectedResult": "The revision history is kept, cancelled orders cannot be received, and closing releases the open commitment.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-009",
+      "section": "P2P",
+      "title": "Correct the number of a posted bill",
+      "description": "Change the reference number of a posted bill and add a note.",
+      "expectedResult": "The new number shows everywhere, the note is kept, and the audit log records who changed it.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-010",
+      "section": "P2P",
+      "title": "Early payment discount and late fee",
+      "description": "Pay one bill inside its discount window and another after its due date.",
+      "expectedResult": "The discount or fee is calculated by the terms on the bill and posted to the right accounts.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "R2R-001",
+      "section": "R2R",
+      "title": "Post a balanced ledger entry",
+      "description": "Post a balanced entry with a note attached and look it up in the ledger inquiry.",
+      "expectedResult": "The entry appears with the right accounts, amounts, period and note.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "R2R-002",
+      "section": "R2R",
+      "title": "Reject an unbalanced ledger entry",
+      "description": "Try to post an entry where debits and credits differ by one cent.",
+      "expectedResult": "The entry is refused with a clear message and nothing is posted.",
+      "priority": "High",
+      "type": "Negative",
+      "references": []
+    },
+    {
+      "id": "R2R-003",
+      "section": "R2R",
+      "title": "Trial balance agrees with the account and history inquiries",
+      "description": "Run the account inquiry and the history inquiry for one period and compare them with the trial balance.",
+      "expectedResult": "Balances in all three agree for every account checked.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "R2R-004",
+      "section": "R2R",
+      "title": "Posting into a closed period is refused",
+      "description": "Try to post an entry dated in a closed period.",
+      "expectedResult": "The posting is refused, or needs an authorised override that is recorded in the audit log.",
+      "priority": "High",
+      "type": "Negative",
+      "references": []
+    },
+    {
+      "id": "R2R-005",
+      "section": "R2R",
+      "title": "Close and reopen a period",
+      "description": "Close a period, confirm postings are blocked, reopen it with authority, post a correction, and close it again.",
+      "expectedResult": "Closing blocks postings, reopening is logged, and the correction lands in the right period.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "R2R-006",
+      "section": "R2R",
+      "title": "Bank reconciliation",
+      "description": "Import a bank statement, match it with ledger entries, and leave a few items unmatched.",
+      "expectedResult": "Matched items clear, unmatched items stay listed, and the reconciled balance equals the statement balance.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "R2R-007",
+      "section": "R2R",
+      "title": "Financial statements balance",
+      "description": "Produce the balance sheet and income statement for a period, and compare them with the trial balance.",
+      "expectedResult": "Assets equal liabilities plus equity, and net income ties to the retained earnings movement.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "R2R-008",
+      "section": "R2R",
+      "title": "Sub-ledgers reconcile to the ledger",
+      "description": "Run receivables aging, payables aging and the inventory valuation, and compare each with its control account at the period end date.",
+      "expectedResult": "Each sub-ledger total equals its control account.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "R2R-009",
+      "section": "R2R",
+      "title": "Recurring and reversing ledger entries",
+      "description": "Create a monthly recurring entry and an accrual that reverses on the first day of the next period.",
+      "expectedResult": "Each entry posts in the right period, and the reversal cancels the original exactly.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "R2R-010",
+      "section": "R2R",
+      "title": "Currency revaluation at period end",
+      "description": "Hold foreign currency balances at period end and run the revaluation.",
+      "expectedResult": "Unrealised gains and losses post once, with a reversal on the first day of the next period.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "INV-001",
+      "section": "INV",
+      "title": "Stock valuation agrees with the ledger",
+      "description": "Run the valuation report and the transaction log, then compare their totals with the inventory account.",
+      "expectedResult": "The valuation, the log and the account agree in total.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "INV-002",
+      "section": "INV",
+      "title": "Costing method changes cost correctly",
+      "description": "Receive the same item at three different prices, then sell part of it under average cost, then under first-in first-out.",
+      "expectedResult": "Cost of sales and remaining stock value follow each method exactly.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "INV-003",
+      "section": "INV",
+      "title": "Stock count cycle",
+      "description": "Take a count snapshot, enter counts for each location, and post the differences.",
+      "expectedResult": "Counts are recorded against the snapshot, and the variance posts once to stock and the ledger.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "INV-004",
+      "section": "INV",
+      "title": "Receipts and adjustments change quantity on hand",
+      "description": "Receive stock, then make a positive and a negative adjustment.",
+      "expectedResult": "Quantity and value move by the expected amounts, and stock cannot go below zero unless the setting allows it.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "INV-005",
+      "section": "INV",
+      "title": "Counter sale and return",
+      "description": "Sell items over the counter, reverse one sale, and return part of another.",
+      "expectedResult": "Stock, sales and tax update on sale and return to their starting values on reversal.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "FA-001",
+      "section": "FA",
+      "title": "Acquire an asset and run depreciation",
+      "description": "Add an asset with a cost, useful life and method, and run depreciation for three periods.",
+      "expectedResult": "Depreciation posts each period by the chosen method, and the book value falls by the same amounts.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "FA-002",
+      "section": "FA",
+      "title": "Dispose of an asset",
+      "description": "Sell an asset part-way through its life and record the proceeds.",
+      "expectedResult": "The gain or loss is posted, depreciation stops, and the asset leaves the register.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "HTP-001",
+      "section": "HTP",
+      "title": "Gross to net calculation",
+      "description": "Enter hours for four employees, including overtime, and calculate taxes and deductions.",
+      "expectedResult": "Net pay equals gross pay less deductions for each employee, with no rounding drift.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "HTP-002",
+      "section": "HTP",
+      "title": "Pay register agrees with the ledger after the update",
+      "description": "Print the pay register, compare it with the pay record inquiry, then run the payroll update and check the ledger.",
+      "expectedResult": "The register, the records and the ledger postings show the same figures.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "HTP-003",
+      "section": "HTP",
+      "title": "Payment output for each pay method",
+      "description": "Print cheques, create the direct deposit file and email the earnings statements.",
+      "expectedResult": "Amounts, names and bank details are correct on every output.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "HTP-004",
+      "section": "HTP",
+      "title": "Employee and pay period setup",
+      "description": "Create a pay period and two employees, one paid by cheque and one by direct deposit with an emailed earnings statement.",
+      "expectedResult": "Both employees save with the right payment method and bank or email details.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "TAX-001",
+      "section": "TAX",
+      "title": "Tax rate change takes effect on the right date",
+      "description": "Add a new tax rate with a future start date, then enter invoices dated before and after it.",
+      "expectedResult": "Invoices before the date use the old rate, and invoices on or after it use the new one.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "TAX-002",
+      "section": "TAX",
+      "title": "Tax return totals agree with the ledger",
+      "description": "Run the tax return for a period and compare each box with the ledger tax accounts.",
+      "expectedResult": "Tax collected, tax paid and the balance due agree with the ledger.",
+      "priority": "High",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "CTL-001",
+      "section": "CTL",
+      "title": "Role-based access",
+      "description": "Sign in as a user without permission and try to view, post, approve and export in each area.",
+      "expectedResult": "Each action is limited as configured, and refused actions are logged.",
+      "priority": "High",
+      "type": "Security",
+      "references": []
+    },
+    {
+      "id": "CTL-002",
+      "section": "CTL",
+      "title": "Creator cannot approve their own transaction",
+      "description": "Create a bill, a payment and a ledger entry, then try to approve each with the same user.",
+      "expectedResult": "Self-approval is blocked, and a second user can approve.",
+      "priority": "High",
+      "type": "Security",
+      "references": []
+    },
+    {
+      "id": "CTL-003",
+      "section": "CTL",
+      "title": "Approval limits route to the right approver",
+      "description": "Submit transactions just below, at and just above an approval limit.",
+      "expectedResult": "Each goes to the approver for its amount, and none skips a level.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "CTL-004",
+      "section": "CTL",
+      "title": "Audit trail records every change",
+      "description": "Edit, delete and reverse records in several areas, then read the audit log.",
+      "expectedResult": "Each entry shows who, when, what changed, and the values before and after.",
+      "priority": "High",
+      "type": "Security",
+      "references": []
+    },
+    {
+      "id": "CTL-005",
+      "section": "CTL",
+      "title": "Attach supporting documents to a record",
+      "description": "Attach an image and a PDF at the same time to a customer, supplier or transaction, then find them by date and filter.",
+      "expectedResult": "Both files are saved and can be opened from the record and from the document list.",
+      "priority": "Medium",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "CTL-006",
+      "section": "CTL",
+      "title": "Invoice PDF includes chosen attachments",
+      "description": "Choose attachments to merge into an invoice, produce the PDF, and open it.",
+      "expectedResult": "The PDF contains the invoice followed by the chosen documents in order.",
+      "priority": "Medium",
+      "type": "Integration",
+      "references": []
+    },
+    {
+      "id": "CTL-007",
+      "section": "CTL",
+      "title": "Export and import round trip",
+      "description": "Export invoices to CSV and import the file into an empty test company.",
+      "expectedResult": "Totals, taxes and customer links match, and bad rows are reported rather than skipped silently.",
+      "priority": "Medium",
+      "type": "Integration",
+      "references": []
+    }
+  ]
+}

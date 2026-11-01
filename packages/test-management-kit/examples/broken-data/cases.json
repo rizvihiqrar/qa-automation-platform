@@ -1,0 +1,55 @@
+{
+  "suite": "Broken sample",
+  "sections": [
+    {
+      "id": "OTC",
+      "name": "Order to Cash (Sales and Receipts)"
+    },
+    {
+      "id": "P2P",
+      "name": "Procure to Pay (Purchasing and Payables)"
+    }
+  ],
+  "cases": [
+    {
+      "id": "OTC-001",
+      "section": "OTC",
+      "title": "Invoice paid in part, then in full",
+      "description": "Create and post an invoice, apply a partial payment and check the balance, then apply the remainder.",
+      "expectedResult": "The balance falls after each payment, and the invoice shows as paid in the customer account and the receipts register.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-001",
+      "section": "OTC",
+      "title": "Same ID as the first case",
+      "description": "Create and post an invoice, apply a partial payment and check the balance, then apply the remainder.",
+      "expectedResult": "The balance falls after each payment, and the invoice shows as paid in the customer account and the receipts register.",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "OTC-002",
+      "section": "OTC",
+      "title": "Credit note against an invoice",
+      "description": "Issue a credit note for part of a posted invoice and apply it.",
+      "expectedResult": "",
+      "priority": "High",
+      "type": "Regression",
+      "references": []
+    },
+    {
+      "id": "P2P-001",
+      "section": "P2P",
+      "title": "Tax and rounding on a multi-line invoice",
+      "description": "Enter an invoice with many small lines, a mix of taxable and exempt items, and a discount. Compare line-level and invoice-level tax.",
+      "expectedResult": "Tax follows the documented rounding rule, and the total equals the sum of its parts to the cent.",
+      "priority": "Urgent",
+      "type": "Smoke",
+      "references": []
+    }
+  ]
+}

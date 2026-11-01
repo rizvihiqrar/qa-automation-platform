@@ -32,6 +32,33 @@ const shots = [
     keep: (lines) => [...lines.filter((l) => /^\s*✔ BK-R2[6-9] defect /.test(l)).slice(0, 14), '', ...lines.filter((l) => /^ℹ /.test(l))],
   },
   {
+    name: 'coverage',
+    cwd: 'packages/test-management-kit',
+    command: 'npm run coverage --silent',
+    out: 'packages/test-management-kit/docs',
+  },
+  {
+    name: 'plan',
+    cwd: 'packages/test-management-kit',
+    command: 'npm run plan --silent',
+    out: 'packages/test-management-kit/docs',
+  },
+  {
+    // Exits 1 on purpose: examples/broken-data has six planted problems.
+    name: 'validate-broken',
+    cwd: 'packages/test-management-kit',
+    command: 'npm run validate:broken --silent 2>&1',
+    out: 'packages/test-management-kit/docs',
+    failing: true,
+  },
+  {
+    name: 'kit-tests',
+    cwd: 'packages/test-management-kit',
+    command: 'node --test --test-reporter=spec',
+    out: 'packages/test-management-kit/docs',
+    keep: (lines) => [...lines.filter((l) => /^\s*✔ (every required|a repeated ID|an unknown priority|the TestRail export)/.test(l)).slice(0, 12), '', ...lines.filter((l) => /^ℹ (tests|pass|fail)/.test(l))],
+  },
+  {
     // The pytest run: the API starts itself, then each designed case reports under its ID.
     // Needs the package's venv (python -m venv .venv && .venv/Scripts/pip install -r requirements.txt).
     name: 'pytest',
@@ -89,7 +116,7 @@ for (const s of shots) {
   for (const dark of [false, true]) {
     const context = await browser.newContext({ viewport: { width: 1200, height: 400 }, colorScheme: dark ? 'dark' : 'light', deviceScaleFactor: 1 });
     const tab = await context.newPage();
-    await tab.setContent(page(s.command.replace(/ --silent/, ''), text, dark));
+    await tab.setContent(page(s.command.replace(/ --silent/, '').replace(/ 2>&1$/, ''), text, dark));
     const file = path.join(ROOT, s.out, `${s.name}${dark ? '-dark' : ''}.png`);
     await tab.locator('.term').screenshot({ path: file });
     console.log('saved', file);
