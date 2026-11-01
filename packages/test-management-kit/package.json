@@ -1,8 +1,8 @@
 {
   "name": "test-management-kit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "Test cases as plain data, a validator, and exporters for TestRail, other tools and plain Markdown",
+  "description": "Test cases as plain data, a validator, exporters for TestRail and other tools, and a TestRail result reporter and Jira issue creator tested against a local mock",
   "scripts": {
     "validate": "node src/cli.ts validate",
     "export:testrail": "node src/cli.ts export --format testrail --out out/testrail-import.csv",
@@ -11,7 +11,10 @@
     "validate:broken": "node src/cli.ts validate --data examples/broken-data",
     "coverage": "node src/cli.ts coverage",
     "plan": "node src/cli.ts plan",
-    "test": "node --test"
+    "test": "node --test",
+    "demo": "node examples/demo.ts",
+    "dry-run:testrail": "node src/cli.ts report-testrail --results examples/run-results.json --map examples/testrail-map.json --base-url https://example.testrail.io --dry-run",
+    "dry-run:jira": "node src/cli.ts create-jira --results examples/run-results.json --project KIT --base-url https://example.atlassian.net --dry-run"
   },
   "engines": { "node": ">=24" },
   "license": "MIT"

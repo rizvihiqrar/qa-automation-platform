@@ -52,6 +52,13 @@ const shots = [
     failing: true,
   },
   {
+    // The whole stage 2 flow against the local mock: a weak report refused, two issues filed, their keys sent to TestRail.
+    name: 'integration-demo',
+    cwd: 'packages/test-management-kit',
+    command: 'npm run demo --silent',
+    out: 'packages/test-management-kit/docs',
+  },
+  {
     name: 'kit-tests',
     cwd: 'packages/test-management-kit',
     command: 'node --test --test-reporter=spec',

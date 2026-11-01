@@ -169,6 +169,7 @@ The full description of each package, with its check count. The [overview](READM
 | [exploratory-session-tracker](packages/exploratory-session-tracker) | Structures exploratory testing (charters, timeboxes, tagged notes) and turns sessions into a team debrief | 10 |
 | [log-signature-grouper](packages/log-signature-grouper) | Groups thousands of log errors into a few patterns and flags error patterns that are new since the last release | 15 |
 | [defect-report-linter](packages/defect-report-linter) | Checks bug reports for missing steps, results, severity and evidence, and scores whether a developer could act on them | 20 |
+| [test-management-kit](packages/test-management-kit) | Keeps test cases as plain data with a validator and exporters for TestRail and other tools, then sends run results to TestRail and files Jira issues for failed cases, each tested against a local mock | 128 |
 | [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 25 |
 | [mutation-testing-demo](packages/mutation-testing-demo) | Deliberately breaks the code to prove the tests would notice (89.2% caught) | 89 |
 | [postman-api-collection](packages/postman-api-collection) | API checks in Postman, runnable from the command line | 25 |
@@ -178,7 +179,7 @@ The full description of each package, with its check count. The [overview](READM
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 | [money-course](packages/money-course) | A short course, Testing money in software, built on the banking API: six objectives, a quiz for each, and an ungraded practical with six planted bugs and a model answer. Being run as a pilot | 30 |
 
-31 packages, about 1,700 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
+31 packages, about 1,770 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
 
 ## Running locally
 
