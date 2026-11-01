@@ -5,6 +5,7 @@ import { coverage, formatCoverage } from './coverage.ts';
 import { exportGeneric } from './exporters/generic.ts';
 import { exportMarkdown } from './exporters/markdown.ts';
 import { exportTestRail } from './exporters/testrail.ts';
+import { INTEGRATION_COMMANDS, runIntegration } from './integrate.ts';
 import { DEFAULT_DATA_DIR, loadPlanDefinition, loadSuite } from './load.ts';
 import { buildPlan } from './plan.ts';
 import type { Issue } from './types.ts';
@@ -24,7 +25,7 @@ export interface Options {
 export function parseArgs(argv: string[]): Options {
   const [command, ...rest] = argv;
   if (!command || !(COMMANDS as readonly string[]).includes(command)) {
-    throw new Error('Usage: cli.ts <' + COMMANDS.join('|') + '> [--data <dir>] [--format <' + FORMATS.join('|') + '>] [--out <file>] [--json]');
+    throw new Error('Usage: cli.ts <' + [...COMMANDS, ...INTEGRATION_COMMANDS].join('|') + '> [--data <dir>] [--format <' + FORMATS.join('|') + '>] [--out <file>] [--json]');
   }
   const options: Options = { command: command as Options['command'], data: DEFAULT_DATA_DIR, format: 'testrail', out: null, json: false };
   for (let i = 0; i < rest.length; i++) {
@@ -83,7 +84,8 @@ export function run(argv: string[]): { code: number; stdout: string; stderr: str
 // import.meta.main only exists from Node 24.2, so compare the script path instead.
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
   try {
-    const result = run(process.argv.slice(2));
+    const argv = process.argv.slice(2);
+    const result = (INTEGRATION_COMMANDS as readonly string[]).includes(argv[0] ?? '') ? await runIntegration(argv) : run(argv);
     process.stdout.write(result.stdout);
     process.stderr.write(result.stderr);
     process.exitCode = result.code;

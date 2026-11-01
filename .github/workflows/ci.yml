@@ -72,7 +72,7 @@ jobs:
           - { package: test-data-factory,        browsers: false, command: npm test }
           - { package: sql-data-integrity,       browsers: false, command: npm test && npm run check }
           - { package: defect-report-linter,     browsers: false, command: npm test }
-          - { package: test-management-kit,      browsers: false, command: npm test && npm run validate && npm run export:testrail && npm run export:generic && npm run export:markdown }
+          - { package: test-management-kit,      browsers: false, command: npm test && npm run validate && npm run export:testrail && npm run export:generic && npm run export:markdown && npm run dry-run:testrail && npm run dry-run:jira && npm run demo }
           - { package: webhook-harness,          browsers: false, command: npm test && npm run demo }
           - { package: log-signature-grouper,    browsers: false, command: npm test }
           - { package: api-drift-checker,        browsers: false, command: npm ci --prefix ../qa-practice-api && npm test && npm run check:live }

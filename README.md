@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 31 packages, about 1,700 automated tests and checks, all run by one CI workflow
+- 31 packages, about 1,770 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -99,6 +99,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 | [defect-report-linter](packages/defect-report-linter) | Checks bug reports for missing steps, results, severity and evidence | 20 |
+| [test-management-kit](packages/test-management-kit) | Keeps test cases as plain data with a validator and exporters for TestRail and other tools, then sends run results to TestRail and files Jira issues for failed cases, each tested against a local mock | 128 |
 | [log-signature-grouper](packages/log-signature-grouper) | Groups thousands of log errors into a few patterns and flags patterns that are new since the last release | 15 |
 | [exploratory-session-tracker](packages/exploratory-session-tracker) | Structures exploratory testing (charters, timeboxes, tagged notes) and turns sessions into a team debrief | 10 |
 

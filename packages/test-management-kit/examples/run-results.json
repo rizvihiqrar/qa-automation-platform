@@ -1,0 +1,36 @@
+{
+  "runId": 1,
+  "results": [
+    { "caseId": "OTC-001", "status": "passed", "elapsed": "45s" },
+    { "caseId": "OTC-003", "status": "passed", "elapsed": "1m 10s" },
+    { "caseId": "OTC-004", "status": "blocked", "comment": "Test customer account was locked by an earlier run" },
+    {
+      "caseId": "OTC-002",
+      "status": "failed",
+      "elapsed": "2m 5s",
+      "comment": "Revenue posting did not reverse in proportion",
+      "severity": "high",
+      "environment": "Chrome 130 on Windows 11, staging build 2026.11.1",
+      "steps": [
+        "Create and post an invoice for 1000.00 with 13% sales tax",
+        "Issue a credit note for 400.00 against that invoice and apply it",
+        "Open the general ledger postings for the invoice"
+      ],
+      "actual": "The invoice balance fell by 400.00 but the revenue account still shows 1000.00; only 40.00 of tax reversed",
+      "evidence": ["screenshots/OTC-002-ledger.png", "logs/OTC-002-postings.txt"]
+    },
+    {
+      "caseId": "OTC-005",
+      "status": "failed",
+      "elapsed": "1m 30s",
+      "comment": "Receipt registered twice",
+      "severity": "medium",
+      "environment": "Chrome 130 on Windows 11, staging build 2026.11.1",
+      "steps": [
+        "Post an invoice and open the receipts screen",
+        "Enter a receipt for the full amount and press Save twice quickly"
+      ],
+      "actual": "Two receipts for the full amount are listed and the customer balance shows a credit of one invoice"
+    }
+  ]
+}

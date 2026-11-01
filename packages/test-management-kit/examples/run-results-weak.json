@@ -1,0 +1,7 @@
+{
+  "runId": 1,
+  "results": [
+    { "caseId": "OTC-001", "status": "passed" },
+    { "caseId": "OTC-002", "status": "failed", "severity": "high" }
+  ]
+}
