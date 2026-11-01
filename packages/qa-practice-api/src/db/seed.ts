@@ -8,7 +8,7 @@ import { hashPassword } from '../security/password.ts';
 export async function seedAdmin(env: NodeJS.ProcessEnv = process.env): Promise<store.User | null> {
   const { ADMIN_EMAIL: email, ADMIN_PASSWORD: password } = env;
   if (!email || !password) return null;
-  const existing = store.users.findOne({ email });
+  const existing = await store.users.findOne({ email });
   if (existing) return existing;
   return store.users.insert({ name: 'Admin', email, password: await hashPassword(password), role: 'admin' });
 }

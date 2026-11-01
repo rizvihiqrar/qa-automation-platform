@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(ROOT, 'docs', 'ai-written-code');
@@ -251,6 +251,18 @@ test('Stryker mutates the lines of POST /orders the AI wrote, and no others', ()
   const lines = fs.readFileSync(path.join(PKG, 'src', 'routes', 'orders.ts'), 'utf8').split(/\r?\n/);
   assert.match(lines[from - 1], /subtotalCents \+= toCents\(product\.price\) \* quantity;/, `line ${from}`);
   assert.match(lines[to - 1], /total: +fromCents\(subtotalCents - discountCents\),/, `line ${to}`);
+});
+
+// run.mjs only finds out a put-back no longer fits when the scoreboard is rerun,
+// so a route rewrite (the async store, Day 49) could break it unnoticed.
+test('every scoreboard put-back still finds its text exactly once', async () => {
+  const { putBacks } = await import(pathToFileURL(path.join(PKG, 'scoreboard', 'put-backs.mjs')).href);
+  for (const { id, edits } of putBacks) {
+    for (const { file, find } of edits) {
+      const text = fs.readFileSync(path.join(PKG, file), 'utf8').replaceAll('\r\n', '\n');
+      assert.equal(text.split(find).length - 1, 1, `${id}: ${file} should contain once: ${find}`);
+    }
+  }
 });
 
 // The scoreboard (scoreboard.md): one row per mistake the AI made, one column per

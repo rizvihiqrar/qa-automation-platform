@@ -3,6 +3,7 @@ import * as store from '../db/store.ts';
 import { requireAuth, requireAdmin } from '../middleware/auth.ts';
 import { pagination } from './query.ts';
 import { isWholeCents } from '../money.ts';
+import { handle } from '../middleware/handle.ts';
 
 const router = Router();
 
@@ -23,22 +24,22 @@ function parseStock(stock: unknown): number | string {
     ? stock as number : 'stock must be a non-negative whole number';
 }
 
-router.get('/', (req, res) => {
+router.get('/', handle(async (req, res) => {
   const { page, limit } = pagination(req.query);
   const filter = typeof req.query.category === 'string' ? { category: req.query.category } : {};
-  const { data, total, pages } = store.products.findAll(filter, { page, limit });
+  const { data, total, pages } = await store.products.findAll(filter, { page, limit });
   res.json({ data, page, limit, total, pages });
-});
+}));
 
-router.get('/:id', (req, res) => {
-  const product = store.products.findById(req.params.id);
+router.get('/:id', handle(async (req, res) => {
+  const product = await store.products.findById(String(req.params.id));
   if (!product) return res.status(404).json({ error: `Product ${req.params.id} not found` });
   res.json(product);
-});
+}));
 
 // Changing the catalogue is for admins. Any signed-in customer used to be able to
 // reprice or delete any product.
-router.post('/', requireAuth, requireAdmin, (req, res) => {
+router.post('/', requireAuth, requireAdmin, handle(async (req, res) => {
   const { name, category, price, stock } = req.body;
   if (!name || !category || price == null) {
     return res.status(400).json({ error: 'name, category, and price are required' });
@@ -48,13 +49,13 @@ router.post('/', requireAuth, requireAdmin, (req, res) => {
   const stockValue = stock == null ? 0 : parseStock(stock);
   if (typeof stockValue === 'string') return res.status(400).json({ error: stockValue });
 
-  const product = store.products.insert({ name, category, price: priceValue, stock: stockValue });
+  const product = await store.products.insert({ name, category, price: priceValue, stock: stockValue });
   res.status(201).json(product);
-});
+}));
 
-router.put('/:id', requireAuth, requireAdmin, (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, handle(async (req, res) => {
   const id = String(req.params.id);
-  if (!store.products.findById(id)) {
+  if (!await store.products.findById(id)) {
     return res.status(404).json({ error: `Product ${id} not found` });
   }
   const { name, category, price, stock } = req.body;
@@ -63,16 +64,18 @@ router.put('/:id', requireAuth, requireAdmin, (req, res) => {
   const stockValue = stock == null ? undefined : parseStock(stock);
   if (typeof stockValue === 'string') return res.status(400).json({ error: stockValue });
 
-  const updated = store.products.update(id, { name, category, price: priceValue, stock: stockValue });
+  const updated = await store.products.update(id, { name, category, price: priceValue, stock: stockValue });
+  // A delete between the lookup above and this write leaves nothing to update.
+  if (!updated) return res.status(404).json({ error: `Product ${id} not found` });
   res.json(updated);
-});
+}));
 
-router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, handle(async (req, res) => {
   const id = String(req.params.id);
-  if (!store.products.delete(id)) {
+  if (!await store.products.delete(id)) {
     return res.status(404).json({ error: `Product ${id} not found` });
   }
   res.status(204).end();
-});
+}));
 
 export default router;
