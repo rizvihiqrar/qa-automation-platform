@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import * as store from '../db/store.ts';
 import type { User } from '../db/store.ts';
+import { handle } from './handle.ts';
 
 // The fallback used to be a fixed string, published in this repository, so anyone
 // could sign a token for any user id. A random one per process costs nothing here:
@@ -27,7 +28,7 @@ export function signToken(payload: TokenPayload): string {
   return jwt.sign(payload, SECRET, { algorithm: 'HS256', expiresIn: '1h' });
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export const requireAuth = handle(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Missing or invalid Authorization header' });
@@ -43,14 +44,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   // A valid signature only proves the account existed when the token was issued.
   // Checking the store stops a deleted account's token from working for the rest
   // of its hour, and takes the role from the account rather than the token.
-  const user = store.users.findById(payload.id);
+  const user = await store.users.findById(payload.id);
   if (!user) {
     res.status(401).json({ error: 'Account no longer exists' });
     return;
   }
   req.user = { id: user.id, role: user.role };
   next();
-}
+});
 
 // After requireAuth, on routes only an admin may use.
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {

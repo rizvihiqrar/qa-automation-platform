@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import * as store from '../db/store.ts';
-import type { Discount } from '../db/store.ts';
+import type { Discount, Tables, FindOptions } from '../db/store.ts';
 import { requireAuth, requireAdmin } from '../middleware/auth.ts';
 import { toCents, isWholeCents } from '../money.ts';
+import { handle, reply, send, type Reply } from '../middleware/handle.ts';
+import type { Request } from 'express';
 
 const router = Router();
 
@@ -28,22 +30,22 @@ function isRealDateTime(v: string): boolean {
 export const normalizeCode = (code: string): string => code.trim().toUpperCase();
 
 // Orders currently counting against a code: placed with it and not cancelled (DC-R21, DC-R23).
-function countingOrders(code: string): store.Order[] {
-  const { data } = store.orders.findAll({ discount_code: code }, { page: 1, limit: Number.MAX_SAFE_INTEGER });
+async function countingOrders(code: string, tables: Tables = store): Promise<store.Order[]> {
+  const { data } = await tables.orders.findAll({ discount_code: code }, { page: 1, limit: Number.MAX_SAFE_INTEGER });
   return data.filter(o => o.status !== 'cancelled');
 }
 
-function view(discount: Discount) {
+async function view(discount: Discount, tables: Tables = store) {
   const { code, type, value, expires_at, max_uses, min_subtotal, active, created_at } = discount;
   return {
     code, type, value, expires_at, max_uses, min_subtotal, active,
-    uses: countingOrders(code).length,
+    uses: (await countingOrders(code, tables)).length,
     created_at,
   };
 }
 
-function findByCode(code: string): Discount | null {
-  return store.discounts.findOne({ code: normalizeCode(code) });
+function findByCode(code: string, tables: Tables = store, options?: FindOptions): Promise<Discount | null> {
+  return tables.discounts.findOne({ code: normalizeCode(code) }, options);
 }
 
 // Each parser returns the parsed value or an error message.
@@ -73,18 +75,18 @@ const isError = (v: unknown): v is { error: string } =>
 
 router.use(requireAuth, requireAdmin);
 
-router.get('/', (_req, res) => {
-  const { data } = store.discounts.findAll({}, { page: 1, limit: Number.MAX_SAFE_INTEGER });
-  res.json(data.map(view));
-});
+router.get('/', handle(async (_req, res) => {
+  const { data } = await store.discounts.findAll({}, { page: 1, limit: Number.MAX_SAFE_INTEGER });
+  res.json(await Promise.all(data.map((d) => view(d))));
+}));
 
-router.get('/:code', (req, res) => {
-  const discount = findByCode(String(req.params.code));
+router.get('/:code', handle(async (req, res) => {
+  const discount = await findByCode(String(req.params.code));
   if (!discount) return res.status(404).json({ error: `Discount code ${req.params.code} not found` });
-  res.json(view(discount));
-});
+  res.json(await view(discount));
+}));
 
-router.post('/', (req, res) => {
+router.post('/', handle(async (req, res) => {
   const { code, type, value, expires_at = null, max_uses = null, min_subtotal = 0, active = true } = req.body ?? {};
 
   // DC-R01
@@ -118,69 +120,84 @@ router.post('/', (req, res) => {
 
   // DC-R02
   const normalized = normalizeCode(code);
-  if (store.discounts.findOne({ code: normalized })) {
-    return res.status(409).json({ error: `Discount code ${normalized} already exists` });
+  const taken = { error: `Discount code ${normalized} already exists` };
+  if (await store.discounts.findOne({ code: normalized })) return res.status(409).json(taken);
+
+  // The store's unique rule on code refuses a second create that passed the check
+  // above at the same moment.
+  let discount: Discount;
+  try {
+    discount = await store.discounts.insert({
+      code: normalized, type, value,
+      expires_at: expiresAt, max_uses: maxUses, min_subtotal, active: isActive,
+    });
+  } catch (err) {
+    if (err instanceof store.UniqueViolation) return res.status(409).json(taken);
+    throw err;
   }
+  res.status(201).json(await view(discount));
+}));
 
-  const discount = store.discounts.insert({
-    code: normalized, type, value,
-    expires_at: expiresAt, max_uses: maxUses, min_subtotal, active: isActive,
-  });
-  res.status(201).json(view(discount));
-});
+// DC-R11: only active, expires_at and max_uses can change. In a transaction with the
+// code locked, so an order can't use it between the max_uses check and the write.
+router.patch('/:code', handle(async (req, res) => {
+  send(res, await store.transaction((tx) => editDiscount(tx, req)));
+}));
 
-// DC-R11: only active, expires_at and max_uses can change.
-router.patch('/:code', (req, res) => {
-  const discount = findByCode(String(req.params.code));
-  if (!discount) return res.status(404).json({ error: `Discount code ${req.params.code} not found` });
+async function editDiscount(tx: Tables, req: Request): Promise<Reply> {
+  const discount = await findByCode(String(req.params.code), tx, { lock: true });
+  if (!discount) return reply(404, { error: `Discount code ${req.params.code} not found` });
 
   // CR-04: a JSON list has no keys to refuse, so `[]` used to pass as "no changes".
   if (typeof req.body !== 'object' || req.body === null || Array.isArray(req.body)) {
-    return res.status(400).json({ error: 'Request body must be a JSON object' });
+    return reply(400, { error: 'Request body must be a JSON object' });
   }
   const body: Record<string, unknown> = req.body;
   const unknown = Object.keys(body).filter(k => !EDITABLE.includes(k));
   if (unknown.length) {
-    return res.status(400).json({ error: `Only ${EDITABLE.join(', ')} can be changed (got ${unknown.join(', ')})` });
+    return reply(400, { error: `Only ${EDITABLE.join(', ')} can be changed (got ${unknown.join(', ')})` });
   }
 
   const changes: Partial<Discount> = {};
   if ('active' in body) {
     const v = parseActive(body.active);
-    if (isError(v)) return res.status(400).json(v);
+    if (isError(v)) return reply(400, v);
     changes.active = v;
   }
   if ('expires_at' in body) {
     const v = parseExpiresAt(body.expires_at);
-    if (isError(v)) return res.status(400).json(v);
+    if (isError(v)) return reply(400, v);
     changes.expires_at = v;
   }
   if ('max_uses' in body) {
     const v = parseMaxUses(body.max_uses);
-    if (isError(v)) return res.status(400).json(v);
-    if (v !== null && v < countingOrders(discount.code).length) {
-      return res.status(409).json({ error: 'max_uses cannot be below the uses already counted' });
+    if (isError(v)) return reply(400, v);
+    if (v !== null && v < (await countingOrders(discount.code, tx)).length) {
+      return reply(409, { error: 'max_uses cannot be below the uses already counted' });
     }
     changes.max_uses = v;
   }
 
   // Table.update skips undefined values but keeps null, so expires_at/max_uses can be cleared.
-  const updated = store.discounts.update(discount.id, changes);
-  res.json(view(updated!));
-});
+  const updated = await tx.discounts.update(discount.id, changes);
+  return reply(200, await view(updated!, tx));
+}
 
 // Checks a code for an order (DC-R15). Returns the discount in cents or a refusal.
-export function checkDiscount(
+// Called inside the order's transaction: the code stays locked until the order is
+// saved, so two orders can't both take its last use.
+export async function checkDiscount(
   input: string,
   userId: number,
   subtotalCents: number,
-): { code: string; discountCents: number } | { error: string } {
-  const discount = findByCode(input);
+  tx: Tables,
+): Promise<{ code: string; discountCents: number } | { error: string }> {
+  const discount = await findByCode(input, tx, { lock: true });
   if (!discount || !discount.active) return { error: 'Discount code is not valid' };
   if (discount.expires_at !== null && Date.now() >= Date.parse(discount.expires_at)) {
     return { error: 'Discount code has expired' };
   }
-  const counting = countingOrders(discount.code);
+  const counting = await countingOrders(discount.code, tx);
   if (discount.max_uses !== null && counting.length >= discount.max_uses) {
     return { error: 'Discount code has reached its usage limit' };
   }
