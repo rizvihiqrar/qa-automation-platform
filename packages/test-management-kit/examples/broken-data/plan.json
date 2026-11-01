@@ -1,0 +1,8 @@
+{
+  "name": "Release candidate",
+  "runs": [
+    { "name": "Smoke", "description": "The High priority cases, for a quick check after a build", "where": { "priority": ["High"] } },
+    { "name": "Integration", "description": "Cases that cross modules, after any change that does", "where": { "type": ["Integration"] } },
+    { "name": "Security", "description": "The Security cases plus the Negative cases", "where": { "type": ["Security", "Negative"] } }
+  ]
+}

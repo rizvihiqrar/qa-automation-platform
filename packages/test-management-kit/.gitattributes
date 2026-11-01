@@ -1,0 +1,3 @@
+# The reviewed TestRail import file must keep its byte order mark and Windows line endings;
+# a test compares the exporter's output with it byte for byte.
+examples/*.csv -text

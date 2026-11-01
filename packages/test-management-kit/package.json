@@ -1,0 +1,18 @@
+{
+  "name": "test-management-kit",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Test cases as plain data, a validator, and exporters for TestRail, other tools and plain Markdown",
+  "scripts": {
+    "validate": "node src/cli.ts validate",
+    "export:testrail": "node src/cli.ts export --format testrail --out out/testrail-import.csv",
+    "export:generic": "node src/cli.ts export --format generic --out out/cases.csv",
+    "export:markdown": "node src/cli.ts export --format markdown --out out/report.md",
+    "validate:broken": "node src/cli.ts validate --data examples/broken-data",
+    "coverage": "node src/cli.ts coverage",
+    "plan": "node src/cli.ts plan",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=24" },
+  "license": "MIT"
+}
