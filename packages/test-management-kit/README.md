@@ -65,10 +65,10 @@ npm run export:testrail   # out/testrail-import.csv
 | The TestRail CSV | Matches the reviewed import file byte for byte. It has **not** been imported into a live TestRail: no TestRail instance was used |
 | The generic CSV and Markdown report | Checked by tests only |
 | The TestRail result reporter | Tested against a local mock that follows TestRail's documented API: the request path, Basic sign-in, the status ids and the error answers. It has **not** been run against a live TestRail. No TestRail account was used |
-| The Jira issue creator | Tested against a local mock that follows Atlassian's documented issue endpoint, including its refusal of a plain-text description. It has **not** been run against a live Jira. A live proof on a free Jira site is planned |
+| The Jira issue creator | Tested against a local mock that follows Atlassian's documented issue endpoint, including its refusal of a plain-text description. It **was** run once against a live Jira Free site on 2026-11-01: one Bug was filed and its description showed the headings and the numbered list. That is one accepted request on a Free plan, team-managed project; other plans, required fields and error answers were not tried live. TestRail stays mock only |
 | The defect-report-linter check | Runs the real linter from `packages/defect-report-linter` on every failed case |
 
-A mock proves the kit sends what the documentation says it should, and that it handles the documented errors. It cannot prove that the real service accepts it. The first real run is the proof, and this page will say so when it happens.
+A mock proves the kit sends what the documentation says it should, and that it handles the documented errors. It cannot prove that the real service accepts it. The first real run is the proof: it happened once for Jira on 2026-11-01 (see the table), and not yet for TestRail.
 
 ## Results
 
