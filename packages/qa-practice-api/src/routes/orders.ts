@@ -5,6 +5,8 @@ import { requireAuth, currentUser, isAdmin } from '../middleware/auth.ts';
 import { checkDiscount } from './discounts.ts';
 import { toCents, fromCents, MAX_ORDER_CENTS } from '../money.ts';
 import { handle, reply, send, type Reply } from '../middleware/handle.ts';
+import { SpanStatusCode } from '@opentelemetry/api';
+import { inSpan, ordersCreated, ordersRejected } from '../telemetry.ts';
 
 const router = Router();
 
@@ -61,7 +63,7 @@ router.post('/', handle(async (req, res) => {
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'items must be a non-empty array' });
   }
-  send(res, await store.transaction((tx) => placeOrder(tx, req, items, discount_code)));
+  send(res, await traceOrder(items, () => store.transaction((tx) => placeOrder(tx, req, items, discount_code))));
 }));
 
 async function placeOrder(tx: store.Tables, req: Request, items: any[], discount_code: unknown): Promise<Reply> {
@@ -127,6 +129,33 @@ async function placeOrder(tx: store.Tables, req: Request, items: any[], discount
   }
 
   return reply(201, order);
+}
+
+// Why an order was refused, as a short fixed word: a metric attribute must have
+// few values, so never the error text itself.
+function rejectReason({ status, body }: Reply): string {
+  if (status === 404) return 'product_not_found';
+  if (status === 422) return 'discount_refused';
+  return /Insufficient stock/.test((body as { error?: string }).error ?? '') ? 'out_of_stock' : 'invalid';
+}
+
+// The order.create span (src/telemetry.ts) around the order's transaction, and the
+// orders.created and orders.rejected counters. A refused order marks this span as
+// failed: the request's own span stays unset, because a 4xx is the caller's mistake.
+function traceOrder(items: unknown[], place: () => Promise<Reply>): Promise<Reply> {
+  return inSpan('order.create', { 'qa.order.lines': items.length }, async (span) => {
+    const result = await place();
+    if (result.status === 201) {
+      span.setAttribute('qa.order.id', (result.body as store.Order).id);
+      ordersCreated.add(1);
+    } else {
+      const reason = rejectReason(result);
+      span.setAttribute('qa.order.reject_reason', reason);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: (result.body as { error?: string }).error });
+      ordersRejected.add(1, { 'qa.order.reject_reason': reason });
+    }
+    return result;
+  });
 }
 
 router.patch('/:id/status', handle(async (req, res) => {

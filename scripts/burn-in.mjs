@@ -31,8 +31,9 @@ export const PLAYWRIGHT = [
   { pkg: 'qa-for-ai-features', config: 'playwright.config.ts', dirs: ['tests/'] },
   { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'], skip: ['tests/postgres/'] },
   // On a Postgres that Testcontainers starts (playwright.config.ts runs tests/postgres
-  // only then). The race tests run here too: only on Postgres can they fail.
-  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/postgres/', 'tests/concurrency.spec.ts'], postgres: true },
+  // only then). The race tests run here too: only on Postgres can they fail. So do
+  // the trace tests: on Postgres the spans hold the SQL statements and real lock waits.
+  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/postgres/', 'tests/concurrency.spec.ts', 'tests/telemetry.spec.ts'], postgres: true },
 ];
 export const CYPRESS = [{ pkg: 'banking-api', dirs: ['cypress/e2e/'] }];
 
