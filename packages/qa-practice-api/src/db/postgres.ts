@@ -3,6 +3,7 @@
 // The schema also guards the data itself: stock can't go below 0, emails and codes
 // are unique, so a bug in a route can't store what these rules forbid.
 import pg from 'pg';
+import { inSpan } from '../telemetry.ts';
 import { toId, UniqueViolation } from './types.ts';
 import type { Row, Id, Table, Tables, Store, FindOptions, Page, Order, OrderItem } from './types.ts';
 
@@ -76,6 +77,14 @@ const types = {
 };
 
 type Query = (text: string, values?: unknown[]) => Promise<pg.QueryResult>;
+
+// Each statement is a span (src/telemetry.ts) named by its first word (SELECT,
+// BEGIN…), with the SQL as sent: the values travel apart from it ($1, $2), so no
+// email or password is in the text.
+const tracedQuery = (run: Query): Query => (text, values) =>
+  inSpan(text.trimStart().split(/\s/, 1)[0]!.toUpperCase(), {
+    'db.system.name': 'postgresql', 'db.query.text': text,
+  }, () => run(text, values));
 
 // Postgres error codes: https://www.postgresql.org/docs/current/errcodes-appendix.html
 function translate(err: unknown): never {
@@ -235,23 +244,24 @@ export async function openPostgres(connectionString: string): Promise<Store> {
     client.release();
   }
 
-  const query: Query = (text, values) => pool.query(text, values);
+  const query = tracedQuery((text, values) => pool.query(text, values));
   return {
     ...tables(query),
     // All of `work` on one connection between BEGIN and COMMIT; any error rolls
     // every write back. Row locks taken with { lock: true } last until the end.
     async transaction(work) {
       const conn = await pool.connect();
+      const run = tracedQuery((text, values) => conn.query(text, values));
       // A connection whose ROLLBACK failed may still be inside the aborted
       // transaction; it is closed instead of going back to the pool.
       let broken: Error | undefined;
       try {
-        await conn.query('BEGIN');
-        const result = await work(tables((text, values) => conn.query(text, values)));
-        await conn.query('COMMIT');
+        await run('BEGIN');
+        const result = await work(tables(run));
+        await run('COMMIT');
         return result;
       } catch (err) {
-        await conn.query('ROLLBACK').catch((e: Error) => { broken = e; });
+        await run('ROLLBACK').catch((e: Error) => { broken = e; });
         throw err;
       } finally {
         conn.release(broken);

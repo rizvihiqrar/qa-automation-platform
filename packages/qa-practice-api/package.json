@@ -7,18 +7,27 @@
   "scripts": {
     "start": "node src/server.ts",
     "dev": "node --watch src/server.ts",
+    "start:jaeger": "node --env-file=jaeger.env src/server.ts",
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
     "test:regression": "playwright test",
     "test:postgres": "node scripts/with-postgres.ts npx playwright test",
     "test:properties": "node --test \"tests/properties/*.property.ts\"",
     "test:mutation": "stryker run",
-    "scoreboard": "node scoreboard/run.mjs"
+    "scoreboard": "node scoreboard/run.mjs",
+    "jaeger": "docker run --rm -d --name qa-practice-jaeger -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:2.22.0",
+    "jaeger:stop": "docker stop qa-practice-jaeger"
   },
   "engines": {
     "node": ">=24"
   },
   "dependencies": {
+    "@opentelemetry/api": "~1.9.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.223.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
+    "@opentelemetry/resources": "^2.12.0",
+    "@opentelemetry/sdk-metrics": "^2.12.0",
+    "@opentelemetry/sdk-trace-node": "^2.12.0",
     "express": "^4.18.3",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.23.1"

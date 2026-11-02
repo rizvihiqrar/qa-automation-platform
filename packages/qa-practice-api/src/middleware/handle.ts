@@ -1,11 +1,16 @@
 import type { Request, Response, NextFunction } from 'express';
+import { rememberRoute } from './tracing.ts';
 
 // Express 4 ignores a promise a handler returns, so an error thrown after an await
-// left the request hanging. This passes it on to the JSON error handler in app.ts.
+// left the request hanging. This passes it on to the JSON error handler in app.ts,
+// noting the route first for the request's span (tracing.ts).
 export const handle =
   (fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction): void => {
-    fn(req, res, next).catch(next);
+    fn(req, res, next).catch((err) => {
+      rememberRoute(req, res);
+      next(err);
+    });
   };
 
 // A response worked out inside a transaction. The route sends it only after the

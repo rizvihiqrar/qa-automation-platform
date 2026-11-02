@@ -1,4 +1,6 @@
 import express, { type ErrorRequestHandler } from 'express';
+import { trace } from '@opentelemetry/api';
+import { tracing } from './middleware/tracing.ts';
 import authRoutes    from './routes/auth.ts';
 import userRoutes    from './routes/users.ts';
 import productRoutes from './routes/products.ts';
@@ -7,6 +9,7 @@ import discountRoutes from './routes/discounts.ts';
 
 const app = express();
 app.disable('x-powered-by');
+app.use(tracing); // first, so every response has a span (src/middleware/tracing.ts)
 // Found by the ZAP scan (zap/rules.tsv), on every response including errors:
 // nosniff stops a browser reading a JSON body as HTML or script, and
 // Cross-Origin-Resource-Policy stops other sites loading responses into their pages.
@@ -38,6 +41,7 @@ const onError: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
   console.error(err);
+  trace.getActiveSpan()?.recordException(err as Error); // the request's span (500 marks it failed)
   res.status(500).json({ error: 'Internal server error' });
 };
 app.use(onError);

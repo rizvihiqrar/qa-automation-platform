@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { ADMIN } from './tests/admin.ts';
+import { receiverPort } from './tests/telemetry.ts';
 
 // Mutation testing runs several copies of the suite at once (stryker.config.mjs):
 // each Stryker worker starts its own server on its own port.
@@ -23,7 +24,12 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || `http://localhost:${port}`,
     extraHTTPHeaders: { 'Content-Type': 'application/json' },
   },
-  webServer: {
+  webServer: [{
+    // Receives the API's traces and metrics (tests/telemetry.spec.ts), started first.
+    command: `node scripts/otlp-receiver.ts ${receiverPort}`,
+    url: `http://localhost:${receiverPort}/health`,
+    reuseExistingServer: !process.env.CI,
+  }, {
     command: 'node src/server.ts',
     port,
     // Never reuse a server already running on the port when testing Postgres: it
@@ -32,8 +38,13 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test', PORT: String(port), ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password,
       ...(DATABASE_URL ? { DATABASE_URL } : {}),
+      // OpenTelemetry (src/telemetry.ts): send to the receiver above, every 50 ms
+      // for spans and 200 ms for metrics, so the tests don't wait long.
+      OTEL_EXPORTER_OTLP_ENDPOINT: `http://localhost:${receiverPort}`,
+      OTEL_BSP_SCHEDULE_DELAY: '50',
+      OTEL_METRIC_EXPORT_INTERVAL: '200',
     },
-  },
+  }],
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     // Read by the traceability matrix (packages/ci-dashboard/src/traceability.js).
