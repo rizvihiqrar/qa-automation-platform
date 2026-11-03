@@ -50,6 +50,13 @@ export class AttemptLimiter {
     this.#entries.delete(key);
   }
 
+  // Gives back an attempt that never reached the password check (the database was
+  // down, Day 51), so an outage can't lock an owner out.
+  undo(key: string): void {
+    const entry = this.#entries.get(key);
+    if (entry && entry.attempts > 0) entry.attempts--;
+  }
+
   get size(): number {
     return this.#entries.size;
   }

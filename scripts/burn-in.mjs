@@ -73,10 +73,11 @@ export function commands(group) {
   if (group.runner === 'playwright') {
     const args = ['playwright', 'test', '-c', group.config, `--repeat-each=${REPEATS}`, '--retries=0', '--reporter=list', ...group.files];
     if (!group.postgres) return [[`${group.pkg} (${group.config}) x${REPEATS}`, 'npx', args, {}]];
-    // The image is pulled through retry.sh first (as the CI job does), so
-    // Testcontainers finds it on the runner; its clean-up container is not needed.
+    // The images are pulled through retry.sh first (as the CI job does), so
+    // Testcontainers finds them on the runner; its clean-up container is not needed.
     return [
-      [`${group.pkg} Postgres image`, 'bash', [path.join(ROOT, 'scripts', 'retry.sh'), 'docker', 'pull', '--quiet', postgresImage()], {}],
+      ...postgresImages().map((image) =>
+        [`${group.pkg} image ${image}`, 'bash', [path.join(ROOT, 'scripts', 'retry.sh'), 'docker', 'pull', '--quiet', image], {}]),
       [`${group.pkg} (${group.config}) on Postgres x${REPEATS}`, 'node', ['scripts/with-postgres.ts', 'npx', ...args], { TESTCONTAINERS_RYUK_DISABLED: 'true' }],
     ];
   }
@@ -94,12 +95,13 @@ export function commands(group) {
   return out;
 }
 
-// The tag packages/qa-practice-api/scripts/with-postgres.ts starts.
-export function postgresImage() {
+// The images packages/qa-practice-api/scripts/with-postgres.ts starts: Postgres,
+// and Toxiproxy since Day 51.
+export function postgresImages() {
   const launcher = fs.readFileSync(path.join(ROOT, 'packages', 'qa-practice-api', 'scripts', 'with-postgres.ts'), 'utf8');
-  const image = launcher.match(/POSTGRES_IMAGE = '([^']+)'/)?.[1];
-  if (!image) throw new Error('POSTGRES_IMAGE not found in with-postgres.ts');
-  return image;
+  const images = [...launcher.matchAll(/export const \w+_IMAGE = '([^']+)'/g)].map((m) => m[1]);
+  if (!images.length) throw new Error('no *_IMAGE found in with-postgres.ts');
+  return images;
 }
 
 function changedFiles() {

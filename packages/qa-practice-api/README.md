@@ -4,7 +4,7 @@ A purpose-built REST API for QA automation practice. Unlike third-party public A
 
 **In plain English:** A small online-shop backend (users, products, orders) built for practising testing. Other packages in this repo test it, and they have found and fixed real bugs in it.
 
-Built with Node.js and Express, in strict TypeScript that Node 24 runs directly (no build step). Keeps its data in memory by default, so it needs nothing else and starts in seconds; set `DATABASE_URL` and it uses Postgres instead. The same tests run on both ([how the store works](TECHNICAL.md)). It also reports what it does with OpenTelemetry, and the tests check those reports too ([traces and metrics](#traces-and-metrics)).
+Built with Node.js and Express, in strict TypeScript that Node 24 runs directly (no build step). Keeps its data in memory by default, so it needs nothing else and starts in seconds; set `DATABASE_URL` and it uses Postgres instead. The same tests run on both ([how the store works](TECHNICAL.md)). It also reports what it does with OpenTelemetry, and the tests check those reports too ([traces and metrics](#traces-and-metrics)). On Postgres, Toxiproxy slows down, cuts and silences the line to the database, and the tests check what the API does then ([when the database misbehaves](#when-the-database-misbehaves)).
 
 ## Stack
 
@@ -12,6 +12,7 @@ Built with Node.js and Express, in strict TypeScript that Node 24 runs directly 
 - **Data:** an in-memory store (`src/db/memory.ts`), reset on every restart, or Postgres (`src/db/postgres.ts`) when `DATABASE_URL` is set; Testcontainers starts a throwaway Postgres in Docker for the tests
 - **Auth:** JWT (`jsonwebtoken`, HS256, checked against the account on every request) + scrypt password hashing (Node's built-in `crypto.scrypt`, which runs off the event loop; see [k6-performance](../k6-performance) for why it replaced bcryptjs)
 - **Observability:** OpenTelemetry traces and metrics, sent over OTLP to a small receiver in the tests or to a local Jaeger
+- **Resilience:** Toxiproxy (in Docker, started by Testcontainers) between a test server and Postgres; connect and query timeouts, one safe retry, and a 503 when the database is down
 - **Tests:** Playwright API mode (no browser)
 - **CI:** GitHub Actions, as one job in the monorepo pipeline
 
@@ -35,9 +36,9 @@ npm run test:mutation  # Stryker; MUTATION_TESTS=designed or properties (see str
 npm run jaeger         # a local Jaeger in Docker; then npm run start:jaeger and open http://localhost:16686
 ```
 
-`npm test` uses the in-memory store, so each run starts empty and no state leaks between runs. `npm run test:postgres` starts a fresh Postgres 17 container with Testcontainers, runs the same suite against it plus 10 Postgres-only checks, and removes the container; CI runs both (`qa-practice-api` and `qa-practice-api-postgres`). The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
+`npm test` uses the in-memory store, so each run starts empty and no state leaks between runs. `npm run test:postgres` starts a fresh Postgres 17 container and a Toxiproxy container with Testcontainers, runs the same suite against it plus 19 Postgres-only checks, and removes the containers; CI runs both (`qa-practice-api` and `qa-practice-api-postgres`). The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
 
-308 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 4 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) and 8 trace tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)). On Postgres, 10 more in [tests/postgres](tests/postgres) (318 in all): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, and the traces show each SQL statement and how long an order waited for a locked row. With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
+309 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 5 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) and 8 trace tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)). On Postgres, 19 more in [tests/postgres](tests/postgres) (328 in all): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, the traces show each SQL statement and how long an order waited for a locked row, and 9 [resilience tests](tests/postgres/resilience.spec.ts) put faults on the line to the database ([below](#when-the-database-misbehaves)). With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
 
 The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
 
@@ -67,18 +68,43 @@ The tests read the same data. `playwright.config.ts` starts a small [OTLP receiv
 
 Eleven bugs were put back one at a time, and each was caught. Ignoring the caller's `traceparent` failed 5 of the 6 trace tests. The full list is in [TECHNICAL.md](TECHNICAL.md#traces-and-metrics).
 
+## When the database misbehaves
+
+A database usually sits across a network, and networks have bad moments: replies arrive late, a connection drops in the middle of a call, or the line goes quiet with no reply and no hang-up. [Toxiproxy](https://github.com/Shopify/toxiproxy) is a small proxy that does these things on purpose. The tests put it between a second API server and Postgres, then tell it what to break. The suite's own server keeps a direct line, so no other test sees a fault.
+
+What the API does now:
+
+- **Waits a set time, then answers 503.** 3 seconds to get a connection, 5 for a reply (settings `DB_CONNECT_TIMEOUT_MS` and `DB_QUERY_TIMEOUT_MS`). Postgres also stops the statement itself after 5 seconds, so a request the API gave up on can't keep a row locked. The 503 says `{ "error": "Database unavailable" }` with `Retry-After: 2`, never the driver's message. When a write was cut after it was sent, the API can't know whether it was saved, so that 503 has no `Retry-After` and says the change may have been saved: check before sending it again.
+- **Tries again once, only when that is safe.** A failed connect, or a read whose connection dropped, is tried again after 200 ms. A write that was already sent is never sent again, because the database may have saved it before the line broke. A timeout isn't retried either, because the caller would wait twice as long.
+- **Says when it can't serve.** `GET /health/ready` asks the database, and answers 503 while it is down. `GET /health` still answers 200 as long as the process runs.
+
+| Test | Fault | What the test checks |
+|---|---|---|
+| RS-01 | none | the proxied server answers like the direct one |
+| RS-02 | replies 400 ms late | slow but fine: 200, at least 400 ms |
+| RS-03 | replies 5 s late | 503 at the 1.5 s query timeout, not after 5 s; not retried; the SQL span says `Query read timeout` |
+| RS-04 | connection cut mid-read | tried once more, 200; the trace shows a `db.retry` event and two SELECT spans |
+| RS-05 | connection cut after a sign-up's INSERT ran | exactly one account, and a 503 that says it may have been saved (no `Retry-After`). A retry would have answered "Email already in use" for the caller's own new account |
+| RS-06 | connection cut while an order waits for a row lock | 503, no order, stock unchanged, transaction rolled back, no retry |
+| RS-07 | line goes silent | 503s within the timeouts, `/health/ready` 503, then 200 again once the line is back |
+| RS-08 | line down, back 250 ms into a request | the failed connect is tried again after the pause and succeeds |
+| RS-09 | line down during six sign-ins | six 503s, and the owner can sign in once it is back: an outage doesn't use up the 5 attempts |
+
+The tests use shorter timeouts (1 s, 1.5 s and 500 ms) so they finish quickly. The first run found a real crash: when a connection broke in the middle of a query, the whole API process stopped. Now it answers 503 and keeps running ([details](TECHNICAL.md#resilience-toxiproxy)).
+
 ## API Reference
 
 ### Health
 | Method | Route | Auth | Notes |
 |---|---|---|---|
-| GET | `/health` | No | Returns `{ status: "ok", timestamp }` |
+| GET | `/health` | No | Returns `{ status: "ok", timestamp }` while the process runs |
+| GET | `/health/ready` | No | Returns `{ status: "ready" }` when the database answers, otherwise 503 |
 
 ### Auth
 | Method | Route | Auth | Notes |
 |---|---|---|---|
 | POST | `/auth/register` | No | Returns `{ user, token }` |
-| POST | `/auth/login` | No | Returns `{ user, token }`. 5 attempts per email and client in 15 minutes without a success, then `429` with `Retry-After` |
+| POST | `/auth/login` | No | Returns `{ user, token }`. 5 attempts per email and client in 15 minutes without a success, then `429` with `Retry-After`. An attempt the database was down for doesn't count |
 | GET | `/auth/me` | Yes | Returns current user |
 
 ### Users
@@ -157,6 +183,7 @@ These are intentional behaviours worth writing tests for:
 |---|---|---|
 | `PORT` | `4000` | Server port |
 | `DATABASE_URL` | none: data in memory | A Postgres connection string. The server creates its tables if they are missing, so a restart keeps the data; `npm run test:postgres` sets it for the tests |
+| `DB_CONNECT_TIMEOUT_MS`, `DB_QUERY_TIMEOUT_MS`, `DB_RETRY_DELAY_MS` | 3000, 5000, 200 | Postgres only: how long to wait for a connection and for a reply before a 503, and the pause before the one retry. `0` turns a timeout off; anything but a whole number stops the server at start-up |
 | `JWT_SECRET` | random, per start | Set it to keep tokens valid across restarts (worth it only with `DATABASE_URL`, where accounts survive one). It used to default to a fixed string written in this file, so anyone could sign a token |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | none | Both set: the server creates this admin at start-up. Neither set: there is no admin |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | none: no traces or metrics are sent | Where to send them over OTLP/HTTP (JSON). The tests set their receiver; `jaeger.env` sets a local Jaeger |

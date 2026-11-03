@@ -94,6 +94,7 @@ export function memoryStore(): Store {
       queue = run.catch(() => {});
       return run;
     },
+    async ping() {},
     async close() {},
   };
 }

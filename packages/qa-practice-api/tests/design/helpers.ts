@@ -21,9 +21,10 @@ const unique = () => `${process.pid}.${Date.now()}.${count++}`;
 
 export { PASSWORD };
 
-export async function signUp(request: APIRequestContext): Promise<Account> {
+// `server`: another API than the suite's own (its tokens are only valid there).
+export async function signUp(request: APIRequestContext, server = ''): Promise<Account> {
   const email = `design.${unique()}@example.com`;
-  const res = await request.post('/auth/register', { data: { name: 'Design Tester', email, password: PASSWORD } });
+  const res = await request.post(`${server}/auth/register`, { data: { name: 'Design Tester', email, password: PASSWORD } });
   if (res.status() !== 201) throw new Error(`sign-up failed: ${res.status()} ${await res.text()}`);
   const body = await res.json();
   return { id: body.user.id, email, auth: { Authorization: `Bearer ${body.token}` } };

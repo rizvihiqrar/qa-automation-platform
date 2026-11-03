@@ -11,7 +11,9 @@ const safe = ({ password: _password, ...rest }: store.User) => rest;
 const allStrings = (...values: unknown[]) => values.every((v) => typeof v === 'string' && v !== '');
 
 // Hashing happens in src/security/password.ts, off the event loop (see there).
-router.post('/register', async (req, res) => {
+// A DatabaseUnavailable is thrown on to handle(), which notes the route for the
+// span, and app.ts answers it with a 503.
+router.post('/register', handle(async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!allStrings(name, email, password)) {
@@ -27,9 +29,10 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ user: safe(user), token: signToken({ id: user.id, role: user.role }) });
   } catch (err) {
     if (err instanceof store.UniqueViolation) return res.status(409).json({ error: 'Email already in use' });
+    if (err instanceof store.DatabaseUnavailable) throw err;
     res.status(500).json({ error: 'Registration failed' });
   }
-});
+}));
 
 // 5 sign-in attempts per client and email in 15 minutes. Keyed on the pair, so a
 // guesser can't lock the owner out from another address. req.ip is the socket
@@ -38,13 +41,14 @@ export const LOGIN_ATTEMPTS = 5;
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const loginLimiter = new AttemptLimiter(LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
 
-router.post('/login', async (req, res) => {
+router.post('/login', handle(async (req, res) => {
+  let key: string | undefined;
   try {
     const { email, password } = req.body;
     if (!allStrings(email, password)) {
       return res.status(400).json({ error: 'email and password are required strings' });
     }
-    const key = `${req.ip}|${email.toLowerCase()}`;
+    key = `${req.ip}|${email.toLowerCase()}`;
     const attempt = loginLimiter.attempt(key);
     if (!attempt.allowed) {
       res.set('Retry-After', String(attempt.retryAfterSeconds));
@@ -56,10 +60,15 @@ router.post('/login', async (req, res) => {
     }
     loginLimiter.succeeded(key);
     res.json({ user: safe(user), token: signToken({ id: user.id, role: user.role }) });
-  } catch {
+  } catch (err) {
+    if (err instanceof store.DatabaseUnavailable) {
+      // No password was checked: the attempt doesn't count (RS-09).
+      if (key) loginLimiter.undo(key);
+      throw err;
+    }
     res.status(500).json({ error: 'Login failed' });
   }
-});
+}));
 
 router.get('/me', requireAuth, handle(async (req, res) => {
   const user = await store.users.findById(currentUser(req).id);

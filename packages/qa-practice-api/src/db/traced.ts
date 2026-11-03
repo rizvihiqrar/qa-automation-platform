@@ -45,6 +45,7 @@ export function traced(inner: Store, store: 'postgres' | 'memory'): Store {
       span.setAttribute('qa.transaction.outcome', 'commit');
       return result;
     }),
+    ping: () => inner.ping(),
     close: () => inner.close(),
   };
 }

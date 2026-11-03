@@ -84,7 +84,25 @@ export interface Store extends Tables {
   // Runs `work` all or nothing: other transactions can't see its writes until it
   // ends, and rows it locked stay locked until then.
   transaction<R>(work: (tx: Tables) => Promise<R>): Promise<R>;
+  // Resolves when the store answers (GET /health/ready).
+  ping(): Promise<void>;
   close(): Promise<void>;
+}
+
+// The database could not be reached in time (Day 51); app.ts answers 503.
+//   connect  no connection could be made: nothing was sent
+//   lost     the connection broke during a statement: a write may have been saved
+//   timeout  no answer within the query timeout
+// maybeSaved: a write or COMMIT was sent and no answer came, so it may have been
+// saved; the 503 then doesn't invite the caller to send it again.
+export class DatabaseUnavailable extends Error {
+  readonly reason: 'connect' | 'lost' | 'timeout';
+  readonly maybeSaved: boolean;
+  constructor(reason: 'connect' | 'lost' | 'timeout', cause: unknown, maybeSaved = false) {
+    super(`database unavailable (${reason}): ${(cause as Error)?.message ?? cause}`, { cause });
+    this.reason = reason;
+    this.maybeSaved = maybeSaved;
+  }
 }
 
 // A second user with the same email, or a second discount with the same code.
