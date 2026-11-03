@@ -28,8 +28,9 @@ test('qa-practice-api Postgres specs run inside Testcontainers; the race tests r
     ['qa-practice-api/playwright.config.ts on Postgres', ['tests/postgres/postgres.spec.ts', 'tests/concurrency.spec.ts']],
     ['qa-practice-api/playwright.config.ts', ['tests/concurrency.spec.ts', 'tests/orders.spec.ts']],
   ]);
-  const [pull, run] = commands(groups[0]);
+  const [pull, pullProxy, run] = commands(groups[0]);
   assert.deepEqual(pull[2].slice(1), ['docker', 'pull', '--quiet', 'postgres:17-alpine']);
+  assert.deepEqual(pullProxy[2].slice(1), ['docker', 'pull', '--quiet', 'ghcr.io/shopify/toxiproxy:2.12.0']);
   assert.match(pull[2][0], /retry\.sh$/);
   assert.deepEqual([run[1], run[2].slice(0, 2)], ['node', ['scripts/with-postgres.ts', 'npx']]);
   assert.ok(run[2].includes('--repeat-each=3') && run[2].includes('--retries=0'));

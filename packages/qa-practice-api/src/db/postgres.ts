@@ -2,9 +2,11 @@
 // as the in-memory store (types.ts), so the routes don't know which one they have.
 // The schema also guards the data itself: stock can't go below 0, emails and codes
 // are unique, so a bug in a route can't store what these rules forbid.
+import { setTimeout as sleep } from 'node:timers/promises';
 import pg from 'pg';
+import { trace } from '@opentelemetry/api';
 import { inSpan } from '../telemetry.ts';
-import { toId, UniqueViolation } from './types.ts';
+import { toId, UniqueViolation, DatabaseUnavailable } from './types.ts';
 import type { Row, Id, Table, Tables, Store, FindOptions, Page, Order, OrderItem } from './types.ts';
 
 // Runs once at start-up; IF NOT EXISTS makes a restart on the same database safe.
@@ -227,45 +229,157 @@ function tables(query: Query): Tables {
   };
 }
 
-export async function openPostgres(connectionString: string): Promise<Store> {
+// Day 51: how long to wait before answering 503 (src/db/store.ts reads them from
+// DB_CONNECT_TIMEOUT_MS, DB_QUERY_TIMEOUT_MS and DB_RETRY_DELAY_MS).
+export interface Timeouts {
+  connect: number;    // to get a connection, from the pool or a new one
+  query: number;      // for one statement's answer
+  retryDelay: number; // pause before the one retry
+}
+export const DEFAULT_TIMEOUTS: Timeouts = { connect: 3000, query: 5000, retryDelay: 200 };
+
+// Network and server codes that mean the line to Postgres is down, not that the
+// statement was wrong: https://www.postgresql.org/docs/current/errcodes-appendix.html
+// (57P01-03 shutting down or starting, 53300 too many connections, 08xxx connection).
+const LINE_DOWN = new Set(['ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ETIMEDOUT', '57P01', '57P02', '57P03', '53300']);
+
+// The error as a DatabaseUnavailable, or undefined for a statement's own error
+// (a unique email, a CHECK rule), which the routes handle as before. Query read
+// timeout is pg's own query_timeout; 57014 is statement_timeout on the server.
+// `wrote`: the statement was a write or COMMIT, so a lost or timed-out one may
+// have been saved (a connect failure sent nothing).
+function unavailable(err: unknown, stage: 'connect' | 'query', wrote = false): DatabaseUnavailable | undefined {
+  if (err instanceof DatabaseUnavailable) return err;
+  const { code = '', message = '' } = err as { code?: string; message?: string };
+  if (stage === 'query' && (message === 'Query read timeout' || code === '57014')) return new DatabaseUnavailable('timeout', err, wrote);
+  const down = LINE_DOWN.has(code) || code.startsWith('08')
+    || /timeout exceeded when trying to connect|Connection terminated/.test(message);
+  if (!down) return undefined;
+  return stage === 'connect' ? new DatabaseUnavailable('connect', err) : new DatabaseUnavailable('lost', err, wrote);
+}
+
+export async function openPostgres(connectionString: string, timeouts: Timeouts = DEFAULT_TIMEOUTS): Promise<Store> {
   // Transactions waiting on a locked row each hold a connection, so leave room for
-  // the requests that are not in one.
-  const pool = new pg.Pool({ connectionString, max: 20, types });
+  // the requests that are not in one. A statement gets no answer after
+  // timeouts.query (query_timeout, here); Postgres also stops it itself
+  // (statement_timeout), so a statement the API gave up on can't hold a row lock on.
+  const pool = new pg.Pool({
+    connectionString, max: 20, types,
+    connectionTimeoutMillis: timeouts.connect,
+    query_timeout: timeouts.query,
+    statement_timeout: timeouts.query,
+  });
   pool.on('error', (err) => console.error(`postgres pool error: ${err.message}`));
+  // The pool listens for errors only on idle connections. One in use whose line
+  // breaks also emits 'error' (beside failing its statement), and with no listener
+  // that ended the whole process (found by RS-04): every connection gets one.
+  pool.on('connect', (client) => client.on('error', (err) => console.error(`postgres connection error: ${err.message}`)));
+
+  const connect = async (): Promise<pg.PoolClient> => {
+    try {
+      return await pool.connect();
+    } catch (err) {
+      throw unavailable(err, 'connect') ?? err;
+    }
+  };
+
+  // Tries `work` once more, after a short pause, when `safe` says nothing it sent
+  // could have been saved. A write already sent is never sent again: it may have
+  // been saved before the line broke, and a second copy would be a second order.
+  // A timeout isn't retried either: the user would wait twice as long.
+  const retried = async <R>(work: () => Promise<R>, safe: (down: DatabaseUnavailable) => boolean): Promise<R> => {
+    try {
+      return await work();
+    } catch (err) {
+      if (!(err instanceof DatabaseUnavailable) || !safe(err)) throw err;
+      // On the span the statement ran in (the request's, or db.transaction).
+      trace.getActiveSpan()?.addEvent('db.retry', { 'qa.retry.attempt': 2, 'qa.retry.reason': err.reason });
+      await sleep(timeouts.retryDelay);
+      return work();
+    }
+  };
+
+  const isRead = (text: string) => /^\s*SELECT\b/i.test(text);
+  // One statement outside a transaction, on a connection of its own. A connection
+  // that broke or is still waiting for an answer is closed, not reused.
+  const statement = tracedQuery(async (text, values) => {
+    const client = await connect();
+    try {
+      const result = await client.query(text, values);
+      client.release();
+      return result;
+    } catch (err) {
+      const down = unavailable(err, 'query', !isRead(text));
+      client.release(down);
+      throw down ?? err;
+    }
+  });
 
   // One server at a time sets up the schema (two starting together could both try
-  // to create a table).
+  // to create a table). Unlocked only once locked: a failed lock has nothing to undo.
   const client = await pool.connect();
   try {
     await client.query('SELECT pg_advisory_lock(49)');
-    await client.query(SCHEMA);
+    try {
+      await client.query(SCHEMA);
+    } finally {
+      await client.query('SELECT pg_advisory_unlock(49)');
+    }
   } finally {
-    await client.query('SELECT pg_advisory_unlock(49)');
     client.release();
   }
 
-  const query = tracedQuery((text, values) => pool.query(text, values));
+  // A failed connect is tried again; so is a SELECT whose line broke.
+  const query: Query = (text, values) => retried(
+    () => statement(text, values),
+    (down) => down.reason === 'connect' || (down.reason === 'lost' && isRead(text)),
+  );
+  const on = (conn: pg.PoolClient) => tracedQuery((text, values) => conn.query(text, values));
+
+  // A connection with BEGIN done. Up to here nothing is written, so a lost line is
+  // tried again too.
+  const begin = async (): Promise<pg.PoolClient> => {
+    const conn = await connect();
+    try {
+      await on(conn)('BEGIN');
+      return conn;
+    } catch (err) {
+      const down = unavailable(err, 'query');
+      conn.release(down ?? (err as Error));
+      throw down ?? err;
+    }
+  };
+
   return {
     ...tables(query),
     // All of `work` on one connection between BEGIN and COMMIT; any error rolls
     // every write back. Row locks taken with { lock: true } last until the end.
     async transaction(work) {
-      const conn = await pool.connect();
-      const run = tracedQuery((text, values) => conn.query(text, values));
+      const conn = await retried(begin, (down) => down.reason !== 'timeout');
+      const run = on(conn);
       // A connection whose ROLLBACK failed may still be inside the aborted
       // transaction; it is closed instead of going back to the pool.
       let broken: Error | undefined;
+      // Before COMMIT, a broken line means Postgres rolls back: nothing is saved.
+      let committing = false;
       try {
-        await run('BEGIN');
         const result = await work(tables(run));
+        committing = true;
         await run('COMMIT');
         return result;
       } catch (err) {
-        await run('ROLLBACK').catch((e: Error) => { broken = e; });
-        throw err;
+        const down = unavailable(err, 'query', committing);
+        // A broken line or a statement still running: close the connection, and
+        // Postgres rolls the transaction back itself when it sees it go.
+        if (down) broken = down;
+        else await run('ROLLBACK').catch((e: Error) => { broken = e; });
+        throw down ?? err;
       } finally {
         conn.release(broken);
       }
+    },
+    async ping() {
+      await query('SELECT 1');
     },
     close: () => pool.end(),
   };

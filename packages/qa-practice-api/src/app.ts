@@ -1,6 +1,8 @@
 import express, { type ErrorRequestHandler } from 'express';
 import { trace } from '@opentelemetry/api';
 import { tracing } from './middleware/tracing.ts';
+import { handle } from './middleware/handle.ts';
+import { db, DatabaseUnavailable } from './db/store.ts';
 import authRoutes    from './routes/auth.ts';
 import userRoutes    from './routes/users.ts';
 import productRoutes from './routes/products.ts';
@@ -22,6 +24,12 @@ app.use(express.json());
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 );
+// /health says the process is up; /health/ready also asks the store, so a load
+// balancer can stop sending requests while the database is down (a 503 then).
+app.get('/health/ready', handle(async (_req, res) => {
+  await db.ping();
+  res.json({ status: 'ready' });
+}));
 
 app.use('/auth',     authRoutes);
 app.use('/users',    userRoutes);
@@ -38,6 +46,19 @@ app.use((req, res) =>
 const onError: ErrorRequestHandler = (err, _req, res, _next) => {
   if ((err as { type?: string }).type === 'entity.parse.failed') {
     res.status(400).json({ error: 'Request body is not valid JSON' });
+    return;
+  }
+  // Day 51: the database didn't answer in time (src/db/postgres.ts). A short reply
+  // without the driver's message. It says try again only when nothing was saved:
+  // a write cut after it was sent may have been, and a resend could be a duplicate.
+  if (err instanceof DatabaseUnavailable) {
+    console.error(err.message);
+    trace.getActiveSpan()?.recordException(err);
+    if (err.maybeSaved) {
+      res.status(503).json({ error: 'Database unavailable: the change may have been saved. Check before sending it again.' });
+    } else {
+      res.set('Retry-After', '2').status(503).json({ error: 'Database unavailable' });
+    }
     return;
   }
   console.error(err);

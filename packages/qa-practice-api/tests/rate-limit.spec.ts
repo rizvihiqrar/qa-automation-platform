@@ -34,6 +34,19 @@ test.describe('sign-in attempt limiter', () => {
     expect(l.attempt('k').allowed).toBe(true);
   });
 
+  test('an attempt given back (the database was down) no longer counts, and a count never goes below 0 @regression', () => {
+    const { l } = limiter();
+    for (let i = 0; i < 5; i++) l.attempt('k');
+    l.undo('k');
+    expect(l.attempt('k').allowed).toBe(true);
+    expect(l.attempt('k').allowed).toBe(false);
+    l.undo('unknown'); // nothing to give back
+    const fresh = limiter().l;
+    fresh.undo('z');
+    for (let i = 0; i < 5; i++) expect(fresh.attempt('z').allowed).toBe(true);
+    expect(fresh.attempt('z').allowed).toBe(false);
+  });
+
   test('a success clears the count, and keys are counted apart @regression', () => {
     const { l } = limiter();
     for (let i = 0; i < 5; i++) l.attempt('a');
