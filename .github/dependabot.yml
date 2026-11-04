@@ -11,6 +11,10 @@ updates:
       day: monday
     open-pull-requests-limit: 2
     groups:
+      # OpenTelemetry packages version in lockstep (an exporter release needs the matching api, core
+      # and SDK packages), so they move in one pull request or not at all.
+      opentelemetry:
+        patterns: ["@opentelemetry/*"]
       npm-minor-and-patch:
         update-types: [minor, patch]
     # CI runs Node 24. The types must stay on the runtime's major version: Node 26 types
@@ -18,6 +22,16 @@ updates:
     ignore:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # Held back on purpose (pull request 137, 2026-11-04): the 0.300 exporters need api 1.10 and
+      # sdk-trace 3, but the newest sdk-trace-node (2.12.0) still needs api below 1.10, so npm ci
+      # fails with ERESOLVE. A new major of resources or sdk-metrics would break the same way.
+      # Remove these three entries once sdk-trace-node 3 is published.
+      - dependency-name: "@opentelemetry/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@opentelemetry/api"
+        versions: [">=1.10.0"]
+      - dependency-name: "@opentelemetry/exporter-*"
+        versions: [">=0.300.0"]
   - package-ecosystem: pip
     directories:
       - "/packages/api-pytest"

@@ -20,6 +20,28 @@ test('Dependabot watches the root, the tools and every package for npm', () => {
   for (const dir of ['"/"', '"/tools/*"', '"/packages/*"']) assert.ok(yml.includes(dir), `npm directories must include ${dir}`);
 });
 
+// Pull request 137 (2026-11-04) bumped the OTLP exporters to 0.300 and left sdk-trace-node on 2.x,
+// which npm cannot resolve, so seven CI jobs failed at npm ci. The packages move as one group, and
+// the exporters and api stay held back while the SDK package is still on 2.x.
+const npmBlock = () => fs.readFileSync(file, 'utf8').split(/package-ecosystem: /).find((block) => block.startsWith('npm')) ?? '';
+
+test('the OpenTelemetry packages are one Dependabot group', () => {
+  assert.match(npmBlock(), /opentelemetry:\s*\n\s*patterns: \["@opentelemetry\/\*"\]/);
+});
+
+test('the OpenTelemetry hold-back lasts exactly as long as sdk-trace-node is on 2.x', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'packages', 'qa-practice-api', 'package.json'), 'utf8'));
+  const range = pkg.dependencies?.['@opentelemetry/sdk-trace-node'];
+  assert.ok(range, 'sdk-trace-node is a dependency of qa-practice-api: update this test if it moved');
+  const held = /^[\^~]?2\./.test(range);
+  const block = npmBlock();
+  const entries = [/dependency-name: "@opentelemetry\/\*"\s*\n\s*update-types: \["version-update:semver-major"\]/, /dependency-name: "@opentelemetry\/api"\s*\n\s*versions: \[">=1\.10\.0"\]/, /dependency-name: "@opentelemetry\/exporter-\*"\s*\n\s*versions: \[">=0\.300\.0"\]/];
+  for (const entry of entries) {
+    if (held) assert.match(block, entry, 'sdk-trace-node is on 2.x: keep the OpenTelemetry hold-back in .github/dependabot.yml');
+    else assert.doesNotMatch(block, entry, 'sdk-trace-node moved past 2.x: remove the OpenTelemetry hold-back from .github/dependabot.yml');
+  }
+});
+
 // Found by looking for requirements.txt, so a new Python package can't be missed (the second
 // one, hcm-conversion-validation, was added by hand on 2026-11-04).
 test('Dependabot watches every Python package', () => {
