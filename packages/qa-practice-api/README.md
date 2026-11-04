@@ -36,9 +36,9 @@ npm run test:mutation  # Stryker; MUTATION_TESTS=designed or properties (see str
 npm run jaeger         # a local Jaeger in Docker; then npm run start:jaeger and open http://localhost:16686
 ```
 
-`npm test` uses the in-memory store, so each run starts empty and no state leaks between runs. `npm run test:postgres` starts a fresh Postgres 17 container and a Toxiproxy container with Testcontainers, runs the same suite against it plus 19 Postgres-only checks, and removes the containers; CI runs both (`qa-practice-api` and `qa-practice-api-postgres`). The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
+`npm test` uses the in-memory store, so each run starts empty and no state leaks between runs. `npm run test:postgres` starts a fresh Postgres 17 container and a Toxiproxy container with Testcontainers, runs the same suite against it plus 34 Postgres-only checks, and removes the containers; CI runs both (`qa-practice-api` and `qa-practice-api-postgres`). The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
 
-309 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 5 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) and 8 trace tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)). On Postgres, 19 more in [tests/postgres](tests/postgres) (328 in all): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, the traces show each SQL statement and how long an order waited for a locked row, and 9 [resilience tests](tests/postgres/resilience.spec.ts) put faults on the line to the database ([below](#when-the-database-misbehaves)). With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
+385 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 5 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) 8 trace tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)), 14 checks of the migration runner and its files, 16 of the feature flags and 46 for the [OWASP Top 10](#owasp-top-10). On Postgres, 34 more in [tests/postgres](tests/postgres) (419 in all), 15 of them [migration tests](#migrations): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, the traces show each SQL statement and how long an order waited for a locked row, and 9 [resilience tests](tests/postgres/resilience.spec.ts) put faults on the line to the database ([below](#when-the-database-misbehaves)). With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
 
 The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
 
@@ -47,6 +47,28 @@ The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] �
 `tests/rate-limit.spec.ts` tests the sign-in limiter's window with a fake clock, which the API tests can't wait 15 minutes for. `tests/password.spec.ts` holds two unit tests for password hashing. One checks that hashing eight passwords keeps the event loop free (0–11% busy measured, against 100% for hashing on the main thread), which guards the bug [k6 found](../../docs/rca/01-login-hashing-blocked-the-api.md) in about a second instead of a minute of load.
 
 `tests/keep-alive.spec.ts` holds a raw connection idle for 7 seconds and checks that the server still answers on it. Playwright keeps every connection in one pool per worker and never closes an idle one itself. Node's default closed them after 6 seconds, so DC-ST-06, which signs up ten customers at once, sometimes reused a connection just as the server closed it and failed with "socket hang up" (Linux only). The server now keeps idle connections for 65 seconds (`src/server.ts`).
+
+## Migrations
+
+The Postgres schema is a folder of numbered SQL files, [src/db/migrations](src/db/migrations), each with an `-- up` part and a `-- down` part. At start-up the server applies the ones it has not run yet, in order, and records each in a `schema_migrations` table. Before this the schema was one block of `CREATE TABLE IF NOT EXISTS`, which can create a table but can't change one that holds rows.
+
+The runner ([src/db/migrate.ts](src/db/migrate.ts)) is tested on its own: 10 checks of the files, 4 on a stand-in connection that breaks (a failed rollback or unlock must not hide why the step failed), and 15 on a real database, each in a database of its own so they run side by side:
+
+- An empty database gets every version, in order, and the schema matches what the API was written against, column by column.
+- Running again does nothing. A database made by the server from before migrations existed keeps its rows and only gets version 1 recorded.
+- Going down removes what going up made; up, down, up gives the same schema.
+- An upgrade that changes a table holding rows keeps the rows and fills the new column; going back removes the column, not the rows.
+- A step that fails halfway is undone whole, up or down, and so is a step whose version row can't be written.
+- Two servers starting at the same moment both come up, and each version is applied once.
+- A server older than its database refuses to start, rather than guess.
+
+Each of these was put back as a bug once and failed: no transaction, a version never recorded, a down part that forgets a table, no lock, and the old-server check removed. [TECHNICAL.md](TECHNICAL.md#migrations) has the rest.
+
+## Feature flags
+
+A flag turns a behaviour on or off without a code change. [src/flags.ts](src/flags.ts) reads `FEATURE_FLAGS` once at start-up, so a running server never changes behaviour under the requests it is serving. The one flag, `discount-codes`, is on by default; off, an order that names a code is refused with a 400 and nothing is taken from stock, while orders without a code, and the admin's code routes, work as before.
+
+The parsing has 8 unit tests: defaults, on and off, spaces, an unknown name (ignored with a warning that names it), a bad value or entry (stops the start), a name listed twice, and case. 8 more start a copy of the API with the flag set, on its own port, so the other 300-odd tests, which run in parallel against one server, are never switched. Each of the six bugs tried (check removed, check on every order, a loosened value check, no warning, duplicates allowed, on and off swapped) failed at least one.
 
 ## Traces and metrics
 
@@ -182,8 +204,9 @@ These are intentional behaviours worth writing tests for:
 | Variable | Default | Notes |
 |---|---|---|
 | `PORT` | `4000` | Server port |
-| `DATABASE_URL` | none: data in memory | A Postgres connection string. The server creates its tables if they are missing, so a restart keeps the data; `npm run test:postgres` sets it for the tests |
+| `DATABASE_URL` | none: data in memory | A Postgres connection string. The server applies any [migrations](#migrations) it has not run yet, so a restart keeps the data; `npm run test:postgres` sets it for the tests |
 | `DB_CONNECT_TIMEOUT_MS`, `DB_QUERY_TIMEOUT_MS`, `DB_RETRY_DELAY_MS` | 3000, 5000, 200 | Postgres only: how long to wait for a connection and for a reply before a 503, and the pause before the one retry. `0` turns a timeout off; anything but a whole number stops the server at start-up |
+| `FEATURE_FLAGS` | none: every flag has its default | Comma-separated `name:on` or `name:off`, read once at start-up. One flag today: `discount-codes` (on). An unknown name is ignored with a warning; anything but `on` or `off` stops the start ([below](#feature-flags)) |
 | `JWT_SECRET` | random, per start | Set it to keep tokens valid across restarts (worth it only with `DATABASE_URL`, where accounts survive one). It used to default to a fixed string written in this file, so anyone could sign a token |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | none | Both set: the server creates this admin at start-up. Neither set: there is no admin |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | none: no traces or metrics are sent | Where to send them over OTLP/HTTP (JSON). The tests set their receiver; `jaeger.env` sets a local Jaeger |
@@ -194,6 +217,25 @@ The tests read two more, both with throwaway test-only defaults in `tests/admin.
 ## Security
 
 Who may call what is tested case by case in [tests/design/access-control.spec.ts](tests/design/access-control.spec.ts): every protected action against no token, a customer on their own data, a customer on someone else's, the admin, and a deleted account's token. The matrix and the reasons are in the [test plan](../../docs/test-strategy/test-plan.md#access-control). Writing it found 8 defects, listed with the cases that catch them in the [strategy's results](../../docs/test-strategy/README.md#day-36-security); each fix was checked by putting the bug back.
+
+### OWASP Top 10
+
+The [OWASP Top 10](https://owasp.org/Top10/) (2021) lists the web risks most worth testing. Five get a test set of their own in [tests/owasp](tests/owasp); the others are covered elsewhere or don't apply. Each set tries the attack and checks the safe outcome, then was checked by putting the bug back.
+
+| Item | Tests | What is tried |
+|---|---|---|
+| A01 Broken access control | [access-control matrix](tests/design/access-control.spec.ts) | Every protected action against no token, own data, another's data, admin and a deleted account |
+| A02 Cryptographic failures | 9, [a02](tests/owasp/a02-cryptography.spec.ts) | No password or hash in any response; scrypt with a fresh salt; a tampered or odd stored hash fails; tokens hold an id and a role for one hour; a token from one server is refused by another |
+| A03 Injection | 7, [a03](tests/owasp/a03-injection.spec.ts) | SQL text in filters, sign-in, names and ids; objects where text is expected; `__proto__` in a body |
+| A04 Insecure design | [sign-in limiter](tests/rate-limit.spec.ts) | Five attempts per client and email in 15 minutes |
+| A05 Security misconfiguration | 8, [a05](tests/owasp/a05-misconfiguration.spec.ts) | No server or framework header; no CORS for other sites; no debug, docs or dotfile routes; error bodies without stacks or paths; a body over 100 kb |
+| A06 Vulnerable components | the audit gate in CI | `npm audit` fails the job on a new high advisory ([Dependabot](../../.github/dependabot.yml) opens the bump) |
+| A07 Authentication failures | 15, [a07](tests/owasp/a07-authentication.spec.ts) | Expired, unsigned, other-algorithm, wrong-secret and edited tokens; a token saying admin; odd headers; the same answer for an unknown email and a wrong password; no default admin |
+| A08 Integrity failures | 7, [a08](tests/owasp/a08-integrity.spec.ts) | A role, id, password, total, status, owner or price named in a body is ignored or refused |
+| A09 Logging and monitoring | [traces and metrics](#traces-and-metrics) | The API logs errors and sends traces; there is no alerting to test |
+| A10 Server-side request forgery | not applicable | The API makes no outbound requests |
+
+**What it found.** A body over 100 kb was a 500 `Internal server error`, as if the server had failed; it is now a 413. A one-character password is accepted at sign-up. That one is not fixed: a password rule changes the API's contract and the OpenAPI spec, so it is a known gap, with a test marked expected-to-fail (OW-A07-15) that fails the run on the day a rule is added, as the signal to remove the mark. Run on Postgres, the injection tests also catch a real hole: with a filter value pasted into the SQL text, the category filter returned every product and sign-in became a 500.
 
 ### Security scan
 

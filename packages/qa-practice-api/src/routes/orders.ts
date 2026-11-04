@@ -3,6 +3,7 @@ import * as store from '../db/store.ts';
 import type { Request } from 'express';
 import { requireAuth, currentUser, isAdmin } from '../middleware/auth.ts';
 import { checkDiscount } from './discounts.ts';
+import { flags } from '../flags.ts';
 import { toCents, fromCents, MAX_ORDER_CENTS } from '../money.ts';
 import { handle, reply, send, type Reply } from '../middleware/handle.ts';
 import { SpanStatusCode } from '@opentelemetry/api';
@@ -104,6 +105,10 @@ async function placeOrder(tx: store.Tables, req: Request, items: any[], discount
   // used to run before the items, so a bad code hid an unknown product's 404.
   if (discount_code !== null && (typeof discount_code !== 'string' || discount_code.trim() === '')) {
     return reply(400, { error: 'discount_code must be a non-empty string or null' });
+  }
+  // Feature flag discount-codes (src/flags.ts): off means no order may use a code.
+  if (discount_code !== null && !flags['discount-codes']) {
+    return reply(400, { error: 'Discount codes are switched off' });
   }
   let code: string | null = null;
   let discountCents = 0;

@@ -48,6 +48,11 @@ const onError: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json({ error: 'Request body is not valid JSON' });
     return;
   }
+  // A body over express.json's 100 kb limit is the client's mistake, not a server fault (it was a 500).
+  if ((err as { type?: string }).type === 'entity.too.large') {
+    res.status(413).json({ error: 'Request body is too large' });
+    return;
+  }
   // Day 51: the database didn't answer in time (src/db/postgres.ts). A short reply
   // without the driver's message. It says try again only when nothing was saved:
   // a write cut after it was sent may have been, and a resend could be a duplicate.

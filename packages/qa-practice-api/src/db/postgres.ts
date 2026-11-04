@@ -1,71 +1,21 @@
 // The Postgres store, used when DATABASE_URL is set (src/db/store.ts). Same shape
 // as the in-memory store (types.ts), so the routes don't know which one they have.
-// The schema also guards the data itself: stock can't go below 0, emails and codes
-// are unique, so a bug in a route can't store what these rules forbid.
 import { setTimeout as sleep } from 'node:timers/promises';
 import pg from 'pg';
 import { trace } from '@opentelemetry/api';
 import { inSpan } from '../telemetry.ts';
+import { migrateUp } from './migrate.ts';
 import { toId, UniqueViolation, DatabaseUnavailable } from './types.ts';
 import type { Row, Id, Table, Tables, Store, FindOptions, Page, Order, OrderItem } from './types.ts';
 
-// Runs once at start-up; IF NOT EXISTS makes a restart on the same database safe.
-// Money is numeric (exact decimals, not floating point). So are stock, quantities and
-// max_uses: the API accepts any whole number, and 1e19 or 1e21 don't fit a bigint
-// (a 500 where the in-memory store said 201). expires_at is text
-// because the API returns it exactly as the admin sent it, offset included.
-// No foreign keys from orders to users or products: the API lets an admin delete
-// either while old orders keep the id, as the in-memory store always has.
-export const SCHEMA = `
-CREATE TABLE IF NOT EXISTS users (
-  id         serial PRIMARY KEY,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  name       text NOT NULL,
-  email      text NOT NULL UNIQUE,
-  password   text NOT NULL,
-  role       text NOT NULL CHECK (role IN ('user', 'admin'))
-);
-CREATE TABLE IF NOT EXISTS products (
-  id         serial PRIMARY KEY,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  name       text NOT NULL,
-  category   text NOT NULL,
-  price      numeric NOT NULL CHECK (price >= 0),
-  stock      numeric NOT NULL CHECK (stock >= 0)
-);
-CREATE TABLE IF NOT EXISTS orders (
-  id            serial PRIMARY KEY,
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  user_id       integer NOT NULL,
-  status        text NOT NULL CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
-  subtotal      numeric NOT NULL,
-  discount_code text,
-  discount      numeric NOT NULL,
-  total         numeric NOT NULL CHECK (total >= 0)
-);
-CREATE INDEX IF NOT EXISTS orders_user_id ON orders (user_id);
-CREATE INDEX IF NOT EXISTS orders_discount_code ON orders (discount_code);
-CREATE TABLE IF NOT EXISTS order_items (
-  order_id   integer NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
-  position   integer NOT NULL,
-  product_id integer NOT NULL,
-  name       text NOT NULL,
-  price      numeric NOT NULL,
-  quantity   numeric NOT NULL CHECK (quantity >= 1),
-  PRIMARY KEY (order_id, position)
-);
-CREATE TABLE IF NOT EXISTS discounts (
-  id           serial PRIMARY KEY,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  code         text NOT NULL UNIQUE,
-  type         text NOT NULL CHECK (type IN ('percent', 'fixed')),
-  value        numeric NOT NULL,
-  expires_at   text,
-  max_uses     numeric,
-  min_subtotal numeric NOT NULL,
-  active       boolean NOT NULL
-);
-`;
+// The schema lives in src/db/migrations (versioned SQL files, run at start-up by migrate.ts).
+// It also guards the data itself: stock can't go below 0, emails and codes are unique, so a
+// bug in a route can't store what these rules forbid. Money is numeric (exact decimals, not
+// floating point). So are stock, quantities and max_uses: the API accepts any whole number,
+// and 1e19 or 1e21 don't fit a bigint (a 500 where the in-memory store said 201). expires_at
+// is text because the API returns it exactly as the admin sent it, offset included. No foreign
+// keys from orders to users or products: the API lets an admin delete either while old
+// orders keep the id, as the in-memory store always has.
 
 // numeric and bigint arrive as strings by default (they can hold more than a JS
 // number); the API has always used plain numbers, so convert them. Dates go back
@@ -315,16 +265,11 @@ export async function openPostgres(connectionString: string, timeouts: Timeouts 
     }
   });
 
-  // One server at a time sets up the schema (two starting together could both try
-  // to create a table). Unlocked only once locked: a failed lock has nothing to undo.
+  // Brings the schema up to date; one server at a time (migrate.ts takes the lock), so two
+  // starting together can't both try to create a table.
   const client = await pool.connect();
   try {
-    await client.query('SELECT pg_advisory_lock(49)');
-    try {
-      await client.query(SCHEMA);
-    } finally {
-      await client.query('SELECT pg_advisory_unlock(49)');
-    }
+    await migrateUp(client);
   } finally {
     client.release();
   }
