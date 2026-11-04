@@ -82,7 +82,9 @@ jobs:
           [ -f README.md ] || printf '%s\n' '# monitoring-data' '' 'Written by the Monitor workflow in rizvihiqrar/qa-automation-platform. history.json is the last 30 days of checks; summary.json is what the dashboard shows. Do not edit by hand.' > README.md
           git add -A
           if git rev-parse -q --verify HEAD >/dev/null; then git commit -q --amend -m "Monitor run $GITHUB_RUN_ID"; else git commit -q -m "Monitor run $GITHUB_RUN_ID"; fi
-          git push --force origin HEAD:refs/heads/monitoring-data
+          # GitHub answered the push with HTTP 500 on 2026-11-04 (Monitor run 41815511930). The force
+          # push can be repeated safely, so it goes through retry.sh (3 tries).
+          bash "$GITHUB_WORKSPACE/scripts/retry.sh" git push --force origin HEAD:refs/heads/monitoring-data
 
       # Runs whenever the sites were checked, even if saving failed: a site that is down
       # must still get its issue.
