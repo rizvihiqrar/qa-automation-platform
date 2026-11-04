@@ -50,6 +50,8 @@ test('pushes only to the monitoring-data branch, never to main', () => {
   const pushes = code.split('\n').filter((l) => /git push/.test(l));
   assert.equal(pushes.length, 1);
   assert.match(pushes[0], /git push --force origin HEAD:refs\/heads\/monitoring-data$/);
+  // A 500 from github.com on 2026-11-04 failed a run: the push is retried, not run bare.
+  assert.match(pushes[0], /bash "\$GITHUB_WORKSPACE\/scripts\/retry\.sh" git push/);
   assert.doesNotMatch(code, /git (checkout|switch) main|refs\/heads\/main/);
 });
 
