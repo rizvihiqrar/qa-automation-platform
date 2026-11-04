@@ -57,7 +57,7 @@ export default {
   // The AI's code: all of discounts.ts and money.ts, and the part of POST /orders it
   // wrote (subtotal in cents through the amounts saved). Other order routes are older,
   // tested by older tests. scripts/ai-written-code.test.mjs checks the range still fits.
-  mutate: ['src/money.ts', 'src/routes/discounts.ts', 'src/routes/orders.ts:93-123'],
+  mutate: ['src/money.ts', 'src/routes/discounts.ts', 'src/routes/orders.ts:94-128'],
   reporters: ['html', 'json', 'clear-text', 'progress'],
   htmlReporter: { fileName: `reports/mutation/${tests}.html` },
   jsonReporter: { fileName: `reports/mutation/${tests}.json` },

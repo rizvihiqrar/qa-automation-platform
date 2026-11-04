@@ -30,7 +30,7 @@ Once a read waits on the network, another request can read the same row in the g
 
 ## The Postgres schema
 
-Created at start-up with `CREATE TABLE IF NOT EXISTS`, under an advisory lock so two servers starting together don't both create it.
+Built at start-up by the [migrations](#migrations), under an advisory lock so two servers starting together don't both create it.
 
 - Money is `numeric`: exact decimals, read back as the same JavaScript number the API was sent.
 - `stock`, quantities and `max_uses` are `numeric` too: the API accepts any whole number, and 1e19 or 1e21 don't fit a `bigint` (they were a 500 where the in-memory store said 201). `stock >= 0` is a `CHECK`, so even a buggy route can't store negative stock.
@@ -39,10 +39,49 @@ Created at start-up with `CREATE TABLE IF NOT EXISTS`, under an advisory lock so
 - There are no foreign keys from orders to users or products: the API lets an admin delete either while old orders keep the id, as it always has.
 - URL ids that don't fit the 32-bit id column are answered as not found without a query, and a page far past the end is empty without one (both were a 500).
 
+## Migrations
+
+`src/db/migrations/001_init.sql` is the schema the server used to create inline. A file is `NNN_name.sql` with an `-- up` part, then a `-- down` part; [`src/db/migrate.ts`](src/db/migrate.ts) has three exported functions.
+
+| Function | Does |
+|---|---|
+| `loadMigrations(dir)` | Reads and checks the folder before any database is touched: names like `001_name.sql`, versions 1, 2, 3 with no gap or repeat, both parts present and not empty |
+| `migrateUp(db, migrations, target)` | Takes advisory lock 49, applies every version not in `schema_migrations` up to `target`, each in a transaction with its bookkeeping row |
+| `migrateDown(db, migrations, target)` | Undoes applied versions newest first until `target` is the newest left (0 removes all); a down part can destroy data |
+
+Decisions worth knowing:
+
+- **The transaction is what keeps the row and the change together.** A multi-statement string sent as one query is already one implicit transaction in Postgres, so a step that fails halfway rolls back even without `BEGIN`. MG-19 therefore does not need the explicit transaction. MG-25 does: its fixture writes its own version row, so the runner's insert fails after the change has succeeded, and only the explicit transaction undoes the change. Taking out `BEGIN` and `COMMIT` left MG-19 green and failed MG-25, which is why MG-25 exists.
+- **`001` is `IF NOT EXISTS` throughout.** A database made by the server from before migrations has the tables and no `schema_migrations`; 001 runs as a no-op there and the version is recorded (MG-17). Later migrations are plain changes.
+- **A database ahead of the server stops the start.** Version 2 recorded, only 001 known: an older build against a newer schema is refused with the version in the message (MG-22), not run on a schema it doesn't understand.
+- **The advisory lock is inside the runner**, not the caller, so MG-21 can start two runners at once. The server calls `migrateUp` on a pooled connection and releases it.
+- **Only 001 ships.** Orders are never filtered by status, so an index on it would be schema nobody needs. The upgrade tests use fixtures in [`tests/postgres/migrations-fixtures`](tests/postgres/migrations-fixtures): the real 001 plus a second migration that adds a column and fills it (`002_add_sku`), one whose up fails after a change (`002_failing_up`), one whose down fails (`002_failing_down`) and one that writes its own version row (`002_records_itself`).
+- **Each Postgres test makes its own database** (`CREATE DATABASE`, dropped with `FORCE` afterwards), so the 15 run side by side on the Testcontainers server and never touch the API tests' data.
+- **Node strips types, it does not compile them.** A constructor parameter property (`constructor(readonly version)`) is not allowed in that mode and stopped the server at start-up; `MigrationError` declares the field instead.
+
+## Feature flags
+
+[`src/flags.ts`](src/flags.ts) holds the defaults in code and `parseFlags(raw, warn)`, which turns `FEATURE_FLAGS` into the flag values once, when the module loads.
+
+- **Read once.** A flag changes with a restart, not under a running server, so a request never sees two behaviours and no endpoint needs its own access-control cases. Tests start a copy of the server per setting instead of switching the shared one: Playwright runs the other tests in parallel against that server.
+- **Unknown names warn, bad values stop.** A flag removed from the code can still be in a deployment's settings, so an unknown name is ignored with a warning that lists the known ones. `discount-codes:of` stops the start, because quietly leaving the flag in a state nobody asked for is worse than not starting. A name listed twice stops it too, rather than the last one winning.
+- **Where the flag is checked.** [`POST /orders`](src/routes/orders.ts), after the existing validation of `discount_code`, so a blank or non-string code keeps its old 400 (FL-13). `null` or no code is untouched (FL-12), and the admin's code routes are untouched (FL-14). The check sits inside the line range Stryker mutates (`stryker.config.mjs`), which [`scripts/ai-written-code.test.mjs`](../../scripts/ai-written-code.test.mjs) caught the moment it shifted the lines.
+- **[`tests/start-server.ts`](tests/start-server.ts)** starts a copy on a free port with settings of its own and no `DATABASE_URL`, waits for `/health` (or fails with the server's own output if it stops first), and has a second function for a server that is meant to refuse to start. The OWASP tests use it too, for a server with a known `JWT_SECRET` and for one with no admin.
+
+## OWASP Top 10 tests
+
+Five files in [`tests/owasp`](tests/owasp), described by item in the [README](README.md#owasp-top-10). Points that shaped them:
+
+- **A07 needs a known secret.** The suite's server picks a random `JWT_SECRET` at every start, so forged tokens can only be tested against a copy started with a throwaway one. OW-A07-01 is the control: a token signed the right way is accepted, so every refusal after it means something.
+- **The sign-in limiter is part of the test design.** Six wrong passwords for one account in a row meet the limiter's 429, so the injection test sends four and then the real one (OW-A03-02).
+- **Ids that can't match by chance.** A fresh server hands out ids 1, 2, 3, so a test that sends `id: 1` can't tell "ignored" from "happened to be 1". A08 sends 987654.
+- **Known gap as an expected failure.** OW-A07-15 uses `test.fail()`: the run stays green while the one-character password is accepted, and fails when a rule is added.
+- **Injection needs a real database to mean anything.** In memory, nothing is parsed as SQL, so A03 passes whatever the code does. The check that matters is `npm run test:postgres`: with the filter value pasted into the SQL text, OW-A03-01 and OW-A03-02 fail (2 rows for a category with 0; a 500 on sign-in).
+
 ## Running on Postgres
 
 ```bash
-npm run test:postgres                                          # whole suite, 328 tests
+npm run test:postgres                                          # whole suite, 419 tests
 node scripts/with-postgres.ts npx playwright test tests/concurrency.spec.ts
 ```
 
@@ -146,6 +185,17 @@ Each was put in, shown to fail, and taken out:
 | No id range check | PG-08: a 500 instead of a 404 |
 | No page guard | PG-08: `?page=1000000000000000000` was a 500 instead of an empty page |
 | `bigint` stock | PG-07: a product with stock 1e19 could not be created (500) |
+| Migration runner: no `BEGIN` and `COMMIT` | MG-25 only; MG-19 stays green because Postgres runs one multi-statement string as a single transaction |
+| Migration runner: version row never written | 11 of the first 14 migration tests |
+| `001` down forgets `discounts` | MG-15: a table left behind |
+| Migration runner: no advisory lock, or no check for a newer database | MG-21 and MG-22 |
+| Migration runner: a failing `ROLLBACK` or unlock not swallowed | MG-26 to MG-28: the connection error replaced the step's own |
+| Flag check removed, or applied to every order, or on and off swapped | FL-11, FL-12 and eight more tests across the six breaks tried; each break failed at least one |
+| Body over 100 kb handled as before | OW-A05-06: a 500 |
+| HS512 accepted, role taken from the token, role copied from a sign-up or update body | OW-A07-04, OW-A07-07, OW-A08-01 to 03 |
+| Password hash in a response, fixed salt, any password verifies | OW-A02-01, OW-A02-04, OW-A02-05 and four more |
+| X-Powered-By on, CORS open, unknown email answered differently | OW-A05-01, OW-A05-02, OW-A07-11 |
+| Filter value pasted into the SQL text (Postgres) | OW-A03-01 and OW-A03-02: 2 rows for 0, and a 500 |
 
 ## Known limits
 
@@ -158,4 +208,9 @@ Each was put in, shown to fail, and taken out:
 - [Burn-in](../../scripts/burn-in.mjs) runs a changed spec in `tests/postgres`, `tests/concurrency.spec.ts` or `tests/telemetry.spec.ts` three times on a Testcontainers Postgres; the race and trace tests also run three times in memory.
 - A sign-up or order cut after Postgres saved it answers 503, though it was saved (RS-05). The caller can't tell, and trying again finds the email taken. An idempotency key (as in banking-api) would let a retry return the first result instead.
 - RS-04 and RS-08 depend on timing: the fault comes off 300 ms or 250 ms into the request, well before the 500 ms retry. RS-08 first asks `/health/ready` until its first failure is a connect, so the pool holds no dead connection (a guessed 300 ms pause did that at first; code review). The file passed 90 of 90 times on 4 workers and on 8.
+- Applied versions are not checked against the files beyond "every recorded version has a file": a migration rewritten after it ran, or a version applied out of order from another branch, goes unnoticed. Migration files are append-only by convention here; a checksum column would catch it.
+- Migrations run forward in one process at start-up. There is no command to run `migrateDown` against the server's own database, and a down part that drops a table drops its rows: the tests use throwaway databases.
+- The OWASP sets try the attacks a script can try. They are not a penetration test, and the ZAP scan stays passive (see the README).
+- There is no password rule at sign-up (OW-A07-15, expected to fail). Registering with a taken email says so (409), so sign-up shows which emails have accounts; sign-in does not.
+- Ids in URLs are read up to the first non-digit (`/products/5abc` is product 5). Nothing after the number is run (OW-A03-05), but a stricter parser would answer 404.
 - The resilience tests cover reads by id, sign-up, orders and the readiness check. The other routes share the same store code, but no test cuts them.
