@@ -166,6 +166,7 @@ The full description of each package, with its check count. The [overview](READM
 | [visual-regression-demo](packages/visual-regression-demo) | Compares screenshots of the banking UI with baselines in light, dark and phone width, in two browsers, and proves it by planting visual bugs | 46 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios + 4 |
 | [sql-data-integrity](packages/sql-data-integrity) | Runs 15 SQL rules over an orders database and lists the exact rows that break them: orphans, duplicates, wrong totals, mismatched payments | 35 |
+| [hcm-conversion-validation](packages/hcm-conversion-validation) | Tests an HR and payroll data conversion (fake data, not affiliated with any HR vendor). A generated legacy extract (CSV plus a SQLite payroll history, 200 workers) has 20 seeded defects of 8 kinds; mapping and validation rules (payroll totals in SQL) find each one, hold its rows back, and the rest load through a Workday-style mock API's spreadsheet bulk load with a per-row error report. Row counts, hash totals, a SHA-256 hash of every record and a rerun prove the target holds exactly what was sent. Three mock cycles with fixes in between take the exceptions from 22 to 0, with new, fixed and still-open deltas in an Excel exception report | 93 |
 | [exploratory-session-tracker](packages/exploratory-session-tracker) | Structures exploratory testing (charters, timeboxes, tagged notes) and turns sessions into a team debrief | 10 |
 | [log-signature-grouper](packages/log-signature-grouper) | Groups thousands of log errors into a few patterns and flags error patterns that are new since the last release | 15 |
 | [defect-report-linter](packages/defect-report-linter) | Checks bug reports for missing steps, results, severity and evidence, and scores whether a developer could act on them | 20 |
@@ -179,7 +180,7 @@ The full description of each package, with its check count. The [overview](READM
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 | [money-course](packages/money-course) | A short course, Testing money in software, built on the banking API: six objectives, a quiz for each, and an ungraded practical with six planted bugs and a model answer. Being run as a pilot | 30 |
 
-31 packages, about 1,800 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
+32 packages, about 1,890 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
 
 ## Running locally
 
@@ -284,9 +285,9 @@ A pull request runs only the `@smoke` tests (16 of 65) unless it changes that su
 
 Re-running until green would hide real failures. A pass on the re-run is counted as flaky on the dashboard, never hidden; a second failure is reported with a diagnosis.
 
-### The dashboard says 34 packages, but the repo has 26. Which is right?
+### The dashboard counts more packages than the repo has. Which is right?
 
-Both. There are 28 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
+Both. There are 32 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
 
 ### Does running the tests call a paid AI service?
 

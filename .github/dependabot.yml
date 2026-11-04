@@ -19,7 +19,14 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
-    directory: "/packages/api-pytest"
+    directories:
+      - "/packages/api-pytest"
+      - "/packages/hcm-conversion-validation"
+    ignore:
+      # Pinned on purpose: the committed legacy extract in hcm-conversion-validation is Faker's
+      # output from seed 51, checked byte for byte in every test run, so a new Faker means new
+      # names and new expected counts. Upgrade it by hand with python -m hcm_conv generate.
+      - dependency-name: "Faker"
     schedule:
       interval: weekly
       day: monday

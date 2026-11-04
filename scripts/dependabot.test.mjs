@@ -20,6 +20,11 @@ test('Dependabot watches the root, the tools and every package for npm', () => {
   for (const dir of ['"/"', '"/tools/*"', '"/packages/*"']) assert.ok(yml.includes(dir), `npm directories must include ${dir}`);
 });
 
-test('Dependabot watches the Python package', () => {
-  assert.match(fs.readFileSync(file, 'utf8'), /package-ecosystem: pip[\s\S]*directory: "\/packages\/api-pytest"/);
+// Found by looking for requirements.txt, so a new Python package can't be missed (the second
+// one, hcm-conversion-validation, was added by hand on 2026-11-04).
+test('Dependabot watches every Python package', () => {
+  const pip = fs.readFileSync(file, 'utf8').split(/package-ecosystem: /).find((block) => block.startsWith('pip')) ?? '';
+  const packages = fs.readdirSync(path.join(ROOT, 'packages')).filter((p) => fs.existsSync(path.join(ROOT, 'packages', p, 'requirements.txt')));
+  assert.ok(packages.length >= 2, 'expected api-pytest and hcm-conversion-validation');
+  for (const p of packages) assert.ok(pip.includes(`"/packages/${p}"`), `add "/packages/${p}" to the pip directories in .github/dependabot.yml`);
 });

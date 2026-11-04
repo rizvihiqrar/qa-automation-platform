@@ -1,0 +1,73 @@
+# Field mapping: legacy column -> target field, and what each value goes through.
+# Every value is trimmed first. Then, in this order:
+#   required  blank is an exception (REQUIRED)
+#   id        exactly 6 digits (ID_FORMAT); a spreadsheet that dropped the zeros fails here
+#   date      a real date written YYYY-MM-DD (DATE_INVALID)
+#   money     an amount with at most 2 decimals (MONEY_INVALID)
+#   code      looked up in the code table below (CODE_UNKNOWN)
+#   name      no double-encoded characters such as Ã© (ENCODING)
+# Rules across fields and files (DATE_ORDER, DUPLICATE_ID, REF_*, CONTROL_TOTAL, PAY_TOTAL)
+# are in hcm_conv/convert.py and sql/.
+
+codes:
+  worker_status: {A: Active, T: Terminated}
+  position_status: {Filled: Filled, Vacant: Vacant}
+  country: {CA: CAN, US: USA}
+  currency: {CAD: CAD, USD: USD}
+  frequency: {W: Weekly, B: Biweekly, S: Semimonthly, M: Monthly}
+
+sheets:
+  Organizations:
+    source: organizations.csv
+    key: [org_id]
+    fields:
+      id: {from: org_id, required: true}
+      name: {from: name, required: true}
+      superior_id: {from: parent_org_id}
+      cost_center: {from: cost_centre, required: true}
+
+  Positions:
+    source: positions.csv
+    key: [position_id]
+    fields:
+      id: {from: position_id, required: true}
+      organization_id: {from: org_id, required: true}
+      job_title: {from: title, required: true}
+      status: {from: status, required: true, code: position_status}
+
+  Workers:
+    source: workers.csv
+    key: [employee_id]
+    fields:
+      id: {from: employee_id, required: true, id: true}
+      given_name: {from: first_name, required: true, name: true}
+      family_name: {from: last_name, required: true, name: true}
+      birth_date: {from: birth_date, required: true, date: true}
+      email: {from: personal_email}
+      national_id: {from: national_id, required: true}
+      hire_date: {from: hire_date, required: true, date: true}
+      termination_date: {from: termination_date, date: true}
+      status: {from: status, required: true, code: worker_status}
+      position_id: {from: position_id, required: true}
+      country: {from: country, required: true, code: country}
+      region: {from: province, required: true}
+
+  Compensation:
+    source: compensation.csv
+    key: [employee_id]
+    fields:
+      worker_id: {from: employee_id, required: true, id: true}
+      annual_amount: {from: annual_salary, required: true, money: true}
+      currency: {from: currency, required: true, code: currency}
+      frequency: {from: pay_frequency, required: true, code: frequency}
+      effective_date: {from: effective_date, required: true, date: true}
+
+  Pay Results:
+    source: payroll.sql
+    key: [employee_id, period_id]
+    fields:
+      worker_id: {from: employee_id, required: true, id: true}
+      period_id: {from: period_id, required: true}
+      gross: {from: gross, required: true, money: true}
+      deductions: {from: deductions, required: true, money: true}
+      net: {from: net, required: true, money: true}

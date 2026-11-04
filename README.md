@@ -27,7 +27,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 31 packages, about 1,800 automated tests and checks, all run by one CI workflow
+- 32 packages, about 1,890 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -71,6 +71,12 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [contract-testing-demo](packages/contract-testing-demo) | Checks that a live API still returns what the app that uses it expects | 5 |
 | [sql-data-integrity](packages/sql-data-integrity) | Runs 15 SQL rules over an orders database and lists the exact rows that break them | 35 |
 | [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 25 |
+
+### Data conversion
+
+| Package | What it does | Checks |
+|---|---|---:|
+| [hcm-conversion-validation](packages/hcm-conversion-validation) | HR and payroll data conversion checks in Python: a legacy extract with 20 seeded defects is mapped, validated, loaded through a Workday-style mock API's bulk load and reconciled by row counts, hash totals and a hash of every record. Three mock cycles take the exceptions from 22 to 0, with an Excel exception report | 93 |
 
 ### Performance
 

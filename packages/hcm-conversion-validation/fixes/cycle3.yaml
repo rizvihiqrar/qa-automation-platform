@@ -1,0 +1,16 @@
+# What the data team changed after mock cycle 2. Everything left is fixed except the two
+# orphaned vacant positions, which the business signed off instead (accepted.yaml).
+fixes:
+  - {defect: D-03, file: workers.csv, match: {employee_id: "013008"}, set: {hire_date: "2017-06-12"}}
+  # The termination was keyed on the wrong worker: she is still active.
+  - {defect: D-06, file: workers.csv, match: {employee_id: "011333"}, set: {status: A, termination_date: ""}}
+  - {defect: D-08, file: workers.csv, match: {employee_id: "079885", hire_date: "2024-12-01"}, delete: true}
+  - {defect: D-14, file: workers.csv, match: {employee_id: "075936"}, set: {position_id: POS-0159}}
+  - {defect: D-18, file: workers.csv, match: {employee_id: "097830"}, set: {last_name: Benoît}}
+  - {defect: D-20, file: workers.csv, match: {employee_id: "095572"}, set: {country: CA}}
+  - {defect: N-01, file: workers.csv, match: {employee_id: "099501"}, set: {position_id: POS-0230}}
+  - {defect: N-01, file: positions.csv, match: {position_id: POS-0230}, set: {status: Filled}}
+  - {defect: D-15, file: compensation.csv, match: {employee_id: "84284"}, set: {employee_id: "084284"}}
+  - defect: D-11
+    sql: UPDATE pay_results SET net = '1461.90' WHERE employee_id = '098486' AND period_id = 'P2026-20'
+  - {defect: D-08, file: workers.csv, trailer: {count: 199, hash_total: "9462690"}}

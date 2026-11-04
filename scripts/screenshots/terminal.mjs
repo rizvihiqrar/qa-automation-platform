@@ -79,6 +79,33 @@ const shots = [
     ],
   },
   {
+    // Mock conversion cycles 1 to 3: the checks, the row counts and the exceptions going down.
+    // Needs the package's venv, like the pytest shot. Report paths are local, so they are left out.
+    name: 'cycles',
+    cwd: 'packages/hcm-conversion-validation',
+    command: '.venv\\Scripts\\python -m hcm_conv run',
+    out: 'packages/hcm-conversion-validation/docs',
+    keep: (lines) => lines.filter((l) => !/^\s+Report: /.test(l)).map((l) => l.trimEnd().replace(/(Hash totals: pay per period: P2026-19: [^,]+), .*$/, '$1, ...')),
+  },
+  {
+    // Cycle 1's exceptions: every seeded defect, found by its rule.
+    name: 'exceptions',
+    cwd: 'packages/hcm-conversion-validation',
+    command: '.venv\\Scripts\\python -m hcm_conv exceptions --cycle 1',
+    out: 'packages/hcm-conversion-validation/docs',
+  },
+  {
+    name: 'hcm-tests',
+    cwd: 'packages/hcm-conversion-validation',
+    command: '.venv\\Scripts\\python -m pytest -v --no-header -p no:cacheprovider',
+    out: 'packages/hcm-conversion-validation/docs',
+    keep: (lines) => [
+      ...lines.filter((l) => /test_each_seeded_defect_is_found_by_its_rule\[D-\d+\] PASSED/.test(l)).map((l) => l.replace(/^.*\[(D-\d+)\] PASSED.*$/, '✔ $1 found by its own rule')),
+      '',
+      ...lines.filter((l) => /^=+ \d+ passed/.test(l)).map((l) => l.replace(/^=+ | =+$/g, '')),
+    ],
+  },
+  {
     // The Cypress run in Chrome: the per-spec table, then the SQL checks on its ledger.
     name: 'cypress',
     cwd: 'packages/banking-api',
@@ -117,6 +144,7 @@ for (const s of shots) {
     return /-> (4\d\d)/.test(l) ? e.replace(/(-&gt; 4\d\d)/, '<span class="no">$1</span>')
       : /-> 2\d\d/.test(l) ? e.replace(/(-&gt; 2\d\d)/, '<span class="ok">$1</span>')
       : /^\s*✔/.test(l) ? `<span class="ok">${e}</span>`
+      : /^\s+(PASS|FAIL)  /.test(l) ? e.replace(/^(\s+)(PASS|FAIL)/, (_, pad, word) => `${pad}<span class="${word === 'PASS' ? 'ok' : 'no'}">${word}</span>`)
       : /^(FAIL|warn) /.test(l) ? e.replace(/^(FAIL|warn)/, '<span class="no">$1</span>')
       : /^pass /.test(l) ? e.replace(/^pass/, '<span class="ok">pass</span>') : e;
   }).join('\n');

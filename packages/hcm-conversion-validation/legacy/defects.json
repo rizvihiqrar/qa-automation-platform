@@ -1,0 +1,202 @@
+[
+  {
+    "id": "D-01",
+    "type": "missing required field",
+    "rule": "REQUIRED",
+    "file": "workers.csv",
+    "key": "065316",
+    "field": "last_name",
+    "description": "Last name is blank",
+    "line": 140
+  },
+  {
+    "id": "D-02",
+    "type": "missing required field",
+    "rule": "REQUIRED",
+    "file": "workers.csv",
+    "key": "039249",
+    "field": "last_name",
+    "description": "Last name is blank",
+    "line": 84
+  },
+  {
+    "id": "D-03",
+    "type": "missing required field",
+    "rule": "REQUIRED",
+    "file": "workers.csv",
+    "key": "013008",
+    "field": "hire_date",
+    "description": "Hire date is blank",
+    "line": 31
+  },
+  {
+    "id": "D-04",
+    "type": "bad date",
+    "rule": "DATE_INVALID",
+    "file": "workers.csv",
+    "key": "084919",
+    "field": "hire_date",
+    "description": "31 February does not exist",
+    "line": 185
+  },
+  {
+    "id": "D-05",
+    "type": "bad date",
+    "rule": "DATE_INVALID",
+    "file": "workers.csv",
+    "key": "079814",
+    "field": "hire_date",
+    "description": "Day-first date, not YYYY-MM-DD",
+    "line": 171
+  },
+  {
+    "id": "D-06",
+    "type": "bad date",
+    "rule": "DATE_ORDER",
+    "file": "workers.csv",
+    "key": "011333",
+    "field": "termination_date",
+    "description": "Terminated 30 days before the hire date",
+    "line": 26
+  },
+  {
+    "id": "D-07",
+    "type": "duplicate ID",
+    "rule": "DUPLICATE_ID",
+    "file": "workers.csv",
+    "key": "079697",
+    "field": "employee_id",
+    "description": "Same employee ID on two rows (a rehire entered twice)",
+    "line": 169
+  },
+  {
+    "id": "D-08",
+    "type": "duplicate ID",
+    "rule": "DUPLICATE_ID",
+    "file": "workers.csv",
+    "key": "079885",
+    "field": "employee_id",
+    "description": "Same employee ID on two rows (a rehire entered twice)",
+    "line": 172
+  },
+  {
+    "id": "D-09",
+    "type": "mismatched totals",
+    "rule": "CONTROL_TOTAL",
+    "file": "workers.csv",
+    "key": "TRAILER",
+    "field": "count",
+    "description": "Trailer says 201 records; the file has 200",
+    "line": 202
+  },
+  {
+    "id": "D-10",
+    "type": "mismatched totals",
+    "rule": "PAY_TOTAL",
+    "file": "payroll.sql",
+    "key": "079263/P2026-20",
+    "field": "gross",
+    "description": "Gross is 0.01 more than the sum of its earnings lines",
+    "line": null
+  },
+  {
+    "id": "D-11",
+    "type": "mismatched totals",
+    "rule": "PAY_TOTAL",
+    "file": "payroll.sql",
+    "key": "098486/P2026-20",
+    "field": "net",
+    "description": "Net is 25.00 less than gross minus deductions",
+    "line": null
+  },
+  {
+    "id": "D-12",
+    "type": "orphaned position",
+    "rule": "REF_ORG",
+    "file": "positions.csv",
+    "key": "POS-0199",
+    "field": "org_id",
+    "description": "Organization ORG-99 does not exist",
+    "line": 200
+  },
+  {
+    "id": "D-13",
+    "type": "orphaned position",
+    "rule": "REF_ORG",
+    "file": "positions.csv",
+    "key": "POS-0200",
+    "field": "org_id",
+    "description": "Organization ORG-21 does not exist",
+    "line": 201
+  },
+  {
+    "id": "D-14",
+    "type": "orphaned position",
+    "rule": "REF_POSITION",
+    "file": "workers.csv",
+    "key": "075936",
+    "field": "position_id",
+    "description": "Position POS-9999 does not exist",
+    "line": 160
+  },
+  {
+    "id": "D-15",
+    "type": "lost leading zeros",
+    "rule": "ID_FORMAT",
+    "file": "compensation.csv",
+    "key": "84284",
+    "field": "employee_id",
+    "description": "Employee ID 084284 lost its leading zeros",
+    "line": 182
+  },
+  {
+    "id": "D-16",
+    "type": "lost leading zeros",
+    "rule": "ID_FORMAT",
+    "file": "compensation.csv",
+    "key": "15674",
+    "field": "employee_id",
+    "description": "Employee ID 015674 lost its leading zeros",
+    "line": 36
+  },
+  {
+    "id": "D-17",
+    "type": "garbled accented name",
+    "rule": "ENCODING",
+    "file": "workers.csv",
+    "key": "031766",
+    "field": "first_name",
+    "description": "Accented name double-encoded (UTF-8 read as Windows-1252)",
+    "line": 67
+  },
+  {
+    "id": "D-18",
+    "type": "garbled accented name",
+    "rule": "ENCODING",
+    "file": "workers.csv",
+    "key": "097830",
+    "field": "last_name",
+    "description": "Accented name double-encoded (UTF-8 read as Windows-1252)",
+    "line": 200
+  },
+  {
+    "id": "D-19",
+    "type": "invalid code",
+    "rule": "CODE_UNKNOWN",
+    "file": "compensation.csv",
+    "key": "001800",
+    "field": "pay_frequency",
+    "description": "Pay frequency 2W is not in the mapping table",
+    "line": 2
+  },
+  {
+    "id": "D-20",
+    "type": "invalid code",
+    "rule": "CODE_UNKNOWN",
+    "file": "workers.csv",
+    "key": "095572",
+    "field": "country",
+    "description": "Country CAN is not in the mapping table (CA expected)",
+    "line": 194
+  }
+]
