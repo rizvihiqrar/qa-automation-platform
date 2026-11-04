@@ -1,0 +1,21 @@
+org_id,name,parent_org_id,cost_centre
+ORG-01,Head Office,,CC-100
+ORG-02,Finance,ORG-01,CC-102
+ORG-03,Payroll,ORG-01,CC-103
+ORG-04,People and Culture,ORG-01,CC-104
+ORG-05,Information Technology,ORG-01,CC-105
+ORG-06,Quality Assurance,ORG-01,CC-106
+ORG-07,Customer Care,ORG-01,CC-107
+ORG-08,Sales East,ORG-01,CC-108
+ORG-09,Sales West,ORG-01,CC-109
+ORG-10,Marketing,ORG-01,CC-110
+ORG-11,Legal,ORG-01,CC-111
+ORG-12,Facilities,ORG-01,CC-112
+ORG-13,Procurement,ORG-01,CC-113
+ORG-14,Logistics,ORG-01,CC-114
+ORG-15,Research,ORG-01,CC-115
+ORG-16,Training,ORG-01,CC-116
+ORG-17,Internal Audit,ORG-01,CC-117
+ORG-18,Data and Reporting,ORG-01,CC-118
+ORG-19,Field Service,ORG-01,CC-119
+ORG-20,Warehouse,ORG-01,CC-120

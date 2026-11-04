@@ -237,6 +237,40 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # HR and payroll data conversion checks in Python (FastAPI mock API, pytest, SQLite and
+  # openpyxl). The mock API runs in-process, so the job needs Python only. After the tests,
+  # mock cycles 1 to 3 run for real and must end with every check passed and no open
+  # exception (exit code 1 otherwise); their exception workbooks are kept as a report.
+  hcm-conversion-validation:
+    name: hcm-conversion-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/hcm-conversion-validation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: packages/hcm-conversion-validation/requirements.txt
+      - run: pip install -r requirements.txt pip-audit
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt
+      - name: Test
+        run: pytest
+      - name: Conversion cycles 1 to 3
+        run: python -m hcm_conv run
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-hcm-conversion-validation
+          path: packages/hcm-conversion-validation/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Pull requests only: every Playwright or Cypress spec the PR adds or changes runs
   # 3 times with no retries (Cypress in Chrome and Firefox), so a test that passes
   # only sometimes is caught before it merges. scripts/burn-in.mjs picks the specs.

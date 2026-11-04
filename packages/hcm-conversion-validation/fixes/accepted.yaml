@@ -1,0 +1,7 @@
+# Exceptions the business signed off as known, from the cycle named. They are still held back
+# from the load, but they no longer count as open. Each must match a real exception.
+accepted:
+  - {rule: REF_ORG, file: positions.csv, key: POS-0199, from_cycle: 3, defect: D-12,
+     reason: "Vacant position in a closed organization; not converted", signed_off_by: HR data owner}
+  - {rule: REF_ORG, file: positions.csv, key: POS-0200, from_cycle: 3, defect: D-13,
+     reason: "Vacant position in a closed organization; not converted", signed_off_by: HR data owner}

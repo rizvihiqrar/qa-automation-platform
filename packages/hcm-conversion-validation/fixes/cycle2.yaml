@@ -1,0 +1,26 @@
+# What the data team changed in the legacy data after mock cycle 1.
+# Each fix names the defect it closes. A match must hit exactly one row, or the run stops.
+# A late change also arrives: a new hire, keyed in without a position (new defect N-01).
+fixes:
+  - {defect: D-01, file: workers.csv, match: {employee_id: "065316"}, set: {last_name: Gagnon}}
+  - {defect: D-02, file: workers.csv, match: {employee_id: "039249"}, set: {last_name: Bouchard}}
+  - {defect: D-04, file: workers.csv, match: {employee_id: "084919"}, set: {hire_date: "2019-02-28"}}
+  - {defect: D-05, file: workers.csv, match: {employee_id: "079814"}, set: {hire_date: "2021-03-15"}}
+  - {defect: D-07, file: workers.csv, match: {employee_id: "079697", hire_date: "2012-10-25"}, delete: true}
+  - {defect: D-17, file: workers.csv, match: {employee_id: "031766"}, set: {first_name: Zoé}}
+  - {defect: D-16, file: compensation.csv, match: {employee_id: "15674"}, set: {employee_id: "015674"}}
+  - {defect: D-19, file: compensation.csv, match: {employee_id: "001800"}, set: {pay_frequency: B}}
+  - defect: D-10
+    sql: UPDATE pay_results SET gross = '3016.33', net = '2159.42' WHERE employee_id = '079263' AND period_id = 'P2026-20'
+
+  # The late new hire (N-01: no position yet).
+  - file: workers.csv
+    add: {employee_id: "099501", first_name: Mathilde, last_name: Ouellet, birth_date: "1996-08-14",
+          personal_email: person99501@example.com, national_id: "084512007", hire_date: "2026-10-13",
+          termination_date: "", status: A, position_id: "", country: CA, province: QC}
+  - file: compensation.csv
+    add: {employee_id: "099501", annual_salary: "58250.00", currency: CAD, pay_frequency: B, effective_date: "2026-10-13"}
+
+  # The new extract's trailers: one duplicate row gone, one new hire added.
+  - {defect: D-09, file: workers.csv, trailer: {count: 200, hash_total: "9542575"}}
+  - {file: compensation.csv, trailer: {count: 199, hash_total: "17093883.35"}}

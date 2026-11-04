@@ -1,0 +1,3 @@
+# The legacy extract is compared byte for byte with a fresh run of the generator
+# (tests/test_legacy.py), so git must never change its line endings.
+legacy/* -text
