@@ -17,6 +17,8 @@ export function normalizeRun(run, jobs) {
       conclusion: j.conclusion,
       attempt: j.run_attempt ?? 1,
       seconds: seconds(j.started_at, j.completed_at),
+      // The steps that failed, so a failure caused only by the dependency audit can be told from a flaky test (metrics.js).
+      failedSteps: (j.steps ?? []).filter((s) => s.conclusion === 'failure').map((s) => s.name),
     })),
   };
 }

@@ -102,7 +102,7 @@ test('normalizeRun computes durations from timestamps', () => {
     [{ name: 'api', conclusion: 'success', run_attempt: 2, started_at: '2026-10-16T08:00:10Z', completed_at: '2026-10-16T08:00:40Z' }],
   );
   assert.equal(r.seconds, 90);
-  assert.deepEqual(r.jobs, [{ name: 'api', conclusion: 'success', attempt: 2, seconds: 30 }]);
+  assert.deepEqual(r.jobs, [{ name: 'api', conclusion: 'success', attempt: 2, seconds: 30, failedSteps: [] }]);
 });
 
 test('fetchRuns asks for completed runs and all job attempts, with the token', async () => {
@@ -250,4 +250,58 @@ test('embedded chart data cannot close the script tag', () => {
   const html = renderHtml(computeMetrics([run(1, 'a', 'success', [job('x</script><b>', 'success')])]), { repo: 'o/r', generatedAt: '2026-10-16T09:00:00Z' });
   const script = html.slice(html.lastIndexOf('<script>'));
   assert.equal((script.match(/<\/script>/g) ?? []).length, 1);
+});
+
+// 2026-11-05: contract-testing-demo and postman-api-collection read "flaky" for days after a nightly run failed their
+// dependency audit on a commit that had passed the day before. A new advisory is not an unstable job.
+const audit = (name, conclusion, attempt = 1) => ({ ...job(name, conclusion, 10, attempt), failedSteps: conclusion === 'failure' ? ['Dependency audit'] : [] });
+const failedTest = (name, conclusion, attempt = 1) => ({ ...job(name, conclusion, 10, attempt), failedSteps: conclusion === 'failure' ? ['Test'] : [] });
+
+test('a failure in the dependency audit step alone is not flaky, on the same commit or on a re-run', () => {
+  const { packages } = computeMetrics([
+    run(1, 'aaa', 'success', [audit('contract', 'success'), audit('postman', 'success')]),
+    // the nightly run of the same commit: the audit fails on a new advisory ...
+    run(2, 'aaa', 'failure', [audit('contract', 'failure'), audit('postman', 'failure')]),
+    // ... and a re-run of another commit fails the audit, then passes once the allowlist is updated
+    run(3, 'bbb', 'success', [audit('contract', 'failure', 1), audit('contract', 'success', 2), audit('postman', 'success')]),
+  ]);
+  assert.deepEqual(packages.map((p) => [p.name, p.flaky]), [['contract', 0], ['postman', 0]]);
+  assert.equal(packages.find((p) => p.name === 'contract').lastFailure, '2026-10-12T08:00:00Z', 'the failure still shows in the history');
+});
+
+test('a test failure still counts as flaky, and so does a job that failed both the audit and a test', () => {
+  const { packages } = computeMetrics([
+    run(1, 'aaa', 'success', [failedTest('ui', 'success'), { ...job('mixed', 'success'), failedSteps: [] }]),
+    run(2, 'aaa', 'failure', [failedTest('ui', 'failure'), { ...job('mixed', 'failure'), failedSteps: ['Dependency audit', 'Test'] }]),
+  ]);
+  assert.deepEqual(packages.map((p) => [p.name, p.flaky]), [['mixed', 1], ['ui', 1]]);
+});
+
+test('a job read before steps were recorded counts as before', () => {
+  const { packages } = computeMetrics([run(1, 'aaa', 'success', [job('api', 'success')]), run(2, 'aaa', 'failure', [job('api', 'failure')])]);
+  assert.equal(packages[0].flaky, 1);
+});
+
+test('normalizeRun keeps the names of the failed steps', () => {
+  const n = normalizeRun({ id: 1, run_number: 1, created_at: '2026-10-16T08:00:00Z', updated_at: '2026-10-16T08:01:00Z', head_sha: 'a', head_branch: 'main', event: 'push' },
+    [{ name: 'api', conclusion: 'failure', run_attempt: 1, steps: [{ name: 'Set up job', conclusion: 'success' }, { name: 'Dependency audit', conclusion: 'failure' }, { name: 'Test', conclusion: 'skipped' }] }, { name: 'ui', conclusion: 'success' }]);
+  assert.deepEqual(n.jobs.map((j) => j.failedSteps), [['Dependency audit'], []]);
+});
+
+test('a re-run that failed the audit and a test on its first attempt is still flaky; a "(root)" audit step is exempt like the others', () => {
+  const both = { ...job('mixed', 'failure', 10, 1), failedSteps: ['Dependency audit', 'Test'] };
+  const root = { ...job('root', 'failure', 10, 1), failedSteps: ['Dependency audit (root)'] };
+  const { packages } = computeMetrics([
+    run(1, 'aaa', 'success', [both, { ...job('mixed', 'success', 10, 2), failedSteps: [] }, root, { ...job('root', 'success', 10, 2), failedSteps: [] }]),
+  ]);
+  assert.deepEqual(packages.map((p) => [p.name, p.flaky]), [['mixed', 1], ['root', 0]]);
+});
+
+// The exemption matches on the step name, so a rename in the workflow would quietly bring the false positive back (code review, 2026-11-05).
+test('every audit step in ci.yml is named "Dependency audit", the name the dashboard exempts', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const yml = await readFile(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const steps = yml.split(/\r?\n\s*- name: /).slice(1).filter((s) => /\n\s*run: .*(audit\.mjs|npm audit)/.test(s));
+  assert.ok(steps.length >= 3, `expected at least 3 audit steps, found ${steps.length}`);
+  for (const s of steps) assert.match(s.split(/\r?\n/)[0], /dependency audit/i, s.split(/\r?\n/)[0]);
 });

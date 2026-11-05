@@ -8,6 +8,13 @@ export function quantile(values, q) {
   return v[Math.min(v.length - 1, Math.ceil(q * v.length) - 1)];
 }
 
+// A job whose only failed step is the dependency audit failed because an advisory was published, not because the job is
+// unstable: the same commit that passed yesterday fails today with no code change (contract-testing-demo and
+// postman-api-collection, 2026-10-31, counted as flaky for days). Such a failure is a real failure for the pass rate, but it
+// is not flakiness.
+const timeDependent =(job) => Array.isArray(job.failedSteps) && job.failedSteps.length > 0 && job.failedSteps.every((s) => /dependency audit/i.test(s));
+const realFailure = (job) => job.conclusion === 'failure' && !timeDependent(job);
+
 // The last attempt of each job in a run is its result.
 function finalJobs(run) {
   const latest = new Map();
@@ -49,7 +56,7 @@ export function computeMetrics(runsInput, { branch = 'main' } = {}) {
   for (const run of all) {
     // Flaky on re-run: an earlier attempt failed and the last one passed.
     for (const j of finalJobs(run)) {
-      if (j.conclusion === 'success' && run.jobs.some((o) => o.name === j.name && o.attempt < j.attempt && o.conclusion === 'failure')) {
+      if (j.conclusion === 'success' && run.jobs.some((o) => o.name === j.name && o.attempt < j.attempt && realFailure(o))) {
         pkg(j.name).flakyRerun += 1;
       }
     }
@@ -61,6 +68,7 @@ export function computeMetrics(runsInput, { branch = 'main' } = {}) {
     for (const j of finalJobs(run)) {
       if (!COUNTED.has(j.conclusion)) continue;
       const key = `${run.sha}|${j.name}`;
+      if (j.conclusion === 'failure' && !realFailure(j)) continue;   // an audit-only failure is not a flaky outcome
       const s = bySha.get(key) ?? new Set();
       s.add(j.conclusion);
       bySha.set(key, s);
