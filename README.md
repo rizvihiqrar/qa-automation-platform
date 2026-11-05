@@ -10,6 +10,14 @@ One repository of test automation work, run by one CI pipeline: browser tests, A
 
 **[Technical guide →](TECHNICAL.md)**
 
+> **If you have five minutes**, open these three packages. Together they show the depth behind the list below:
+>
+> - [**banking-api**](packages/banking-api): exact money in whole minor units (cents, yen, fils), transfers that move money once even when sent twice, and 78 of 78 planted bugs caught
+> - [**qa-practice-api**](packages/qa-practice-api): 119 cases designed from a written [test strategy](docs/test-strategy/README.md), run in memory and on a real Postgres
+> - [**ai-test-generator**](packages/ai-test-generator): AI-written browser tests, reviewed before they count: 42 of 43 passed on their first run, and the review caught one that checked nothing
+>
+> Then read [one root-cause write-up](docs/rca/01-login-hashing-blocked-the-api.md): how load testing found why one login slowed down every other request.
+
 ## In plain English
 
 Software teams change their product every day, and each change can break something that used to work. This project is a working example of how a team catches those breaks automatically, before customers do.
@@ -23,7 +31,7 @@ Each folder under `packages/` is a small project that either tests something (a 
   </picture>
 </a>
 
-*The live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/): pass rate, run time and flaky jobs, rebuilt after every run on main. Shown in the viewer's light or dark theme.*
+*The [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) as it looked on 2026-10-20: pass rate, run time and flaky jobs, rebuilt after every run on main. The live page has today's figures. Shown in the viewer's light or dark theme.*
 
 ## At a glance
 
@@ -61,7 +69,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 
 | Package | What it does | Checks |
 |---|---|---:|
-| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested, with 119 cases designed from a written [test strategy](docs/test-strategy/README.md) and a passive OWASP ZAP scan in CI. The same suite also runs on a real Postgres that Testcontainers starts in Docker, where race tests prove row locks stop two buyers taking the last item. It sends OpenTelemetry traces and metrics, and the tests check them, down to how long an order waited for a locked row. Toxiproxy slows, cuts and silences its line to the database, and the tests prove the timeouts, the one safe retry and the 503. Its schema is versioned SQL migrations whose up, down and failed steps are tested on a real database, a feature flag is tested on a server of its own, and 46 tests try five items of the OWASP Top 10, one of them catching a real SQL injection hole put back on purpose | 419 + 17 properties + ZAP scan |
+| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested: 119 designed cases, run in memory and on a real Postgres in Docker, with race, fault-injection, tracing, migration and OWASP Top 10 tests and a ZAP scan in CI. One OWASP test caught a real SQL injection hole put back on purpose | 419 + 17 properties + ZAP scan |
 | [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, and 14 SQL checks prove every transfer balances. A small banking UI on top is tested by Cypress in Chrome and Firefox | 236 + 8 properties + 69 Cypress |
 | [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 39-step live check |
 | [api-pytest](packages/api-pytest) | The same designed cases as the Playwright API suite, written again in Python with pytest and requests, under the same case IDs. A fixture starts the API, so one command runs it | 40 |
@@ -145,12 +153,13 @@ Flaky-test issues are opened and closed automatically: see [the `flaky-test` lab
 
 ## Results
 
-Each number links to where it comes from. Figures are as of 2026-10-20.
+Each number links to where it comes from. The CI figures are as of 2026-11-05; the live dashboard always has today's.
 
 | Result | Number | Source |
 |---|---|---|
-| CI jobs passing on main | 35 of 35 | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
-| CI runs fully green on main | 100% of the last 39 | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| CI jobs passing on main | 43 of 43 (every package has at least one job; the rest are lint, type-check, test shards, the ZAP scan and similar) | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| CI runs fully green on main | 96.8% of the last 31: the nightly run on 2026-10-31 failed in two jobs that call a public API, and both passed on the next run of the same commit | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| Flaky job results | 4 in the dashboard's window of about 80 runs on all branches, one each in four jobs; two of them are the 2026-10-31 failures | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
 | Mutation score, shopping cart module | 89.2% (198 of 222 changes caught) | [mutation-testing-demo](packages/mutation-testing-demo/README.md) |
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |
