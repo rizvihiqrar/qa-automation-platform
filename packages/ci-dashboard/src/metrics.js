@@ -12,7 +12,7 @@ export function quantile(values, q) {
 // unstable: the same commit that passed yesterday fails today with no code change (contract-testing-demo and
 // postman-api-collection, 2026-10-31, counted as flaky for days). Such a failure is a real failure for the pass rate, but it
 // is not flakiness.
-export const timeDependent = (job) => Array.isArray(job.failedSteps) && job.failedSteps.length > 0 && job.failedSteps.every((s) => /dependency audit/i.test(s));
+const timeDependent =(job) => Array.isArray(job.failedSteps) && job.failedSteps.length > 0 && job.failedSteps.every((s) => /dependency audit/i.test(s));
 const realFailure = (job) => job.conclusion === 'failure' && !timeDependent(job);
 
 // The last attempt of each job in a run is its result.

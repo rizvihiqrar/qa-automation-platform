@@ -287,3 +287,21 @@ test('normalizeRun keeps the names of the failed steps', () => {
     [{ name: 'api', conclusion: 'failure', run_attempt: 1, steps: [{ name: 'Set up job', conclusion: 'success' }, { name: 'Dependency audit', conclusion: 'failure' }, { name: 'Test', conclusion: 'skipped' }] }, { name: 'ui', conclusion: 'success' }]);
   assert.deepEqual(n.jobs.map((j) => j.failedSteps), [['Dependency audit'], []]);
 });
+
+test('a re-run that failed the audit and a test on its first attempt is still flaky; a "(root)" audit step is exempt like the others', () => {
+  const both = { ...job('mixed', 'failure', 10, 1), failedSteps: ['Dependency audit', 'Test'] };
+  const root = { ...job('root', 'failure', 10, 1), failedSteps: ['Dependency audit (root)'] };
+  const { packages } = computeMetrics([
+    run(1, 'aaa', 'success', [both, { ...job('mixed', 'success', 10, 2), failedSteps: [] }, root, { ...job('root', 'success', 10, 2), failedSteps: [] }]),
+  ]);
+  assert.deepEqual(packages.map((p) => [p.name, p.flaky]), [['mixed', 1], ['root', 0]]);
+});
+
+// The exemption matches on the step name, so a rename in the workflow would quietly bring the false positive back (code review, 2026-11-05).
+test('every audit step in ci.yml is named "Dependency audit", the name the dashboard exempts', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const yml = await readFile(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const steps = yml.split(/\r?\n\s*- name: /).slice(1).filter((s) => /\n\s*run: .*(audit\.mjs|npm audit)/.test(s));
+  assert.ok(steps.length >= 3, `expected at least 3 audit steps, found ${steps.length}`);
+  for (const s of steps) assert.match(s.split(/\r?\n/)[0], /dependency audit/i, s.split(/\r?\n/)[0]);
+});
