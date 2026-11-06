@@ -113,6 +113,24 @@ const shots = [
     out: 'packages/banking-api/docs',
     keep: (lines) => lines.filter((l) => /^\s+│ ✔|^\s+✔  All specs|^SQL ledger checks|^\d+\/14 checks/.test(l)).map((l) => l.replace(/^\s+/, '')),
   },
+  {
+    // The chained flow, cut to the money steps and Newman's totals.
+    name: 'flow',
+    cwd: 'packages/food-truck-postman',
+    command: 'npm run flow --silent',
+    out: 'packages/food-truck-postman/docs',
+    keep: (lines) => {
+      const at = lines.findIndex((l) => l.includes('Refund more than is left'));
+      return [...lines.slice(at, at + 9), '', ...lines.slice(lines.findIndex((l) => l.startsWith('┌')))];
+    },
+  },
+  {
+    name: 'breaks',
+    cwd: 'packages/food-truck-postman',
+    command: 'npm run breaks --silent 2>&1',
+    out: 'packages/food-truck-postman/docs',
+    keep: (lines) => lines.filter((l) => /^(caught|MISSED|\d+ of)/.test(l)),
+  },
 ];
 
 // Names to capture only some: npm run terminal -- cypress

@@ -15,6 +15,7 @@ const shots = [
   { name: 'traceability-matrix', url: `${SITE}/reports/traceability/`, scheme: 'light' },
   { name: 'langfuse-traces', url: `${SITE}/reports/langfuse-traces/`, scheme: 'light' },
   { name: 'playwright-report', url: `${SITE}/reports/regression/index.html`, scheme: 'light', wait: '.test-file-title, .test-file-header, .chip' },
+  { name: 'food-truck-report', url: `${SITE}/reports/food-truck-postman/reports/index.html`, scheme: 'light', out: '../../packages/food-truck-postman/docs/report.png' },
   // The per-package table: pass rate and Flaky / Recovered status, which is the flaky-job tracking.
   { name: 'dashboard-packages', url: `${SITE}/`, scheme: 'light', element: 'section.card.wide' },
 ];
@@ -27,7 +28,7 @@ for (const s of shots) {
   const page = await context.newPage();
   await page.goto(s.url, { waitUntil: 'networkidle' });
   if (s.wait) await page.waitForSelector(s.wait, { timeout: 15_000 }).catch(() => {});
-  const file = path.join(OUT, `${s.name}.png`);
+  const file = path.join(OUT, s.out ?? `${s.name}.png`);
   if (s.element) await page.locator(s.element).first().screenshot({ path: file });
   else await page.screenshot({ path: file });
   console.log('saved', file);

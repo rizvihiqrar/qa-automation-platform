@@ -1,0 +1,37 @@
+{
+  "name": "food-truck-postman",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A food truck API (orders, payments with test cards, deliveries) built to be tested from Postman: environments, chained flows, data-driven runs, JSON schema checks and Newman in CI",
+  "scripts": {
+    "start": "node src/server.ts",
+    "test": "node scripts/run.ts all",
+    "smoke": "node scripts/run.ts smoke",
+    "flow": "node scripts/run.ts flow",
+    "data": "node scripts/run.ts data",
+    "report": "node scripts/run.ts all --report",
+    "test:unit": "node --test \"test/*.test.ts\"",
+    "burn-in": "node scripts/run.ts all --times 5",
+    "breaks": "node scripts/breaks.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/newman": "^5.3.6",
+    "@types/node": "^24.19.2",
+    "newman": "^6.2.3",
+    "newman-reporter-htmlextra": "^1.23.1",
+    "typescript": "^7.0.2"
+  },
+  "//overrides": "Newman and its HTML reporter pin libraries with known issues; these are the fixed releases in the same major. What can't be fixed this way is triaged in scripts/audit-allowlist.json.",
+  "overrides": {
+    "handlebars": "4.7.10",
+    "lodash": "4.18.1",
+    "node-forge": "1.4.2",
+    "qs": "6.16.1",
+    "flatted": "3.4.4",
+    "underscore": "1.13.8"
+  }
+}

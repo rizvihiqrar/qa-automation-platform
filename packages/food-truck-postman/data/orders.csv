@@ -1,0 +1,13 @@
+case,item_id,quantity,fulfilment,address,expected_status,expected_code
+one item for pickup,taco,1,pickup,,201,
+the most of one item,taco,20,pickup,,201,
+delivery with an address,burrito,2,delivery,12 Test Lane Toronto,201,
+quantity under 1,taco,0,pickup,,400,invalid_quantity
+negative quantity,taco,-1,pickup,,400,invalid_quantity
+quantity over 20,taco,21,pickup,,400,invalid_quantity
+fractional quantity,taco,1.5,pickup,,400,invalid_quantity
+quantity is text,taco,two,pickup,,400,invalid_quantity
+unknown item,lobster,1,pickup,,400,unknown_item
+empty order,,1,pickup,,400,empty_order
+delivery with no address,burrito,1,delivery,,400,address_required
+fulfilment not offered,taco,1,drone,,400,invalid_fulfilment

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">food-truck-postman</title>
+  <desc id="d">A food truck API tested from Postman: orders, payments with test cards, deliveries and refunds.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#ea580c"/>
+  <g fill="none" stroke="#fb923c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M72 150V82h108v68M180 104h34l18 24v22h-52"/>
+    <path d="M92 82v-8h68v8M90 108h52"/>
+    <path d="M72 150h22M126 150h76"/>
+    <circle cx="110" cy="154" r="15"/>
+    <circle cx="214" cy="154" r="15"/>
+  </g>
+  <text x="270" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc">food-truck-postman</text>
+  <text x="272" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#cbd5e1">Orders, test-card payments and deliveries, tested from Postman.</text>
+</svg>

@@ -7,6 +7,13 @@
     "review_by": "2027-01-18"
   },
   {
+    "package": "food-truck-postman",
+    "advisory": "GHSA-qxc2-j82w-r537",
+    "library": "@faker-js/faker",
+    "reason": "The same Faker 5 inside Newman (postman-collection), used only for {{$random...}} variables. This collection uses {{$guid}} alone, and the exploit needs an attacker-written template. The fix is Faker 10, which Newman doesn't support yet.",
+    "review_by": "2027-01-18"
+  },
+  {
     "package": "llm-judge-check",
     "advisory": "GHSA-c475-qrg2-pj4r",
     "library": "basic-ftp",
