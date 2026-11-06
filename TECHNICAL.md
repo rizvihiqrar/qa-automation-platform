@@ -174,13 +174,14 @@ The full description of each package, with its check count. The [overview](READM
 | [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 25 |
 | [mutation-testing-demo](packages/mutation-testing-demo) | Deliberately breaks the code to prove the tests would notice (89.2% caught) | 89 |
 | [postman-api-collection](packages/postman-api-collection) | API checks in Postman, runnable from the command line | 25 |
+| [food-truck-postman](packages/food-truck-postman) | A food truck API tested from Postman: test-card payments, a chained order flow, data-driven runs and schema checks in Newman. Nine planted bugs must go red on every run | 39 + 266 Postman tests |
 | [graphql-test-suite](packages/graphql-test-suite) | Tests a GraphQL API: queries, errors, and partial results | 33 |
 | [release-gate](packages/release-gate) | Reads smoke, contract and performance results, applies a policy, and blocks a deployment with clear reasons when a rule is broken | 15 |
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
 | [matrix-build-demo](packages/matrix-build-demo) | Runs the same tests across several Node versions and operating systems | 99 |
 | [money-course](packages/money-course) | A short course, Testing money in software, built on the banking API: six objectives, a quiz for each, and an ungraded practical with six planted bugs and a model answer. Being run as a pilot | 30 |
 
-32 packages, about 1,990 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
+33 packages, about 2,300 automated tests and checks in total. Live CI health: **[CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/)**. Latest test reports: **[reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/)**. Requirement by requirement: **[traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/)**. AI test by AI test: **[Langfuse traces](https://rizvihiqrar.github.io/qa-automation-platform/reports/langfuse-traces/)**.
 
 ## Running locally
 
@@ -217,7 +218,7 @@ There is no central config file: each package keeps its own `package.json`. Thes
 
 ## Type-checking
 
-Every package with code is type-checked in CI (25 of 25; the Postman collection has no code). The CI `typecheck` job runs it on every push:
+Every JavaScript and TypeScript package with code is type-checked in CI (30 of 30; the first Postman collection has no code, and the two Python packages are not type-checked). The CI `typecheck` job runs it on every push:
 
 ```bash
 npm ci
@@ -287,7 +288,7 @@ Re-running until green would hide real failures. A pass on the re-run is counted
 
 ### The dashboard counts more packages than the repo has. Which is right?
 
-Both. There are 32 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
+Both. There are 33 packages. The dashboard counts CI jobs, which also include the type-check, the ZAP scan, the Langfuse traces job, the regression report and similar.
 
 ### Does running the tests call a paid AI service?
 

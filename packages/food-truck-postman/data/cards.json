@@ -1,0 +1,9 @@
+[
+  { "case": "approved card", "card_number": "4242424242424242", "expected_status": 200, "expected_code": "", "expected_order_status": "paid", "expected_paid": true },
+  { "case": "declined card", "card_number": "4000000000000002", "expected_status": 402, "expected_code": "card_declined", "expected_order_status": "placed", "expected_paid": false },
+  { "case": "provider timeout", "card_number": "4000000000000119", "expected_status": 504, "expected_code": "provider_timeout", "expected_order_status": "placed", "expected_paid": false },
+  { "case": "provider charges twice", "card_number": "4000000000000259", "expected_status": 200, "expected_code": "", "expected_order_status": "paid", "expected_paid": true },
+  { "case": "card the provider does not know", "card_number": "5555555555554444", "expected_status": 402, "expected_code": "card_declined", "expected_order_status": "placed", "expected_paid": false },
+  { "case": "too few digits", "card_number": "424242", "expected_status": 400, "expected_code": "invalid_card", "expected_order_status": "placed", "expected_paid": false },
+  { "case": "letters in the number", "card_number": "42424242424242AB", "expected_status": 400, "expected_code": "invalid_card", "expected_order_status": "placed", "expected_paid": false }
+]

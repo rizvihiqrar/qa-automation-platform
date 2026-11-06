@@ -35,7 +35,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 32 packages, about 1,990 automated tests and checks, all run by one CI workflow
+- 33 packages, about 2,300 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -76,6 +76,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [webhook-harness](packages/webhook-harness) | Proves a webhook receiver rejects forged or replayed messages and processes each one only once | 21 |
 | [graphql-test-suite](packages/graphql-test-suite) | Tests a GraphQL API: queries, errors, and partial results | 33 |
 | [postman-api-collection](packages/postman-api-collection) | API checks in Postman, runnable from the command line | 25 |
+| [food-truck-postman](packages/food-truck-postman) | A food truck API tested from Postman: test-card payments, a chained order flow, data-driven runs and schema checks in Newman. Nine planted bugs must go red on every run | 39 + 266 Postman tests |
 | [contract-testing-demo](packages/contract-testing-demo) | Checks that a live API still returns what the app that uses it expects | 5 |
 | [sql-data-integrity](packages/sql-data-integrity) | Runs 15 SQL rules over an orders database and lists the exact rows that break them | 35 |
 | [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 25 |
@@ -153,13 +154,13 @@ Flaky-test issues are opened and closed automatically: see [the `flaky-test` lab
 
 ## Results
 
-Each number links to where it comes from. The CI figures are as of 2026-11-05; the live dashboard always has today's.
+Each number links to where it comes from. The CI figures are as of 2026-11-06; the live dashboard always has today's.
 
 | Result | Number | Source |
 |---|---|---|
-| CI jobs passing on main | 43 of 43 (every package has at least one job; the rest are lint, type-check, test shards, the ZAP scan and similar) | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
-| CI runs fully green on main | 96.8% of the last 31: the nightly run on 2026-10-31 failed in two jobs that call a public API, and both passed on the next run of the same commit | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
-| Flaky job results | 4 in the dashboard's window of about 80 runs on all branches, one each in four jobs; two of them are the 2026-10-31 failures | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| CI jobs passing on main | 44 of 44 (every package has at least one job; the rest are lint, type-check, test shards, the ZAP scan and similar) | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| CI runs fully green on main | 96.9% of the last 32: the nightly run on 2026-10-31 failed in two jobs that call a public API, and both passed on the next run of the same commit | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| Flaky job results | 1 in the dashboard's window of about 80 runs on all branches: a Cypress test read a reply before it arrived on 2026-10-30, fixed the same day. A failure in the dependency audit alone isn't counted as flaky, since a new advisory says nothing about the job | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
 | Mutation score, shopping cart module | 89.2% (198 of 222 changes caught) | [mutation-testing-demo](packages/mutation-testing-demo/README.md) |
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |

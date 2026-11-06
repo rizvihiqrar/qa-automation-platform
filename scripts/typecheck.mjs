@@ -31,6 +31,7 @@ export const PACKAGES = [
   'visual-regression-demo',
   'synthetic-monitor',
   'test-management-kit',
+  'food-truck-postman',
   // CI demos: plain JavaScript checked with checkJs (they exist to show CI patterns)
   'contract-testing-demo',
   'mutation-testing-demo',

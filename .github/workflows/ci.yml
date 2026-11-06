@@ -105,6 +105,8 @@ jobs:
           - { package: synthetic-monitor,        browsers: true,  browserList: chromium firefox, command: npm test }
           - { package: graphql-test-suite,       browsers: false, command: npm test }
           - { package: postman-api-collection,   browsers: false, command: npm test }
+          # Node tests and guards, every Newman pass with reports, 5 more rounds, then each planted bug must go red
+          - { package: food-truck-postman,       browsers: false, command: npm run test:unit && npm run report && npm run burn-in && npm run breaks }
           - { package: contract-testing-demo,    browsers: false, command: npm test }
           - { package: qa-for-ai-features,       browsers: false, command: npx playwright test }
           # Browser, against the live Sauce Demo site. `smoke` is what a pull request
