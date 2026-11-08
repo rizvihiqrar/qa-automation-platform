@@ -173,6 +173,40 @@ Deliberate breaks, each put back alone:
 
 The first try at "every failure retried" passed: the cut was still on when the retry came, so the retry failed too. RS-05 and RS-06 now take the fault off as soon as Postgres shows the API's connection has gone, as a short blip would, and then the break is caught.
 
+## Form-data upload
+
+`POST /uploads` ([`src/routes/uploads.ts`](src/routes/uploads.ts)) takes `multipart/form-data`: a body cut into parts by a boundary line, each part with its own headers (`Content-Disposition` with the field name and file name, an optional `Content-Type`). It is a test target, so it validates and describes an upload and stores nothing; that keeps it identical on both stores and needs no migration.
+
+**No package for the parser.** Node's `Response.formData()` reads a multipart body, so the route buffers the body and hands it over: `new Response(bytes, { headers: { 'content-type': ... } }).formData()`. A body it cannot parse (no boundary, cut off, another boundary than the header names) throws, and that is the `400`.
+
+**Three limits, each tested.** The file is at most 256 KB (`413` one byte over, `201` at exactly 256 KB). The whole body is read only up to 256 KB plus 16 KB for the form's own framing; past that it is thrown away as it arrives, up to 8 MB, and then the connection is cut. And the type is read from the first bytes (PNG `89 50 4E 47`, JPEG `FF D8 FF`, PDF `%PDF-`), never from the label the sender gave it: a text file called `image/png` is a `415`, a PNG labelled `image/jpeg` is a `400` that names both.
+
+**The filename never names a place.** Only the last path segment is kept, anything outside letters, digits, `.`, `-` and `_` becomes `_`, leading dots go, it is cut to 100 characters, and a name with nothing left is `upload`.
+
+**What the tests found.**
+- **A 401 sent before the body was read cut the client's connection.** UP-10 (no token) failed 4 runs in 30 with `fetch failed … write ECONNABORTED`: the route answered 401 first, and a client that had asked for `Connection: close` was still writing when Node closed the socket. The client saw a network error, not the 401. A 200 KB body made it fail on 7 of 20 runs. The route now reads the (capped) body before it answers anything (`bufferBody`), the cost being a read before the token check (see Known limits). UP-10 now sends 200 KB with no token.
+- **Node's `fetch` left `ECONNRESET` lines in the server log.** The test client's pooled keep-alive sockets were cut when the Playwright worker exited. The tests send `Connection: close`, so no socket outlives its test.
+- **Two details of `FormData`.** A file with no type is sent as `application/octet-stream`, which the route treats as no claim at all (otherwise every unlabelled PNG would be a `400`). And a field named `file` that holds text is not a file: `getAll('file')` returns a string, which is a `400` of its own (UP-15).
+
+## HTTPS and certificate tests
+
+`src/server.ts` starts on HTTPS when `HTTPS_KEY_FILE` and `HTTPS_CERT_FILE` are both set, and refuses to start when only one is (otherwise a missing variable would leave the API on plain HTTP, silently). A client that refuses the certificate hangs up during the handshake, which Node reports as `tlsClientError`; the server logs it on one line (`TLS handshake refused by the client: <code>`) and keeps serving.
+
+**Made at test time, not stored.** [`tests/tls-fixtures.ts`](tests/tls-fixtures.ts) runs `openssl` into a temporary folder and deletes it afterwards, so no private key is in the repository (the token and secret scans stay clean) and the expired certificate is expired by the clock, not by a date written in a file. One run makes a certificate authority, three certificates signed by it and one self-signed, in about 0.3 s:
+
+| File | Dates | Names | Signed by |
+|---|---|---|---|
+| valid | yesterday to tomorrow | `localhost`, `127.0.0.1` | the test authority |
+| expired | three days ago to two days ago | `localhost`, `127.0.0.1` | the test authority |
+| wrong host | yesterday to tomorrow | `other.example` | the test authority |
+| self-signed | now to two days ahead | `localhost`, `127.0.0.1` | itself |
+
+The expired certificate needs `openssl ca` with `-startdate` and `-enddate`: `openssl x509 -days` can only count forward from now (the `-not_before` option arrived in OpenSSL 3.4, and GitHub's Ubuntu runner has 3.0). So the fixtures write a small `ca.cnf`, an empty `index.txt` and a `serial` file. The test client is Node's `https.request` with its checks on and `agent: false`, so no pooled connection outlives its server.
+
+**Each refusal is for its own reason.** The tests pin the error code, not just "it failed", so a refused connection for a wrong reason (the server down, a wrong port) cannot pass. TLS-20 to TLS-22 are the controls: trusting the self-signed certificate itself makes it work; with checking off, the expired certificate is served and flagged `CERT_HAS_EXPIRED`; with only the name check off, the wrong-host certificate's chain is good and the API answers.
+
+**Deliberate breaks of the TLS tests** (each shown to fail, then removed): the server on plain HTTP (TLS-01 times out waiting for HTTPS), the both-or-neither check removed (TLS-32), the handshake line not logged (TLS-30), the client not checking certificates (TLS-10), the expired certificate not expired (TLS-10), the wrong-host certificate naming `localhost` (TLS-11).
+
 ## Deliberate breaks
 
 Each was put in, shown to fail, and taken out:
@@ -196,9 +230,17 @@ Each was put in, shown to fail, and taken out:
 | Password hash in a response, fixed salt, any password verifies | OW-A02-01, OW-A02-04, OW-A02-05 and four more |
 | X-Powered-By on, CORS open, unknown email answered differently | OW-A05-01, OW-A05-02, OW-A07-11 |
 | Filter value pasted into the SQL text (Postgres) | OW-A03-01 and OW-A03-02: 2 rows for 0, and a 500 |
+| Upload type taken from the label, the filename kept as sent, no size limit on the file, several files accepted, the declared type not compared, extra fields allowed | UP-20 to UP-22 (and UP-02), five UP-06 cases and UP-07, UP-31, UP-13, UP-21, UP-14 |
+| The 401 sent before the upload body is read (the bug above) | UP-10: 7 of 20 runs failed with `write ECONNABORTED` |
+| Six of the certificate checks, listed under [HTTPS and certificate tests](#https-and-certificate-tests) | TLS-01, TLS-10, TLS-11, TLS-30 and TLS-32 |
 
 ## Known limits
 
+- `POST /uploads` keeps a file of up to 256 KB in memory while it checks it, and a refused body of up to 8 MB is read and thrown away. Fine here; a real upload service streams to disk or a bucket and scans the file.
+- The upload route reads a body before checking the token (so the client sees the 401). The read is capped, which bounds the memory, but not the time: a slow anonymous sender holds a connection until the server's request timeout. `express.json` does not do this (it reads only JSON bodies); a gateway would normally refuse such a request earlier. A body over 8 MB is cut off, so that client sees a reset, not a `413`.
+- `/uploads` is not in [the OpenAPI spec](../api-drift-checker/spec/qa-practice-api.openapi.json), so the drift checker and the ZAP scan (which requests what the spec lists) do not cover it. Adding a multipart operation would put it in front of ZAP, and any finding there has to be triaged first.
+- The certificate tests need the `openssl` program. On a machine without it they fail with the program's error, not a skip: a skipped security test is easy to miss.
+- The tests check that a client refuses each certificate. They do not test revocation (CRL or OCSP), certificate pinning or a client certificate (mutual TLS).
 - `GET /discounts` counts each code's uses with its own query: fine at this size, a grouped count if codes ever number in the thousands.
 - An order for two products on Postgres runs 15 SQL statements (the trace shows them): each insert and update reads its row back. Fine at this size; `RETURNING *` would halve it.
 - The counter tests check "at least": every test shares one API, so other tests' orders count too. An exact count would need a server of its own.

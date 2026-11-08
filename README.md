@@ -35,7 +35,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 33 packages, about 2,300 automated tests and checks, all run by one CI workflow
+- 33 packages, about 2,350 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -69,7 +69,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 
 | Package | What it does | Checks |
 |---|---|---:|
-| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested: 119 designed cases, run in memory and on a real Postgres in Docker, with race, fault-injection, tracing, migration and OWASP Top 10 tests and a ZAP scan in CI. One OWASP test caught a real SQL injection hole put back on purpose | 419 + 17 properties + ZAP scan |
+| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested: 119 designed cases, run in memory and on a real Postgres in Docker, with race, fault-injection, tracing, migration, OWASP Top 10, form-data upload and HTTPS certificate tests and a ZAP scan in CI. One OWASP test caught a real SQL injection hole put back on purpose | 467 + 17 properties + ZAP scan |
 | [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, and 14 SQL checks prove every transfer balances. A small banking UI on top is tested by Cypress in Chrome and Firefox | 236 + 7 runner checks + 8 properties + 69 Cypress |
 | [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 39-step live check |
 | [api-pytest](packages/api-pytest) | The same designed cases as the Playwright API suite, written again in Python with pytest and requests, under the same case IDs. A fixture starts the API, so one command runs it | 40 |

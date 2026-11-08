@@ -38,7 +38,7 @@ npm run jaeger         # a local Jaeger in Docker; then npm run start:jaeger and
 
 `npm test` uses the in-memory store, so each run starts empty and no state leaks between runs. `npm run test:postgres` starts a fresh Postgres 17 container and a Toxiproxy container with Testcontainers, runs the same suite against it plus 34 Postgres-only checks, and removes the containers; CI runs both (`qa-practice-api` and `qa-practice-api-postgres`). The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
 
-385 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 5 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) 8 trace tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)), 14 checks of the migration runner and its files, 16 of the feature flags and 46 for the [OWASP Top 10](#owasp-top-10). On Postgres, 34 more in [tests/postgres](tests/postgres) (419 in all), 15 of them [migration tests](#migrations): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, the traces show each SQL statement and how long an order waited for a locked row, and 9 [resilience tests](tests/postgres/resilience.spec.ts) put faults on the line to the database ([below](#when-the-database-misbehaves)). With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
+433 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 5 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) 8 trace tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)), 14 checks of the migration runner and its files, 16 of the feature flags, 46 for the [OWASP Top 10](#owasp-top-10), 34 for the [form-data upload](#uploads) and 14 [certificate tests](#https-and-certificates). On Postgres, 34 more in [tests/postgres](tests/postgres) (467 in all), 15 of them [migration tests](#migrations): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, the traces show each SQL statement and how long an order waited for a locked row, and 9 [resilience tests](tests/postgres/resilience.spec.ts) put faults on the line to the database ([below](#when-the-database-misbehaves)). With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
 
 The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
 
@@ -114,6 +114,28 @@ What the API does now:
 
 The tests use shorter timeouts (1 s, 1.5 s and 500 ms) so they finish quickly. The first run found a real crash: when a connection broke in the middle of a query, the whole API process stopped. Now it answers 503 and keeps running ([details](TECHNICAL.md#resilience-toxiproxy)).
 
+## HTTPS and certificates
+
+A browser or an API client checks a server's certificate before it trusts the connection: is it signed by an authority the client knows, is it still in date, and is it made for the name the client typed? The API starts on plain HTTP. Name a key and a certificate file and it starts on HTTPS instead:
+
+```bash
+HTTPS_KEY_FILE=server.key HTTPS_CERT_FILE=server.crt npm start
+```
+
+[tests/tls.spec.ts](tests/tls.spec.ts) starts the API with a certificate that is wrong in one way at a time and checks that a client refuses it, for that reason and no other:
+
+| Certificate | The client says |
+|---|---|
+| Signed by a trusted authority, in date, for `localhost` | Accepted, and the API answers (TLS 1.3 or 1.2) |
+| Ended two days ago | `CERT_HAS_EXPIRED` |
+| Made for `other.example` | `ERR_TLS_CERT_ALTNAME_INVALID` |
+| Signed by itself | `DEPTH_ZERO_SELF_SIGNED_CERT` |
+| Signed by an authority the client has not been told to trust | `UNABLE_TO_VERIFY_LEAF_SIGNATURE` |
+
+Three more checks stop the tests passing for the wrong reason. Trusting the self-signed certificate itself makes it work, so trust is the client's choice. With checking switched off the expired certificate is served and flagged, so the server was up when the client refused it. And the right authority cannot vouch for the wrong name. TLS 1.1 is refused, plain HTTP on the HTTPS port is not answered, and the server refuses to start with a key and no certificate.
+
+The certificates are made when the tests start, in a temporary folder with `openssl`, and deleted afterwards. No key is stored in the repository, and the expired certificate is expired by the clock whenever the tests run. They need the `openssl` program: GitHub's Ubuntu runners and Git for Windows have it (set `OPENSSL` to its path if it isn't on your `PATH`). How they are made, and what went wrong on the way, is in [TECHNICAL.md](TECHNICAL.md#https-and-certificate-tests).
+
 ## API Reference
 
 ### Health
@@ -166,6 +188,26 @@ The tests use shorter timeouts (1 s, 1.5 s and 500 ms) so they finish quickly. T
 
 Discount codes were written by an AI from a [reviewed spec](../../docs/ai-written-code/spec.md) and committed unedited, as a case study in [validating AI-written code](../../docs/ai-written-code/README.md). The [code review](../../docs/ai-written-code/code-review.md) and the 126 cases in `tests/discounts` found four defects in it, all now fixed. Property-based tests then found two more problems (a missing order limit, and valid amounts the AI's decimal check refused), and mutation testing showed where the tests checked a status but not the message; the [scoreboard](../../docs/ai-written-code/scoreboard.md) shows which technique caught what.
 
+### Uploads
+
+A route that takes `multipart/form-data`, the format of an HTML file-upload form. It checks the upload and describes it; nothing is stored, so the in-memory and Postgres stores behave the same.
+
+| Method | Route | Auth | Notes |
+|---|---|---|---|
+| POST | `/uploads` | Any user | Form fields: `file` (one PNG, JPEG or PDF, up to 256 KB) and an optional `description` (up to 200 characters). `201 { filename, detectedType, size, sha256, description }` |
+
+| Sent | Answer |
+|---|---|
+| No token | `401` (also for a large body: it is read first, so the client sees the 401) |
+| A valid JSON body | `415`. (A broken or over-100 KB JSON body is answered first by the app-wide JSON parser: `400` or `413`.) |
+| A multipart body with no boundary, cut off, or using another boundary | `400` |
+| No file, two files, an extra field, a text field named `file`, a file named `description`, an empty file, a description over 200 characters | `400` |
+| Bytes that are not a PNG, JPEG or PDF (text, a Windows program, an HTML page), whatever the label | `415` |
+| A PNG labelled `image/jpeg` | `400` naming both types |
+| A file of 256 KB + 1 byte, or a body of up to 8 MB | `413` (past 8 MB the server cuts the connection instead) |
+
+The type comes from the file's first bytes, not from its label. The filename in the reply is only letters, digits, dots, dashes and underscores, from the last path segment (`../../etc/passwd.png` becomes `passwd.png`). The 34 tests are in [tests/uploads.spec.ts](tests/uploads.spec.ts); how the endpoint reads the body is in [TECHNICAL.md](TECHNICAL.md#form-data-upload).
+
 ## Documented Edge Cases
 
 These are intentional behaviours worth writing tests for:
@@ -204,6 +246,7 @@ These are intentional behaviours worth writing tests for:
 | Variable | Default | Notes |
 |---|---|---|
 | `PORT` | `4000` | Server port |
+| `HTTPS_KEY_FILE`, `HTTPS_CERT_FILE` | none: plain HTTP | Paths to a private key and a certificate (PEM). Both set: the server uses HTTPS. Only one: it refuses to start (see [HTTPS and certificates](#https-and-certificates)) |
 | `DATABASE_URL` | none: data in memory | A Postgres connection string. The server applies any [migrations](#migrations) it has not run yet, so a restart keeps the data; `npm run test:postgres` sets it for the tests |
 | `DB_CONNECT_TIMEOUT_MS`, `DB_QUERY_TIMEOUT_MS`, `DB_RETRY_DELAY_MS` | 3000, 5000, 200 | Postgres only: how long to wait for a connection and for a reply before a 503, and the pause before the one retry. `0` turns a timeout off; anything but a whole number stops the server at start-up |
 | `FEATURE_FLAGS` | none: every flag has its default | Comma-separated `name:on` or `name:off`, read once at start-up. One flag today: `discount-codes` (on). An unknown name is ignored with a warning; anything but `on` or `off` stops the start ([below](#feature-flags)) |
