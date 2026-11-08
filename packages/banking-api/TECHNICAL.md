@@ -280,6 +280,7 @@ Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cy
 | [`money.property.test.ts`](test/money.property.test.ts) | 7 | fast-check: any amount round-trips, no JSON number is accepted, any accepted text is plain digits, neighbours above 2^53 stay apart |
 | [`ledger.property.test.ts`](test/ledger.property.test.ts) | 1 | A model of the bank: 300 random sequences of up to 40 moves across six accounts in three currencies. After every move each balance matches the model; at the end, all 14 SQL ledger checks pass |
 | [`ui.test.ts`](test/ui.test.ts) | 17 | The UI files as served (types, the page policy, `405` and `404`), what a browser test can't see in the code (no inline script, no HTML strings, no amount turned into a number or added up, text fields for amounts), and `GET /accounts` |
+| [`launch-retry.test.ts`](test/launch-retry.test.ts) | 7 | The Cypress runner starts a run again only when the browser never connected: a failing test is never run twice, and a second launch failure fails the run |
 | [`spec.test.ts`](test/spec.test.ts) | 3 | Every rule in [SPEC.md](SPEC.md) has a test (Node or Cypress), and every rule a test names exists |
 | [`cypress/e2e`](cypress/e2e) | 69 per browser | The UI in Chrome and Firefox: see [the banking UI](#the-banking-ui-tested-with-cypress) |
 
@@ -391,6 +392,7 @@ Each mistake was put into the code, the tests run, and the code restored. All 78
 - **CI found what the laptop hid.** The first CI run failed every spec before a test ran: Cypress compiles TypeScript specs with the project's own `typescript`, and locally it had found the copy at the repo root, which a CI job never installs. `typescript` is now a dev dependency of the package, and the specs were run again with the root copy moved away to prove it.
 - **The two-tabs race flaked on its first CI run.** It waited for the alias twice and expected the other tab's `201` first, but `cy.wait` gives requests in the order they were intercepted, and the page's request is intercepted first (its handler is what sends the other one). It passed locally and failed in CI. It now waits for both and tells them apart by the `X-Other-Tab` header, and passed three runs in each browser before it was pushed again.
 - **Cypress wouldn't start from VS Code's terminal.** It sets `ELECTRON_RUN_AS_NODE=1`, so Cypress's Electron ran as plain Node and refused its own options (`bad option: --smoke-test`). `npm run test:ui` unsets it.
+- **Firefox once never connected on a CI runner.** All 69 Chrome tests passed, then the Firefox run printed `The browser never connected`, ran no test and crashed inside Cypress (CI run 42467489172, 2026-11-08); a re-run passed. That is the runner, not the UI, so [`src/launch-retry.ts`](src/launch-retry.ts) starts `cypress run` once more, and only when that message is in the output. A failing test is never retried (the config keeps `retries: 0`), and [`launch-retry.test.ts`](test/launch-retry.test.ts) pins both rules; each rule was removed once to see its test fail.
 - **No `cypress-axe` for Cypress 16 yet.** Its peer range stops at 15. Loading axe-core into the page and calling `axe.run` is all it does, so the support file does that directly, with the WCAG 2.2 A and AA tags.
 - **Some checks can't fire alone, and that's correct.** A transfer missing its credit is also unbalanced, and so is its currency. A test lists the seven checks that only ever fire with others, with the reason, so a check that quietly copies another can't hide among them.
 
@@ -461,13 +463,14 @@ No: anyone can move money between any accounts. Access control is tested on [qa-
 | Every check says `could not run: no such table` | The file isn't a banking-api ledger | Point `--db` at the file in `DATABASE_PATH` |
 | `npx cypress run` fails at once: `Cypress.exe: bad option: --smoke-test` | `ELECTRON_RUN_AS_NODE=1` is set (VS Code's terminal sets it), so Cypress's Electron starts as plain Node | Use `npm run test:ui`, which unsets it, or `env -u ELECTRON_RUN_AS_NODE npx cypress run` |
 | `Browser: firefox was not found` | Firefox isn't installed | Install it, or run `npm run test:ui -- --browser chrome` |
+| `The browser never connected` in the log, then `Starting the run again` | The runner couldn't start the browser; `npm run test:ui` runs Cypress once more | Nothing, unless it fails twice: then look at the runner's memory and the browser version |
 | The Cypress binary is missing after `npm ci` | `CYPRESS_INSTALL_BINARY=0` was set, as CI does for jobs that don't need it | `npx cypress install` |
 
 ## Development
 
 ```bash
 npm ci
-npm test                          # 244 tests, about three seconds
+npm test                          # 251 tests, about three seconds
 npm run demo                      # the requests in the screenshot above
 npm run check -- --demo           # the SQL ledger checks on a ledger with defects put in
 npm run race -- raced.db          # race two servers on one file, then:

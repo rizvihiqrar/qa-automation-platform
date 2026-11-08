@@ -56,7 +56,7 @@ curl -s -X POST localhost:4100/accounts/1/deposits -H 'Content-Type: application
 
 | Result | Number | Source |
 |---|---|---|
-| API tests (Node) | 244 in about three seconds: 233 designed cases, 8 properties, 3 spec checks | [Results](TECHNICAL.md#results) |
+| API tests (Node) | 251 in about three seconds: 233 designed cases, 7 runner checks, 8 properties, 3 spec checks | [Results](TECHNICAL.md#results) |
 | UI tests (Cypress) | 69, in Chrome and in Firefox, about a minute each | [The banking UI](TECHNICAL.md#the-banking-ui-tested-with-cypress) |
 | SQL ledger checks | 14 of 14 pass on clean, raced, random and UI-made ledgers; each fires on its own planted defect | [SQL ledger checks](TECHNICAL.md#sql-ledger-checks) |
 | Races | 20 transfers of 10.00 at once from 100.00: 10 pass, balance 0.00 (without the fix: 20 pass, −100.00) | [Requests at the same time](TECHNICAL.md#requests-at-the-same-time) |
