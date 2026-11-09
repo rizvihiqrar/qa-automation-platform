@@ -2,6 +2,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import { trace } from '@opentelemetry/api';
 import { tracing } from './middleware/tracing.ts';
 import { handle } from './middleware/handle.ts';
+import { logError } from './log.ts';
 import { db, DatabaseUnavailable } from './db/store.ts';
 import authRoutes    from './routes/auth.ts';
 import userRoutes    from './routes/users.ts';
@@ -45,7 +46,7 @@ app.use((req, res) =>
 
 // Without this, Express answers a malformed JSON body (400) or a thrown error (500)
 // with an HTML page, breaking the `{ error }` contract every other response keeps.
-const onError: ErrorRequestHandler = (err, _req, res, _next) => {
+const onError: ErrorRequestHandler = (err, req, res, _next) => {
   if ((err as { type?: string }).type === 'entity.parse.failed') {
     res.status(400).json({ error: 'Request body is not valid JSON' });
     return;
@@ -59,7 +60,7 @@ const onError: ErrorRequestHandler = (err, _req, res, _next) => {
   // without the driver's message. It says try again only when nothing was saved:
   // a write cut after it was sent may have been, and a resend could be a duplicate.
   if (err instanceof DatabaseUnavailable) {
-    console.error(err.message);
+    logError(err.message, req);
     trace.getActiveSpan()?.recordException(err);
     if (err.maybeSaved) {
       res.status(503).json({ error: 'Database unavailable: the change may have been saved. Check before sending it again.' });

@@ -173,6 +173,36 @@ Deliberate breaks, each put back alone:
 
 The first try at "every failure retried" passed: the cut was still on when the retry came, so the retry failed too. RS-05 and RS-06 now take the fault off as soon as Postgres shows the API's connection has gone, as a short blip would, and then the break is caught.
 
+## Incident game day
+
+[`scripts/game-day.ts`](scripts/game-day.ts) is a live drill, run by hand (`npm run game-day`). It starts Postgres and Toxiproxy on a private network (the same pinned images as [`with-postgres.ts`](scripts/with-postgres.ts), checked by GD-05), the API on port 4100 through one proxy line, and a loop that makes three calls at once (`GET /health/ready`, `GET /products` and `POST /orders`) and then waits a second, so a tick lasts as long as its slowest call (up to 4 s on a slow line) plus that second. What it writes under `reports/game-day` (git-ignored):
+
+| File | Who reads it |
+|---|---|
+| `traffic.log` | the responder: what a dashboard would show |
+| `pager.log` | the responder: `PAGE` and `RESOLVED` from [`scripts/pager.ts`](scripts/pager.ts) |
+| `api.log` | the responder: the API's own output |
+| `responder.log` | the responder's notes (`-- note "text"`), on the harness's clock |
+| `ground-truth.log` | the commander's `cut` and `restore`; the responder reads it only for the postmortem |
+
+**The pager** pages after 3 failed readiness checks in a row, once, and clears after 3 good ones; a good answer resets the failure count and a bad one resets the good count. It is a small class so GD-01 to GD-04 can test it without Docker.
+
+**Making the drill fair.** The commander picks the moment and does not announce it; the responder starts from the pager. Nobody scripts the response, so the findings are real.
+
+**What the first drill showed** ([docs/rca/06](../../docs/rca/06-game-day-database-link-cut.md)): 146.9 s from cut to first good check, 2.9 s to the page, 116.5 s of it waiting for a go, 0 orders lost or doubled (checked in the database against the log), recovery 0.8 s after the restore. The log lines had no time or request (fixed: [`src/log.ts`](src/log.ts), RS-10).
+
+Deliberate breaks, each put back alone:
+
+| Break | What failed |
+|---|---|
+| `console.error` back in place of `logError` for the unavailable line | RS-10: no timestamped line in the server log within 5 s |
+| Page after 1 failed check | GD-01, GD-02 and GD-04 |
+| A failed check not resetting the good count | GD-03 |
+| A good check not resetting the failure count | GD-02 and GD-04 |
+| A different Toxiproxy tag in `game-day.ts` | GD-05 |
+
+**Not covered:** only a full cut was drilled; the harness does not inject slow or reset faults itself (the Day 51 tests do). The responder in the first drill was Claude, an AI assistant, so the human-factors side (alert fatigue, hand-offs between people) was not practised.
+
 ## Form-data upload
 
 `POST /uploads` ([`src/routes/uploads.ts`](src/routes/uploads.ts)) takes `multipart/form-data`: a body cut into parts by a boundary line, each part with its own headers (`Content-Disposition` with the field name and file name, an optional `Content-Type`). It is a test target, so it validates and describes an upload and stores nothing; that keeps it identical on both stores and needs no migration.
