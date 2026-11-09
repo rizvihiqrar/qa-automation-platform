@@ -154,13 +154,13 @@ Flaky-test issues are opened and closed automatically: see [the `flaky-test` lab
 
 ## Results
 
-Each number links to where it comes from. The CI figures are as of 2026-11-08; the live dashboard always has today's.
+Each number links to where it comes from. The CI figures are as of 2026-11-09; the live dashboard always has today's.
 
 | Result | Number | Source |
 |---|---|---|
 | CI jobs passing on main | 44 of 44 (every package has at least one job; the rest are lint, type-check, test shards, the ZAP scan and similar) | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
-| CI runs fully green on main | 97.1% of the last 35: the nightly run on 2026-10-31 failed in two jobs that call a public API, and both passed on the next run of the same commit | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
-| Flaky job results | 2 in the dashboard's window of about 80 runs on all branches, both in the banking UI job: a Cypress test read a reply before it arrived on 2026-10-30, fixed the same day, and on 2026-11-08 Firefox never connected to Cypress and no test ran, fixed in PR #147: the job now retries Cypress once, and only when that message appears. A failure in the dependency audit alone isn't counted as flaky, since a new advisory says nothing about the job | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| CI runs fully green on main | 100% of the 31 runs in the dashboard's window (the nightly run of 2026-10-31, which failed in two jobs that call a public API and passed on the next run of the same commit, has left the window) | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
+| Flaky job results | 1 in the dashboard's window of about 77 runs on all branches, in the banking UI job: on 2026-11-08 Firefox never connected to Cypress and no test ran, fixed in PR #147: the job now retries Cypress once, and only when that message appears. It has not come back in the runs since. (A Cypress test that read a reply before it arrived on 2026-10-30, fixed the same day, has left the window.) A failure in the dependency audit alone isn't counted as flaky, since a new advisory says nothing about the job | [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) |
 | Mutation score, shopping cart module | 89.2% (198 of 222 changes caught) | [mutation-testing-demo](packages/mutation-testing-demo/README.md) |
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |
