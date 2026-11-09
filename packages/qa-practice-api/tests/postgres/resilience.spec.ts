@@ -319,4 +319,13 @@ test.describe('Resilience (Toxiproxy)', () => {
     const res = await request.post(`${api}/auth/login`, { data: { email, password } });
     expect(res.status()).toBe(200); // not 429 Too many sign-in attempts
   });
+
+  // Found by the game day (docs/rca/06-game-day-database-link-cut.md): 355 log lines
+  // with no time and no request in them could not be lined up with the pager.
+  test('RS-10 a request that fails because the database is down leaves a log line with the time, the method and the path @regression', async ({ request }) => {
+    await setLine(false);
+    await timed(request, 'get', '/products?category=rs10-log');
+    await expect.poll(() => log, { timeout: 5000 }).toMatch(
+      /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z GET \/products database unavailable \(connect\)/m);
+  });
 });

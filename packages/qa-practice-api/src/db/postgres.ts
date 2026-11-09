@@ -5,6 +5,7 @@ import pg from 'pg';
 import { trace } from '@opentelemetry/api';
 import { inSpan } from '../telemetry.ts';
 import { migrateUp } from './migrate.ts';
+import { logError } from '../log.ts';
 import { toId, UniqueViolation, DatabaseUnavailable } from './types.ts';
 import type { Row, Id, Table, Tables, Store, FindOptions, Page, Order, OrderItem } from './types.ts';
 
@@ -219,11 +220,11 @@ export async function openPostgres(connectionString: string, timeouts: Timeouts 
     query_timeout: timeouts.query,
     statement_timeout: timeouts.query,
   });
-  pool.on('error', (err) => console.error(`postgres pool error: ${err.message}`));
+  pool.on('error', (err) => logError(`postgres pool error: ${err.message}`));
   // The pool listens for errors only on idle connections. One in use whose line
   // breaks also emits 'error' (beside failing its statement), and with no listener
   // that ended the whole process (found by RS-04): every connection gets one.
-  pool.on('connect', (client) => client.on('error', (err) => console.error(`postgres connection error: ${err.message}`)));
+  pool.on('connect', (client) => client.on('error', (err) => logError(`postgres connection error: ${err.message}`)));
 
   const connect = async (): Promise<pg.PoolClient> => {
     try {
