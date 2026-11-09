@@ -9,10 +9,10 @@
     "test:smoke": "playwright test --grep @smoke"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.1"
+    "@playwright/test": "^1.65.0"
   },
   "dependencies": {
-    "graphql": "^17.0.2",
+    "graphql": "^17.1.0",
     "graphql-yoga": "^6.0.1"
   }
 }
