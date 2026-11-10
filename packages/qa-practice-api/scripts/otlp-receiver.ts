@@ -1,11 +1,12 @@
-// A small OTLP receiver for the tests: the API sends its traces and metrics here
+// A small OTLP receiver for the tests: the API sends its traces, metrics and logs here
 // (OTEL_EXPORTER_OTLP_ENDPOINT, set in playwright.config.ts), the way it would send
 // them to an OpenTelemetry Collector, and the tests ask it what arrived. It keeps
 // everything in memory until it stops.
 //
-//   POST /v1/traces, /v1/metrics   OTLP over HTTP, JSON encoding (what the
+//   POST /v1/traces, /v1/metrics, /v1/logs   OTLP over HTTP, JSON encoding (what the
 //                                  exporter-*-otlp-http packages send)
 //   GET  /traces/:traceId          that trace's spans, flattened (see FlatSpan)
+//   GET  /logs/:traceId            that trace's log records, flattened (see FlatLog)
 //   GET  /metrics/:name            the latest value of each of the metric's series
 //   GET  /health                   200 once it is listening (Playwright waits for it)
 //
@@ -29,6 +30,15 @@ export interface FlatSpan {
   durationMs: number;
 }
 
+export interface FlatLog {
+  traceId: string;
+  spanId: string;
+  severity: string; // WARN, ERROR
+  body: string;
+  service: string;
+  attributes: Attributes;
+}
+
 export interface Series {
   attributes: Attributes;
   value?: number; // sums (counters)
@@ -41,6 +51,7 @@ const flatten = (list: KeyValue[] = []): Attributes =>
     value.stringValue ?? value.boolValue ?? value.doubleValue ?? Number(value.intValue ?? NaN)]));
 
 const traces = new Map<string, FlatSpan[]>();
+const logRecords = new Map<string, FlatLog[]>(); // by trace id; a record outside any span has none
 // metric name -> series key (its attributes as JSON) -> latest values
 const latest = new Map<string, Map<string, Series & { unit: string }>>();
 
@@ -63,6 +74,27 @@ function takeTraces(body: any): void {
           durationMs: Number(BigInt(s.endTimeUnixNano) - BigInt(s.startTimeUnixNano)) / 1e6,
         };
         traces.set(span.traceId, [...(traces.get(span.traceId) ?? []), span]);
+      }
+    }
+  }
+}
+
+function takeLogs(body: any): void {
+  for (const { resource, scopeLogs = [] } of body.resourceLogs ?? []) {
+    const service = String(flatten(resource?.attributes)['service.name'] ?? '');
+    for (const { logRecords: records = [] } of scopeLogs) {
+      for (const r of records) {
+        const log: FlatLog = {
+          traceId: r.traceId ?? '',
+          spanId: r.spanId ?? '',
+          severity: r.severityText ?? '',
+          body: r.body?.stringValue ?? '',
+          service,
+          attributes: flatten(r.attributes),
+        };
+        const list = logRecords.get(log.traceId) ?? [];
+        list.push(log);
+        logRecords.set(log.traceId, list);
       }
     }
   }
@@ -100,7 +132,7 @@ async function readBody(req: IncomingMessage): Promise<string> {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://receiver');
-  if (req.method === 'POST' && (url.pathname === '/v1/traces' || url.pathname === '/v1/metrics')) {
+  if (req.method === 'POST' && ['/v1/traces', '/v1/metrics', '/v1/logs'].includes(url.pathname)) {
     // The protobuf encoding would arrive as unreadable bytes: say so instead of
     // dropping it quietly.
     if (!req.headers['content-type']?.startsWith('application/json')) {
@@ -110,7 +142,9 @@ const server = createServer(async (req, res) => {
     // receiver, and every later trace test would fail with nothing to read.
     try {
       const body = JSON.parse(await readBody(req));
-      if (url.pathname === '/v1/traces') takeTraces(body); else takeMetrics(body);
+      if (url.pathname === '/v1/traces') takeTraces(body);
+      else if (url.pathname === '/v1/logs') takeLogs(body);
+      else takeMetrics(body);
     } catch (err) {
       return json(res, 400, { error: `could not read the OTLP body: ${(err as Error).message}` });
     }
@@ -119,6 +153,8 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { status: 'ok' });
   const trace = url.pathname.match(/^\/traces\/([0-9a-f]{32})$/);
   if (req.method === 'GET' && trace) return json(res, 200, traces.get(trace[1]!) ?? []);
+  const log = url.pathname.match(/^\/logs\/([0-9a-f]{32})$/);
+  if (req.method === 'GET' && log) return json(res, 200, logRecords.get(log[1]!) ?? []);
   const metric = url.pathname.match(/^\/metrics\/([\w.]+)$/);
   if (req.method === 'GET' && metric) {
     const series = latest.get(metric[1]!);

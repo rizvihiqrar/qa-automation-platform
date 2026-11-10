@@ -131,6 +131,26 @@ Deliberate breaks, each put back alone:
 
 The first try at the email break changed nothing. It put the email on the span when the span starts, and that is before Express reads the body. Moved to the end of the request, it was caught.
 
+## Logs and the Collector
+
+**Logs.** `emitLog` in [`src/telemetry.ts`](src/telemetry.ts) writes an OpenTelemetry log record. The SDK copies the trace id and span id of whatever span is current, so a line written inside the order span carries that span's ids with no code of ours: that is the join. Two places write them: `logError` ([`src/log.ts`](src/log.ts), the same lines as the console, with the method and path but not the query string) and a refused order (`order refused`, with the reason code and number of lines, never the long message that names a product). The attributes are listed by hand at each call, so nothing arrives by accident. The log SDK's processors take an options object (`{ exporter }`), not the exporter, and read no delay from the environment, unlike the trace processor; the first version passed the exporter and silently sent nothing, which LG-01 caught.
+
+**The tests' receiver** also takes `/v1/logs` and answers `GET /logs/:traceId`, so LG-01 and LG-02 run in the ordinary suite with no Docker.
+
+**The Collector.** [`collector/config.yaml`](collector/config.yaml), run by [`scripts/with-collector.ts`](scripts/with-collector.ts) with Testcontainers (a private network so the Collector finds Jaeger as `jaeger`; the config is copied in; a world-writable temp folder is mounted for the log file). Images are pinned (`otel/opentelemetry-collector-contrib:0.141.0`, `jaegertracing/jaeger:2.22.0`) and CI pulls the same tags through `retry.sh` first. Every pipeline starts with `memory_limiter`. Traces and logs then pass `attributes/scrub` (deletes keys that should never be stored: authorization and cookie headers, `password`, `user.email`) and `redaction` (replaces an email address or a bearer token inside any other value, or a log body, with `****`), then `batch`. Metrics go only to the Collector's own log: nothing here reads them back, which is A434's job.
+
+**How the tests read it.** `COLLECTOR_URL` (set by the launcher) makes `playwright.config.ts` send the API's telemetry there instead of the in-process receiver, and stops a leftover server on port 4000 from being reused. Jaeger's `/api/traces/:id` shows what was stored; the log file is read from the temp folder. The scrub test posts OTLP/JSON straight to the Collector, as a badly written service would, because the API itself sends no secrets (OT-05, LG-02).
+
+**Burn-in.** The plain group skips `tests/collector`, like `tests/postgres`, so `scripts/burn-in.mjs` has a Collector group that runs those specs three times inside `with-collector.ts` (`scripts/burn-in.test.mjs` checks it).
+
+| Break | What failed |
+|---|---|
+| The log SDK given the exporter, not `{ exporter }` | LG-01, LG-02: no log record ever arrived |
+| The log written outside the request's span (root context) | LG-01; CL-03: no log for the trace |
+| The `redaction` processor removed | CL-04: the email and token were stored in the span and the log |
+| The `attributes/scrub` processor removed | CL-04: `password`, the authorization header and `user.email` stored |
+| CI stops pulling the Jaeger image; or the logs pipeline loses its scrub steps | `scripts/collector-ci.test.mjs` |
+
 ## Resilience (Toxiproxy)
 
 **The setup.** Toxiproxy is a TCP proxy with a control API. Each fault is a "toxic" added to a line: `latency` holds every reply for a while, `reset_peer` resets the connection as soon as data passes, and `timeout` with `timeout: 0` lets nothing through and never closes. Disabling a proxy hangs up every connection on it and refuses new ones until it is enabled again. [`scripts/with-postgres.ts`](scripts/with-postgres.ts) starts Toxiproxy next to Postgres on one Docker network (Postgres has the network name `postgres`) and makes 32 lines to it.

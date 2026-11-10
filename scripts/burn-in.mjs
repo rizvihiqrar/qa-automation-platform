@@ -29,11 +29,13 @@ export const PLAYWRIGHT = [
   { pkg: 'synthetic-monitor', config: 'playwright.config.ts', dirs: ['tests/browser/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'visual-regression-demo', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'qa-for-ai-features', config: 'playwright.config.ts', dirs: ['tests/'] },
-  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'], skip: ['tests/postgres/'] },
+  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'], skip: ['tests/postgres/', 'tests/collector/'] },
   // On a Postgres that Testcontainers starts (playwright.config.ts runs tests/postgres
   // only then). The race tests run here too: only on Postgres can they fail. So do
   // the trace tests: on Postgres the spans hold the SQL statements and real lock waits.
   { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/postgres/', 'tests/concurrency.spec.ts', 'tests/telemetry.spec.ts'], postgres: true },
+  // Against the OpenTelemetry Collector and Jaeger that scripts/with-collector.ts starts in Docker.
+  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/collector/'], collector: true },
 ];
 export const CYPRESS = [{ pkg: 'banking-api', dirs: ['cypress/e2e/'] }];
 
@@ -55,8 +57,8 @@ export function plan(files) {
     const [, pkg, rel] = m;
     for (const s of PLAYWRIGHT) {
       if (s.pkg === pkg && PLAYWRIGHT_SPEC.test(rel) && s.dirs.some((d) => rel.startsWith(d)) && !s.skip?.some((d) => rel.startsWith(d))) {
-        const key = `${pkg}/${s.config}${s.postgres ? ' on Postgres' : ''}`;
-        add(key, () => ({ runner: 'playwright', pkg, config: s.config, browsers: s.browsers, postgres: s.postgres }), rel);
+        const key = `${pkg}/${s.config}${s.postgres ? ' on Postgres' : ''}${s.collector ? ' on the Collector' : ''}`;
+        add(key, () => ({ runner: 'playwright', pkg, config: s.config, browsers: s.browsers, postgres: s.postgres, collector: s.collector }), rel);
       }
     }
     for (const s of CYPRESS) {
@@ -72,6 +74,13 @@ export function plan(files) {
 export function commands(group) {
   if (group.runner === 'playwright') {
     const args = ['playwright', 'test', '-c', group.config, `--repeat-each=${REPEATS}`, '--retries=0', '--reporter=list', ...group.files];
+    if (group.collector) {
+      return [
+        ...collectorImages().map((image) =>
+          [`${group.pkg} image ${image}`, 'bash', [path.join(ROOT, 'scripts', 'retry.sh'), 'docker', 'pull', '--quiet', image], {}]),
+        [`${group.pkg} (${group.config}) on the Collector x${REPEATS}`, 'node', ['scripts/with-collector.ts', 'npx', ...args], { TESTCONTAINERS_RYUK_DISABLED: 'true' }],
+      ];
+    }
     if (!group.postgres) return [[`${group.pkg} (${group.config}) x${REPEATS}`, 'npx', args, {}]];
     // The images are pulled through retry.sh first (as the CI job does), so
     // Testcontainers finds them on the runner; its clean-up container is not needed.
@@ -101,6 +110,15 @@ export function postgresImages() {
   const launcher = fs.readFileSync(path.join(ROOT, 'packages', 'qa-practice-api', 'scripts', 'with-postgres.ts'), 'utf8');
   const images = [...launcher.matchAll(/export const \w+_IMAGE = '([^']+)'/g)].map((m) => m[1]);
   if (!images.length) throw new Error('no *_IMAGE found in with-postgres.ts');
+  return images;
+}
+
+// The images packages/qa-practice-api/scripts/with-collector.ts starts: the
+// Collector and Jaeger.
+export function collectorImages() {
+  const launcher = fs.readFileSync(path.join(ROOT, 'packages', 'qa-practice-api', 'scripts', 'with-collector.ts'), 'utf8');
+  const images = [...launcher.matchAll(/export const \w+_IMAGE = '([^']+)'/g)].map((m) => m[1]);
+  if (!images.length) throw new Error('no *_IMAGE found in with-collector.ts');
   return images;
 }
 

@@ -11,7 +11,7 @@ Built with Node.js and Express, in strict TypeScript that Node 24 runs directly 
 - **Runtime:** Node.js 24 + Express, TypeScript run by Node's type stripping
 - **Data:** an in-memory store (`src/db/memory.ts`), reset on every restart, or Postgres (`src/db/postgres.ts`) when `DATABASE_URL` is set; Testcontainers starts a throwaway Postgres in Docker for the tests
 - **Auth:** JWT (`jsonwebtoken`, HS256, checked against the account on every request) + scrypt password hashing (Node's built-in `crypto.scrypt`, which runs off the event loop; see [k6-performance](../k6-performance) for why it replaced bcryptjs)
-- **Observability:** OpenTelemetry traces and metrics, sent over OTLP to a small receiver in the tests or to a local Jaeger
+- **Observability:** OpenTelemetry traces, metrics and logs, sent over OTLP to a small receiver in the tests, to a local Jaeger, or through a real OpenTelemetry Collector in Docker
 - **Resilience:** Toxiproxy (in Docker, started by Testcontainers) between a test server and Postgres; connect and query timeouts, one safe retry, and a 503 when the database is down
 - **Tests:** Playwright API mode (no browser)
 - **CI:** GitHub Actions, as one job in the monorepo pipeline
@@ -31,6 +31,7 @@ npm test               # full suite (starts server automatically)
 npm run test:smoke     # @smoke tagged tests only
 npm run test:properties  # 17 fast-check properties, about 10 seconds
 npm run test:postgres  # the suite on a fresh Postgres in Docker (needs Docker running)
+npm run test:collector # 4 tests through a real OpenTelemetry Collector and Jaeger in Docker
 npm run scoreboard     # put each of the AI's mistakes back, record what catches it
 npm run test:mutation  # Stryker; MUTATION_TESTS=designed or properties (see stryker.config.mjs)
 npm run jaeger         # a local Jaeger in Docker; then npm run start:jaeger and open http://localhost:16686
@@ -38,7 +39,7 @@ npm run jaeger         # a local Jaeger in Docker; then npm run start:jaeger and
 
 `npm test` uses the in-memory store, so each run starts empty and no state leaks between runs. `npm run test:postgres` starts a fresh Postgres 17 container and a Toxiproxy container with Testcontainers, runs the same suite against it plus 35 Postgres-only checks, and removes the containers; CI runs both (`qa-practice-api` and `qa-practice-api-postgres`). The test server is seeded with an admin (`ADMIN_EMAIL` and `ADMIN_PASSWORD`, which `playwright.config.ts` passes from `tests/admin.ts`), and `tests/global-setup.ts` signs it in once for every test that needs it.
 
-438 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 5 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) 8 trace tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)), 14 checks of the migration runner and its files, 16 of the feature flags, 46 for the [OWASP Top 10](#owasp-top-10), 34 for the [form-data upload](#uploads) 14 [certificate tests](#https-and-certificates) and 5 for the [game day's pager](#incident-game-day). On Postgres, 35 more in [tests/postgres](tests/postgres) (473 in all), 15 of them [migration tests](#migrations): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, the traces show each SQL statement and how long an order waited for a locked row, and 9 [resilience tests](tests/postgres/resilience.spec.ts) put faults on the line to the database ([below](#when-the-database-misbehaves)). With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
+440 tests: 38 written first, one or a few per route; 119 in `tests/design` that come from a written [test strategy and test plan](../../docs/test-strategy/README.md); 126 in `tests/discounts` for the AI-written discount codes; 4 header checks, 5 unit tests of the sign-in limiter, 1 keep-alive check, 8 [concurrency tests](tests/concurrency.spec.ts) (many orders, sign-ups or cancels at the same moment) 10 trace and log tests ([telemetry.spec.ts](tests/telemetry.spec.ts), [tracing.spec.ts](tests/tracing.spec.ts)), 14 checks of the migration runner and its files, 16 of the feature flags, 46 for the [OWASP Top 10](#owasp-top-10), 34 for the [form-data upload](#uploads) 14 [certificate tests](#https-and-certificates) and 5 for the [game day's pager](#incident-game-day). On Postgres, 35 more in [tests/postgres](tests/postgres) (475 in all, and 4 more through the [Collector](#traces-logs-and-the-collector)), 15 of them [migration tests](#migrations): the data is really in the tables, the schema refuses negative stock and repeated emails by itself, a second server sees the same data, a failed transaction leaves nothing, a locked row makes the next transaction wait, money comes back exact, an id too big for the column is a 404, the traces show each SQL statement and how long an order waited for a locked row, and 9 [resilience tests](tests/postgres/resilience.spec.ts) put faults on the line to the database ([below](#when-the-database-misbehaves)). With the row locks removed, 6 of the 8 concurrency tests fail on Postgres (ten buyers all got the last item). The 119 were designed with named techniques: equivalence partitioning (20), boundary value analysis (25), decision tables (23), state transitions (29) and an access-control matrix (22). Each test's title starts with its case ID from the plan. The first 85 found 9 defects the first 38 had missed; the access-control and sign-in cases found 8 security defects ([below](#security)). All are fixed.
 
 The 126 discount cases each name the spec rule they check (`DC-BVA-14 [DC-R04] …`): boundary values (43), decision tables (21), equivalence partitioning (36), access control (14), state transitions of a code's uses (6) and the spec's worked examples (6). Run on the AI's code before any fix, 12 failed; the [code review](../../docs/ai-written-code/code-review.md) lists what each one found.
 
@@ -72,7 +73,7 @@ The parsing has 8 unit tests: defaults, on and off, spaces, an unknown name (ign
 
 ## Traces and metrics
 
-The API reports each request as a **trace**: a tree of timed steps called spans. Placing an order makes a span for the request, one for the order, one for its database transaction and one for each product row it locks. On Postgres each SQL statement is a span too. It also keeps **metrics**: orders placed, orders refused by reason, and how long each route takes to answer.
+The API reports each request as a **trace**: a tree of timed steps called spans. Placing an order makes a span for the request, one for the order, one for its database transaction and one for each product row it locks. On Postgres each SQL statement is a span too. It also keeps **metrics**: orders placed, orders refused by reason, and how long each route takes to answer, and writes **log lines** (an error, a refused order) that carry the id of the trace and of the step that wrote them.
 
 ![A Jaeger view of one order on Postgres: POST /orders, then order.create, db.transaction, BEGIN, a db.lock with its SELECT ... FOR UPDATE for each product, the inserts and updates, and COMMIT](../../docs/assets/qa-practice-api-jaeger-trace.png)
 
@@ -88,7 +89,25 @@ The tests read the same data. `playwright.config.ts` starts a small [OTLP receiv
 - **A crash and a hang-up** (OT-07, OT-08): a 500 thrown inside a router keeps its route, and a client that hangs up before the reply counts as aborted, not as a 200.
 - **A real lock wait on Postgres** (PG-10): the test holds a product row itself and waits until Postgres reports the order is blocked. Once it lets go 400 ms later, the order's `db.lock` span must last at least 400 ms.
 
-Eleven bugs were put back one at a time, and each was caught. Ignoring the caller's `traceparent` failed 5 of the 6 trace tests. The full list is in [TECHNICAL.md](TECHNICAL.md#traces-and-metrics).
+- **Logs joined to traces** (LG-01, LG-02): a refused order writes one `order refused` line with the reason code; its trace id is the request's and its span id is the `order.create` span's. The line holds no password, token, email or product detail.
+
+Eleven bugs were put back one at a time, and each was caught. Ignoring the caller's `traceparent` failed 5 of the 6 trace tests. The full list is in [TECHNICAL.md](TECHNICAL.md#logs-and-the-collector).
+
+### Traces, logs and the Collector
+
+The receiver in the tests is a stand-in. `npm run test:collector` runs the real thing: Testcontainers starts [Jaeger](https://www.jaegertracing.io/) and an [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) (the `contrib` build, configured in [collector/config.yaml](collector/config.yaml)), points the API at the Collector, and 4 tests read what came out the other end.
+
+```
+API --OTLP--> Collector: limit memory, scrub secrets, batch --+--> traces --> Jaeger
+                                                              +--> logs   --> a JSON file
+                                                              +--> metrics -> the Collector's own log
+```
+
+- **It works end to end** (CL-01, CL-02): the Collector is healthy, and an order made through the API is one trace in Jaeger with its request, order, transaction and lock spans.
+- **Logs join traces for real** (CL-03): the log line the Collector wrote has a span id that is a span of the same trace in Jaeger.
+- **The Collector is the second lock** (CL-04): a made-up service posts a span and a log with a password, a bearer token and an email in them. The keys that hold secrets are deleted, any email or token left in another value becomes `****`, and the harmless attributes stay.
+
+Three bugs were put back and each failed a test: the value masking removed, the key scrub removed, and the log line written outside the request's span. A fourth guard is not a test of the API: `scripts/collector-ci.test.mjs` fails if CI stops pulling the pinned images or if the traces or logs pipeline loses its scrub step.
 
 ## When the database misbehaves
 
@@ -260,7 +279,7 @@ These are intentional behaviours worth writing tests for:
 | `JWT_SECRET` | random, per start | Set it to keep tokens valid across restarts (worth it only with `DATABASE_URL`, where accounts survive one). It used to default to a fixed string written in this file, so anyone could sign a token |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | none | Both set: the server creates this admin at start-up. Neither set: there is no admin |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | none: no traces or metrics are sent | Where to send them over OTLP/HTTP (JSON). The tests set their receiver; `jaeger.env` sets a local Jaeger |
-| `OTEL_SERVICE_NAME`, `OTEL_BSP_SCHEDULE_DELAY`, `OTEL_METRIC_EXPORT_INTERVAL`, `OTEL_METRICS_EXPORTER` | `qa-practice-api`, 5000 ms, 60000 ms, on | The standard OpenTelemetry settings. The tests send every 50 ms and 200 ms; `none` turns metrics off (Jaeger takes traces only) |
+| `OTEL_SERVICE_NAME`, `OTEL_BSP_SCHEDULE_DELAY`, `OTEL_BLRP_SCHEDULE_DELAY`, `OTEL_METRIC_EXPORT_INTERVAL`, `OTEL_METRICS_EXPORTER`, `OTEL_LOGS_EXPORTER` | `qa-practice-api`, 5000 ms, 1000 ms, 60000 ms, on, on | The standard OpenTelemetry settings. The tests send every 50 ms (spans and logs) and 200 ms (metrics); `none` turns metrics or logs off (Jaeger takes traces only) |
 
 The tests read two more, both with throwaway test-only defaults in `tests/admin.ts` (see `.env.example`): `QA_PRACTICE_ADMIN_PASSWORD`, the admin password the test server is seeded with, and `QA_PRACTICE_PASSWORD`, for the customer accounts the tests register.
 

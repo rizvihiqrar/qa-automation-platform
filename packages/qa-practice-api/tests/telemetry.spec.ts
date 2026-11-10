@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { makeProduct, signUp, PASSWORD } from './design/helpers.ts';
-import { newTrace, spansOf, children, only, metric, total, SERVER, ERROR, type FlatSpan } from './telemetry.ts';
+import { newTrace, spansOf, logsOf, children, only, metric, total, SERVER, ERROR, type FlatSpan } from './telemetry.ts';
 
 // OpenTelemetry (src/telemetry.ts): the API sends its traces and metrics to the
 // receiver playwright.config.ts starts (scripts/otlp-receiver.ts), and these tests
@@ -137,5 +137,41 @@ test.describe('OpenTelemetry traces and metrics', () => {
     const spans = await spansOf(traceId);
     expect(spans.map((s) => s.name)).toEqual(['POST']);
     expect(server(spans).status.code).toBe(0);
+  });
+
+  // Logs (src/telemetry.ts emitLog): a record written during a request carries that
+  // request's trace id and the id of the span that was current, so a log search and a
+  // trace view can be joined on either.
+  test('LG-01 a log line carries the trace id and span id of the order span that wrote it @regression', async ({ request }) => {
+    const product = await makeProduct(request, { stock: 1 });
+    const buyer = await signUp(request);
+    const { traceId, headers } = newTrace();
+    const res = await request.post('/orders', {
+      headers: { ...buyer.auth, ...headers }, data: { items: [{ product_id: product.id, quantity: 2 }] },
+    });
+    expect(res.status()).toBe(400);
+
+    // Found by its text: a later line for the same request must not change which one this reads.
+    const log = (await logsOf(traceId)).find((l) => l.body === 'order refused');
+    expect(log).toMatchObject({
+      traceId, severity: 'WARN', body: 'order refused', service: 'qa-practice-api',
+      attributes: { 'qa.order.reject_reason': 'out_of_stock', 'qa.order.lines': 1 },
+    });
+    const create = only(await spansOf(traceId), 'order.create');
+    expect(log!.spanId).toBe(create.spanId);
+  });
+
+  test('LG-02 a log line holds no password, token, email or product detail @regression @security', async ({ request }) => {
+    const product = await makeProduct(request, { stock: 1 });
+    const buyer = await signUp(request);
+    const { traceId, headers } = newTrace();
+    expect((await request.post('/orders', {
+      headers: { ...buyer.auth, ...headers }, data: { items: [{ product_id: product.id, quantity: 2 }] },
+    })).status()).toBe(400);
+
+    const text = JSON.stringify(await logsOf(traceId));
+    const token = buyer.auth.Authorization.replace('Bearer ', '');
+    for (const secret of [PASSWORD, token, buyer.email, `product ${product.id}`]) expect(text).not.toContain(secret);
+    expect(Object.keys((await logsOf(traceId))[0]!.attributes).filter((k) => /authorization|password|token|email|cookie/i.test(k))).toEqual([]);
   });
 });

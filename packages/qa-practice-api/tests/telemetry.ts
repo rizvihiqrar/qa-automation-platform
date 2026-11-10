@@ -3,9 +3,9 @@
 // exporters at it; these helpers ask the receiver what arrived.
 import { randomBytes } from 'node:crypto';
 import { expect } from '@playwright/test';
-import type { FlatSpan, Series } from '../scripts/otlp-receiver.ts';
+import type { FlatLog, FlatSpan, Series } from '../scripts/otlp-receiver.ts';
 
-export type { FlatSpan, Series };
+export type { FlatLog, FlatSpan, Series };
 
 // One receiver per Stryker worker, like the API's own port.
 export const receiverPort = 14318 + Number(process.env.STRYKER_MUTATOR_WORKER ?? 0);
@@ -34,6 +34,17 @@ export async function spansOf(traceId: string): Promise<FlatSpan[]> {
     timeout: 10_000,
   }).toBe(true);
   return spans;
+}
+
+// The trace's log records, once at least `count` have arrived (logs are sent in
+// their own batches, so they can come after the spans).
+export async function logsOf(traceId: string, count = 1): Promise<FlatLog[]> {
+  let logs: FlatLog[] = [];
+  await expect.poll(async () => {
+    logs = await (await fetch(`${receiver}/logs/${traceId}`)).json();
+    return logs.length;
+  }, { message: `fewer than ${count} log records for trace ${traceId}`, timeout: 10_000 }).toBeGreaterThanOrEqual(count);
+  return logs;
 }
 
 export const children = (spans: FlatSpan[], parent: FlatSpan): FlatSpan[] =>

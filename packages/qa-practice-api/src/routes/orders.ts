@@ -7,7 +7,7 @@ import { flags } from '../flags.ts';
 import { toCents, fromCents, MAX_ORDER_CENTS } from '../money.ts';
 import { handle, reply, send, type Reply } from '../middleware/handle.ts';
 import { SpanStatusCode } from '@opentelemetry/api';
-import { inSpan, ordersCreated, ordersRejected } from '../telemetry.ts';
+import { emitLog, inSpan, ordersCreated, ordersRejected } from '../telemetry.ts';
 
 const router = Router();
 
@@ -158,6 +158,9 @@ function traceOrder(items: unknown[], place: () => Promise<Reply>): Promise<Repl
       span.setAttribute('qa.order.reject_reason', reason);
       span.setStatus({ code: SpanStatusCode.ERROR, message: (result.body as { error?: string }).error });
       ordersRejected.add(1, { 'qa.order.reject_reason': reason });
+      // The reason code only: the span holds the long message, and no log line holds
+      // an email or token (tests/telemetry.spec.ts LG-02).
+      emitLog('WARN', 'order refused', { 'qa.order.reject_reason': reason, 'qa.order.lines': items.length });
     }
     return result;
   });
