@@ -1,0 +1,75 @@
+# The OpenTelemetry Collector between the API and the places telemetry is kept
+# (scripts/with-collector.ts starts it in Docker next to Jaeger):
+#
+#   API --OTLP/HTTP--> receiver --> memory_limiter --> scrub --> batch --+--> traces  -> Jaeger
+#                                                                        +--> logs    -> /out/logs.jsonl
+#                                                                        +--> metrics -> the collector's own log
+#
+# The API already sends no secrets (tests/telemetry.spec.ts OT-05 and LG-02). The
+# collector is a second lock, not a guarantee: the names below are an exact,
+# case-sensitive list, and the value patterns catch emails and bearer tokens only.
+# A secret under another name in another shape still gets through; add it here.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+processors:
+  # First in every pipeline: refuses data before the collector runs out of memory.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  # By name: these keys never reach storage, whatever their value (exact, lower case).
+  attributes/scrub:
+    actions:
+      - { key: http.request.header.authorization, action: delete }
+      - { key: http.request.header.cookie, action: delete }
+      - { key: http.request.header.x-api-key, action: delete }
+      - { key: http.response.header.set-cookie, action: delete }
+      - { key: authorization, action: delete }
+      - { key: password, action: delete }
+      - { key: passwd, action: delete }
+      - { key: token, action: delete }
+      - { key: user.email, action: delete }
+  # By value: an email address or a bearer token inside any other attribute or a log
+  # body becomes ****.
+  redaction:
+    allow_all_keys: true
+    blocked_values:
+      - '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+      - 'Bearer [A-Za-z0-9._~+/=-]+'
+    summary: silent
+  batch:
+    timeout: 200ms
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  # One JSON line per batch, in the OTLP shape; the tests read it back.
+  file/logs:
+    path: /out/logs.jsonl
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, redaction, batch]
+      exporters: [otlp/jaeger]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, redaction, batch]
+      exporters: [file/logs]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]

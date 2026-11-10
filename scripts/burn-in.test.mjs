@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CYPRESS, CYPRESS_BROWSERS, PLAYWRIGHT, REPEATS, commands, plan } from './burn-in.mjs';
+import { CYPRESS, CYPRESS_BROWSERS, PLAYWRIGHT, REPEATS, collectorImages, commands, plan } from './burn-in.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -33,6 +33,22 @@ test('qa-practice-api Postgres specs run inside Testcontainers; the race tests r
   assert.deepEqual(pullProxy[2].slice(1), ['docker', 'pull', '--quiet', 'ghcr.io/shopify/toxiproxy:2.12.0']);
   assert.match(pull[2][0], /retry\.sh$/);
   assert.deepEqual([run[1], run[2].slice(0, 2)], ['node', ['scripts/with-postgres.ts', 'npx']]);
+  assert.ok(run[2].includes('--repeat-each=3') && run[2].includes('--retries=0'));
+  assert.equal(run[3].TESTCONTAINERS_RYUK_DISABLED, 'true');
+});
+
+// Same trap as tests/postgres: without COLLECTOR_URL the plain run skips tests/collector,
+// so a PR that changed one would find no tests.
+test('qa-practice-api Collector specs run inside Docker, never in the plain group', () => {
+  const groups = plan(['packages/qa-practice-api/tests/collector/pipeline.spec.ts']);
+  assert.deepEqual(groups.map((g) => [g.key, g.files]), [
+    ['qa-practice-api/playwright.config.ts on the Collector', ['tests/collector/pipeline.spec.ts']],
+  ]);
+  const steps = commands(groups[0]);
+  assert.deepEqual(steps.slice(0, -1).map(([, , args]) => args.slice(1)),
+    collectorImages().map((image) => ['docker', 'pull', '--quiet', image]));
+  const run = steps.at(-1);
+  assert.deepEqual([run[1], run[2].slice(0, 2)], ['node', ['scripts/with-collector.ts', 'npx']]);
   assert.ok(run[2].includes('--repeat-each=3') && run[2].includes('--retries=0'));
   assert.equal(run[3].TESTCONTAINERS_RYUK_DISABLED, 'true');
 });

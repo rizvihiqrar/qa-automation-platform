@@ -92,6 +92,9 @@ jobs:
           # plus the race tests' locks and the Postgres-only checks in tests/postgres
           # (Day 51: with Toxiproxy between a second server and the database)
           - { package: qa-practice-api, name: qa-practice-api-postgres, browsers: false, postgres: true, command: npm run test:postgres }
+          # The same API sending its traces and logs through a real OpenTelemetry Collector
+          # in Docker, to Jaeger and a log file (collector/config.yaml)
+          - { package: qa-practice-api, name: qa-practice-api-collector, browsers: false, collector: true, command: npm run test:collector }
           - { package: banking-api,              browsers: false, command: npm test && npm run demo && npm run race -- raced.db && npm run check -- --db raced.db }
           # The banking UI in Cypress, in Chrome and then Firefox; each run starts the server
           # on a fresh ui.db and ends with the SQL ledger checks on it
@@ -172,12 +175,20 @@ jobs:
           bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet postgres:17-alpine
           bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet ghcr.io/shopify/toxiproxy:2.12.0
 
+      # Same for the Collector and Jaeger; the tags must match COLLECTOR_IMAGE and
+      # JAEGER_IMAGE in packages/qa-practice-api/scripts/with-collector.ts.
+      - name: Pull Collector and Jaeger images
+        if: matrix.collector
+        run: |
+          bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet otel/opentelemetry-collector-contrib:0.141.0
+          bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet jaegertracing/jaeger:2.22.0
+
       - name: Test
         run: ${{ steps.scope.outputs.scope == 'smoke' && matrix.smoke || matrix.command }}
         env:
           # Testcontainers' clean-up container (Ryuk) would be one more image pull; the
           # runner is thrown away after the job, and with-postgres.ts stops its container.
-          TESTCONTAINERS_RYUK_DISABLED: ${{ matrix.postgres && 'true' || 'false' }}
+          TESTCONTAINERS_RYUK_DISABLED: ${{ (matrix.postgres || matrix.collector) && 'true' || 'false' }}
 
       - name: Upload reports
         if: always()
