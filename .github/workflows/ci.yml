@@ -82,6 +82,7 @@ jobs:
           - { package: a11y-aoda-audit,          browsers: true,  command: npm test && npm run audit }
           - { package: ci-dashboard,             browsers: false, command: npm test }
           - { package: flaky-test-analyzer,      browsers: false, command: npm test }
+          - { package: ci-and-flaky-tooling,     browsers: false, command: npm test }
           - { package: worker-scaling-benchmark, browsers: false, command: npm test }
           - { package: matrix-build-demo,        browsers: false, command: npm test }
           - { package: pipeline-templates-demo,  browsers: false, command: npm run lint && npm test }

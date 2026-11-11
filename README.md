@@ -35,7 +35,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 33 packages, about 2,350 automated tests and checks, all run by one CI workflow
+- 34 packages, about 2,400 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -50,7 +50,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 - A release gate that blocks a deployment, with reasons, when a rule is broken
 - A daily CI health check, and an automatic one-time re-run when CI fails on main
 - Uptime monitoring: a real browser checks four public sites every 30 minutes, the history sits on the dashboard, and a site that fails twice in a row opens a GitHub issue that closes itself on recovery
-- Strict TypeScript in fifteen packages, type-checked in CI with no build step
+- Strict TypeScript in sixteen packages, type-checked in CI with no build step
 
 ## The packages
 
@@ -109,6 +109,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [ci-dashboard](packages/ci-dashboard) | The live web page of this repo's CI health, plus the published reports, the traceability matrix and the uptime of four public sites | 59 |
 | [synthetic-monitor](packages/synthetic-monitor) | A real browser checks four public sites every 30 minutes and keeps 30 days of history: down after two failed runs, slow at three times a site's own median, and a GitHub issue that opens and closes itself | 56 |
 | [flaky-test-analyzer](packages/flaky-test-analyzer) | Points out the tests that only pass after a retry, and keeps one GitHub issue per flaky test | 37 |
+| [ci-and-flaky-tooling](packages/ci-and-flaky-tooling) | A one-page quality report for a manager (escaped bugs, flaky rate, time to fix a red main, CI run time), each with how it can mislead, and the escaped-bug log behind it | 50 |
 | [release-gate](packages/release-gate) | Reads smoke, contract and performance results, applies a policy, and blocks a deployment with clear reasons | 15 |
 | [mutation-testing-demo](packages/mutation-testing-demo) | Deliberately breaks the code to prove the tests would notice (89.2% caught) | 89 |
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |

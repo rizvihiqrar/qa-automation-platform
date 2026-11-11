@@ -25,6 +25,7 @@ export const PACKAGES = [
   'a11y-aoda-audit',
   'k6-performance',
   'ci-dashboard',
+  'ci-and-flaky-tooling',
   'llm-judge-check',
   'banking-api',
   'money-course',

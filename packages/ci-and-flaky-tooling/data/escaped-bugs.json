@@ -1,0 +1,67 @@
+[
+  {
+    "id": "rca-01",
+    "title": "Logins blocked the whole API",
+    "found": "2026-10-16",
+    "escaped": true,
+    "layer": "integration",
+    "shouldHaveCaught": "An API test that sends a request while a login is still being hashed. The 34 API tests sent one request at a time, so nothing ever waited behind a login.",
+    "rca": "01-login-hashing-blocked-the-api.md"
+  },
+  {
+    "id": "rca-02a",
+    "title": "Duplicate webhook processed twice (receiver)",
+    "found": "2026-10-16",
+    "escaped": false,
+    "layer": null,
+    "shouldHaveCaught": "Caught by the receiver's own concurrency test before the first push.",
+    "rca": "02-duplicate-webhook-processed-twice.md",
+    "testFile": "receiver.test"
+  },
+  {
+    "id": "rca-02b",
+    "title": "Duplicate webhook: the sender gave up on a 409 and lost the event",
+    "found": "2026-10-17",
+    "escaped": true,
+    "layer": "integration",
+    "shouldHaveCaught": "An end-to-end test of sender and receiver where the first attempt is still running when the retry arrives.",
+    "rca": "02-duplicate-webhook-processed-twice.md",
+    "testFile": "sender.test"
+  },
+  {
+    "id": "rca-03",
+    "title": "Windows line endings rejected every SQL check",
+    "found": "2026-10-16",
+    "escaped": true,
+    "layer": "ci-environment",
+    "shouldHaveCaught": "A run on Windows, or a test fixture saved with CRLF line endings. CI ran on Linux only.",
+    "rca": "03-crlf-rejected-every-sql-check.md"
+  },
+  {
+    "id": "rca-04",
+    "title": "A mistyped tag passed green",
+    "found": "2026-10-17",
+    "escaped": false,
+    "layer": null,
+    "shouldHaveCaught": "Caught while adding smoke runs to pull requests; it never reached main.",
+    "rca": "04-mistyped-tag-passed-green.md"
+  },
+  {
+    "id": "rca-05",
+    "title": "Live tokens in published reports",
+    "found": "2026-10-17",
+    "escaped": true,
+    "layer": "review",
+    "shouldHaveCaught": "A secret scan of every report before it was kept as a CI artifact. The reports were never opened, because nobody reads a passing report closely.",
+    "rca": "05-tokens-in-published-reports.md"
+  },
+  {
+    "id": "rca-06",
+    "title": "Game day: the line to the database was cut",
+    "found": "2026-11-09",
+    "escaped": true,
+    "layer": "monitoring",
+    "shouldHaveCaught": "A timestamped, readable error log and a page rule tested under an outage. The drill found the log unreadable and the page slow to clear.",
+    "rca": "06-game-day-database-link-cut.md"
+  }
+]

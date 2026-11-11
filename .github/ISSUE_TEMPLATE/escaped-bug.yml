@@ -1,0 +1,48 @@
+name: Escaped bug
+description: A bug found after it reached main. The monthly quality report counts these (packages/ci-and-flaky-tooling).
+title: "Escaped bug: "
+labels: ["escaped-bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An escaped bug got past every check that ran on its change. Log it even when the fix is small: a bug that is fixed and not logged makes the numbers look better than they are.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What was seen, with the real numbers or output, and what a user would have noticed.
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layer missed it
+      description: The kind of check that should have caught it.
+      options:
+        - unit
+        - integration
+        - end-to-end
+        - load
+        - ci-environment
+        - review
+        - monitoring
+    validations:
+      required: true
+  - type: textarea
+    id: should-have
+    attributes:
+      label: Which test should have caught it
+      description: In words, the test that would have failed. If none exists, say what it would check.
+    validations:
+      required: true
+  - type: input
+    id: added
+    attributes:
+      label: Test added
+      description: The name of the test that now keeps it from coming back. Leave blank until it exists; the report lists the bug as still without a test.
+  - type: input
+    id: found
+    attributes:
+      label: Date found
+      description: The day the bug was noticed, as 2026-11-05. Leave blank to use the day this issue was opened. Bugs already in docs/rca are in the log; do not file them again.
