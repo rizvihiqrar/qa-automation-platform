@@ -37,6 +37,19 @@ test('the install script retries three times under a timeout, and waits for a ru
   assert.ok(script.indexOf('Acquire::Retries') < script.indexOf('for attempt'), 'set before the first try');
 });
 
+test('when apt cannot be reached the last try installs the browser without apt, and says so (the break: use --with-deps on every try)', () => {
+  const script = fs.readFileSync(path.join(ROOT, SCRIPT), 'utf8');
+  const branch = script.match(/if \[ "\$attempt" -eq 3 \]; then\n([\s\S]*?)\n  else\n([\s\S]*?)\n  fi\n/);
+  assert.ok(branch, 'the third try is a branch of its own: if attempt is 3 ... else ... fi');
+  const [, last, early] = branch;
+  assert.ok(last.includes('npx playwright install "${@:-chromium}"'), 'it installs the browsers asked for');
+  assert.ok(!last.includes('--with-deps'), 'it does not touch apt');
+  assert.match(last, /::warning::/, 'the run shows that the system packages were skipped');
+  assert.ok(early.includes('--with-deps'), 'the first two tries still install the system packages');
+  assert.match(script, /for attempt in 1 2 3/, 'the branch above is the last of the three tries');
+  assert.match(script, /\nexit 1\n$/, 'a failed last try still fails the step');
+});
+
 test('workflows install the browser through the script, never directly', () => {
   const direct = workflowLines.filter(({ line }) => line.includes('playwright install'));
   assert.deepEqual(direct.map((d) => d.where), [], 'call the script instead of `playwright install`');

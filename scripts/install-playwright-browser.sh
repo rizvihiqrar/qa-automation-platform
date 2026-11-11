@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Installs Chromium (or the browsers named as arguments: chromium firefox) and its system packages for Playwright, and survives the ways GitHub's
-# runners make that fail. Run it from the package directory.
+# runners make that fail. Run it from the package directory. The first two tries install the system packages; the last one
+# installs the browser only, so an apt outage no longer fails every job.
 #  - apt can stall on a mirror (2026-10-22: 20 minutes in the middle of `apt-get update`),
 #    so a try is cut off after 120 s (the first) or 300 s (the later ones).
 #  - Cutting a try off kills playwright but not the `apt-get` it started, which keeps
@@ -24,7 +25,16 @@ fi
 for attempt in 1 2 3; do
   limit=300
   [ "$attempt" -gt 1 ] || limit=120
-  timeout -k 10 "$limit" npx playwright install --with-deps "${@:-chromium}" && exit 0
+  if [ "$attempt" -eq 3 ]; then
+    #  - 2026-11-11: the runners could not resolve either Ubuntu mirror for three hours while the
+    #    Playwright download host still answered, so all three tries died in `apt-get update` and every
+    #    browser job failed. The last try skips apt and downloads only the browser; if a system package
+    #    is really missing, the tests then fail with a clear loading error instead of the install step.
+    echo "::warning::Two installs with system packages failed, so this last try installs the browser only (no apt)."
+    timeout -k 10 "$limit" npx playwright install "${@:-chromium}" && exit 0
+  else
+    timeout -k 10 "$limit" npx playwright install --with-deps "${@:-chromium}" && exit 0
+  fi
   echo "Browser install attempt $attempt of 3 failed."
   [ "$attempt" -lt 3 ] || break
   if ! pgrep -x dpkg >/dev/null; then
