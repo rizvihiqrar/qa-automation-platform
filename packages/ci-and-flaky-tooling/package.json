@@ -1,0 +1,12 @@
+{
+  "name": "ci-and-flaky-tooling",
+  "version": "1.0.0",
+  "description": "The quality report a manager reads (escaped bugs, flaky rate, time to fix a red main, CI run time) and the escaped-bug log behind it",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "report": "node src/cli.ts"
+  },
+  "engines": { "node": ">=24" },
+  "license": "MIT"
+}
