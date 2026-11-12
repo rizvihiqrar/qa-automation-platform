@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { WATCH, api, assess, fixedBy, manualOnly, missing, passRate, PROBLEMS, REACTIVE, report, rerunRow, reruns, settle, triggers } from './ci-health.mjs';
+import { BOT_FAILURES_IN_A_ROW, WATCH, api, assess, fixedBy, isBot, readsWorkflowFile, manualOnly, missing, passRate, PROBLEMS, REACTIVE, report, rerunRow, reruns, settle, triggers } from './ci-health.mjs';
 
 const NOW = Date.parse('2026-10-18T12:00:00Z');
 const run = (conclusion, hoursAgo, extra = {}) => ({
@@ -246,4 +246,35 @@ test('the reactive names match a workflow file', () => {
   const names = fs.readdirSync(dir).filter((f) => f.endsWith('.yml'))
     .map((f) => fs.readFileSync(new URL(f, dir), 'utf8').match(/^name:\s*(.+?)\s*$/m)?.[1]);
   for (const name of REACTIVE) assert.ok(names.includes(name), `${name} must be the name of a workflow file`);
+});
+
+// Dependabot Updates (a dynamic workflow) was left out of the table, so two failed runs on
+// 2026-11-11 (node-forge) went unreported until the next session.
+test('a Dependabot run that failed once is fine, two failures in a row are a problem', () => {
+  const bot = { bot: true };
+  assert.equal(BOT_FAILURES_IN_A_ROW, 2);
+  const once = assess('Dependabot Updates', [run('failure', 1), run('success', 2), run('failure', 3)], {}, NOW, bot);
+  assert.equal(once.state, 'ok');
+  assert.match(once.detail, /problem at 2 in a row/);
+  const twice = assess('Dependabot Updates', [run('failure', 1), run('failure', 2), run('success', 3)], {}, NOW, bot);
+  assert.equal(twice.state, 'failing');
+  assert.equal(twice.detail, '2 runs failed in a row');
+  assert.equal(assess('Dependabot Updates', [run('failure', 1), run('cancelled', 2), run('failure', 3)], {}, NOW, bot).state, 'failing', 'a cancelled run in between does not reset the count');
+  assert.equal(assess('Dependabot Updates', [run('failure', 1), run('success', 2), run('failure', 3), run('failure', 4)], {}, NOW, bot).state, 'ok', 'a pass in between does');
+  assert.equal(assess('Dependabot Updates', [run('success', 1), run('failure', 2), run('failure', 3)], {}, NOW, bot).state, 'ok', 'the latest run decides');
+  assert.equal(assess('CI', [run('failure', 1)], {}, NOW).state, 'failing', 'every other workflow still fails on one');
+});
+
+test('the daily check reads the dynamic workflows and tells them apart by path', () => {
+  assert.equal(isBot('dynamic/dependabot/dependabot-updates'), true);
+  assert.equal(isBot('.github/workflows/ci.yml'), false);
+  const src = fs.readFileSync(new URL('./ci-health.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /!w\.path\.startsWith\('dynamic\/'\)/, 'dynamic workflows must not be filtered out');
+});
+
+test('a dynamic workflow with no finished run never has its file read, because it has no file', () => {
+  assert.equal(readsWorkflowFile('.github/workflows/ci.yml', []), true);
+  assert.equal(readsWorkflowFile('.github/workflows/ci.yml', [run('success', 1)]), false);
+  assert.equal(readsWorkflowFile('dynamic/dependabot/dependabot-updates', []), false);
+  assert.equal(readsWorkflowFile('dynamic/dependabot/dependabot-updates', [run('cancelled', 1)]), false);
 });

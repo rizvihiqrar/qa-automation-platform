@@ -1,0 +1,122 @@
+[
+  {
+    "id": "npm-audit-root",
+    "gate": "Dependency audit of the root workspace (npm)",
+    "threshold": "fails on any high or critical advisory",
+    "blocks": true,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": ".github/workflows/ci.yml",
+    "checks": [
+      {
+        "pattern": "npm audit --audit-level=high",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "npm-audit-packages",
+    "gate": "Dependency audit of every Node package",
+    "threshold": "fails on a high or critical advisory not triaged in scripts/audit-allowlist.json",
+    "blocks": true,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": "scripts/audit.mjs",
+    "checks": [
+      {
+        "pattern": "FAILING = ['high', 'critical']",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "pip-audit",
+    "gate": "Dependency audit of the Python packages (pip-audit)",
+    "threshold": "fails on any known advisory",
+    "blocks": true,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": ".github/workflows/ci.yml",
+    "checks": [
+      {
+        "pattern": "pip-audit -r requirements.txt",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "id": "fail-on-flaky",
+    "gate": "A Playwright test that passes only on a retry",
+    "threshold": "fails the CI job (failOnFlakyTests in every Playwright config; scripts/playwright-config.test.mjs checks them all)",
+    "blocks": true,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": "packages/a11y-aoda-audit/playwright.config.js",
+    "checks": [
+      {
+        "pattern": "failOnFlakyTests: !!process.env.CI",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "burn-in",
+    "gate": "Burn-in of changed specs on pull requests",
+    "threshold": "3 runs with no retries; all 3 must pass",
+    "blocks": true,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": "scripts/burn-in.mjs",
+    "checks": [
+      {
+        "pattern": "REPEATS = 3;",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "zap-baseline",
+    "gate": "OWASP ZAP baseline scan of qa-practice-api (passive rules)",
+    "threshold": "fails on a finding not triaged in packages/qa-practice-api/zap/rules.tsv",
+    "blocks": true,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": ".github/workflows/ci.yml",
+    "checks": [
+      {
+        "pattern": "name: zap-baseline",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "mutation-score",
+    "gate": "Mutation score of mutation-testing-demo",
+    "threshold": "reported only: green at 80, amber at 60, no break (break is null)",
+    "blocks": false,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": "packages/mutation-testing-demo/stryker.config.mjs",
+    "checks": [
+      {
+        "pattern": "high:  80,",
+        "count": 1
+      },
+      {
+        "pattern": "low:   60,",
+        "count": 1
+      },
+      {
+        "pattern": "break: null,",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "rerun-is-a-problem",
+    "gate": "A run on main that needed a re-run",
+    "threshold": "a CI health problem for 25 hours, until a merged fix names the run",
+    "blocks": false,
+    "owner": "Iqrar Rizvi",
+    "enforcedIn": "scripts/ci-health.mjs",
+    "checks": [
+      {
+        "pattern": "RERUN_WINDOW_HOURS = 25;",
+        "count": 1
+      }
+    ]
+  }
+]

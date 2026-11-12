@@ -49,14 +49,18 @@ It reads the finished CI runs on main for that month (and two weeks either side,
 - An issue with a missing field is listed as needing a fix, not counted as zero
 - Every root-cause page must have an entry, so a new page cannot be forgotten
 - Real runs through the GitHub API; tests use small saved samples and never touch the network
-- 50 tests, and each fixed bug was put back once to show a test fails
+- Every quality gate in one policy file (`data/gates.json`): its threshold, its owner and whether it blocks a job or only reports. A test reads each workflow and script and fails when a threshold changes or a gate is added that the file does not list
+- A fix-the-pipeline log (`data/fixes.json`): nine real failures with the cause, the pull request and the check that stops each one coming back. A test fails when an entry names a check that does not exist
+- 62 tests, and each fixed bug was put back once to show a test fails
 
 ## Results
 
 | Check | Result |
 |---|---|
-| Tests | 50, run three times with no failures |
-| Bugs put back | 16 of 16 made a test fail |
+| Tests | 62, run three times with no failures |
+| Bugs put back | 21 of 21 made a test fail |
+| Quality gates | 8 listed (6 block a job, 2 only report), each checked against the file that sets it ([list](docs/gates.md)) |
+| Fix log | 9 pipeline failures, each with a check that stops it coming back ([log](docs/fixes.md)) |
 | October 2026 | 4 escaped bugs, 2 caught before main; 9.2% flaky; red main fixed in a median of 16.5 h ([report](reports/2026-10.md)) |
 | November 2026 | 1 escaped bug; 2.6% flaky; red main fixed in a median of 3.3 h ([report](reports/2026-11.md)) |
 
