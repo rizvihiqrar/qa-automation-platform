@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "report": "node src/cli.ts"
+    "report": "node src/cli.ts",
+    "policy": "node src/policy.ts"
   },
   "engines": { "node": ">=24" },
   "license": "MIT"

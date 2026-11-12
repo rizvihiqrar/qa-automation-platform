@@ -1,0 +1,101 @@
+[
+  {
+    "id": "fix-159",
+    "date": "2026-11-11",
+    "symptom": "Dependabot Updates failed twice on main (security_update_not_possible)",
+    "cause": "New node-forge advisories needed 1.4.3, but the overrides in the two Newman packages pinned 1.4.2",
+    "fix": "Raised the override to 1.4.3 in both packages and regenerated the lockfiles",
+    "pr": 159,
+    "prMinutes": 321,
+    "check": "scripts/overrides.test.mjs",
+    "checkDoes": "Overrides must agree across packages and match every lockfile copy"
+  },
+  {
+    "id": "fix-160",
+    "date": "2026-11-11",
+    "symptom": "Every browser job failed at the Playwright install, twice, while the runners could not resolve archive.ubuntu.com",
+    "cause": "The install used apt on all three tries, so a mirror outage failed all three",
+    "fix": "The last try skips apt and installs the browser only, with a warning",
+    "pr": 160,
+    "prMinutes": 4,
+    "check": "scripts/workflow-install.test.mjs",
+    "checkDoes": "Pins the shape: the last of three tries skips apt, the first two keep it, a failed last try still exits 1"
+  },
+  {
+    "id": "fix-144",
+    "date": "2026-11-05",
+    "symptom": "The dashboard counted a job as flaky when its dependency audit failed on a commit that had passed the day before",
+    "cause": "A newly published advisory fails the audit with no code change, so the job is not unstable",
+    "fix": "A job whose only failed step is the dependency audit is no longer counted as flaky (it still counts in the pass rate)",
+    "pr": 144,
+    "prMinutes": 6,
+    "check": "packages/ci-dashboard/test/dashboard.test.js",
+    "checkDoes": "An audit-only failure is not a flaky job"
+  },
+  {
+    "id": "fix-139",
+    "date": "2026-11-04",
+    "symptom": "A Dependabot group pull request failed seven jobs at npm ci (ERESOLVE)",
+    "cause": "The group moved the OpenTelemetry exporters and api to versions that need core 3, but left sdk-trace-node on 2.x, which needs api below 1.10",
+    "fix": "The OpenTelemetry packages are their own group, and the api and exporter versions are held back until sdk-trace-node 3 is published",
+    "pr": 139,
+    "prMinutes": 6,
+    "check": "scripts/dependabot.test.mjs",
+    "checkDoes": "Keeps the group and keeps the hold-back while sdk-trace-node is on 2.x; each fails when its setting is removed"
+  },
+  {
+    "id": "fix-135",
+    "date": "2026-11-04",
+    "symptom": "A banking-api-ui Cypress test failed now and then (second.response is undefined)",
+    "cause": "Cypress lists a call in @alias.all when it is sent and adds the reply later, so a reply read straight after was missing",
+    "fix": "Read the reply inside a retrying should",
+    "pr": 135,
+    "prMinutes": 10,
+    "check": "scripts/cypress-all-response.test.mjs",
+    "checkDoes": "Fails when a spec reads a reply from @alias.all outside should"
+  },
+  {
+    "id": "fix-134",
+    "date": "2026-11-04",
+    "symptom": "CI recheck failed with exit 127, and a Monitor push failed with HTTP 500",
+    "cause": "The recheck job had no checkout, so scripts/retry.sh did not exist; the push was not retried",
+    "fix": "Checked out the repo in the recheck job and retried the Monitor push",
+    "pr": 134,
+    "prMinutes": 4,
+    "check": "scripts/workflow-checkout.test.mjs",
+    "checkDoes": "A job that runs a repo script must check the repo out first"
+  },
+  {
+    "id": "fix-122",
+    "date": "2026-10-31",
+    "symptom": "The ci-health issue stayed open after main went green",
+    "cause": "CI recheck judged a confirmed failure by its latest run, and nothing re-runs CI recheck once CI is green again",
+    "fix": "A failed CI recheck becomes resolved once every other workflow is free of problems; while anything else is a problem it stays failing",
+    "pr": 122,
+    "prMinutes": 6,
+    "check": "scripts/ci-health.test.mjs",
+    "checkDoes": "Five tests: settles when everything else is green, stays failing for each problem state, leaves real failures alone, wired into the main flow"
+  },
+  {
+    "id": "fix-115",
+    "date": "2026-10-29",
+    "symptom": "A CI job failed pulling a Docker image (run 40954762292)",
+    "cause": "Docker Hub answered 502 or 504 now and then",
+    "fix": "Image pulls go through scripts/retry.sh: 3 tries, 10 s then 20 s apart",
+    "pr": 115,
+    "prMinutes": 12,
+    "check": "scripts/retry.test.mjs",
+    "checkDoes": "Retries up to 3 times and fails if all 3 fail"
+  },
+  {
+    "id": "fix-72",
+    "date": "2026-10-22",
+    "symptom": "multi-user-flow-patterns failed on the first attempt (expected 6 items, got 0) and passed on the retry",
+    "cause": "The test read locator.count() as soon as the URL changed; count() does not wait and the slow user's list was not drawn yet",
+    "fix": "await expect(locator).toHaveCount(6), which waits",
+    "pr": 72,
+    "prMinutes": 24,
+    "check": "tools/playwright-lint/test/lint.test.mjs",
+    "checkDoes": "The Playwright lint rejects a bare locator.count() in a spec"
+  }
+]

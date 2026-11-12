@@ -42,6 +42,16 @@ The six pages hold seven bugs: five escaped and two were caught before main (the
 | A month too big for the page limit is an error | `a month with more runs than the page limit is an error` |
 | Pull requests are not issues | `escaped-bug issues come from the label, open and closed, and pull requests are skipped` |
 
+### Quality gates and the fix log
+
+| File | What it holds | What fails when it drifts |
+|---|---|---|
+| `data/gates.json` | Each gate: threshold, owner, blocks or reports, the file that sets it, and the exact text (with a count) that must appear there | `every gate in the policy file matches the file that enforces it`: a changed threshold, a moved file, or a gate copied into a second job the file does not list |
+| `data/fixes.json` | Each pipeline failure fixed: symptom, cause, fix, pull request, minutes open to merge, the check added | `every logged fix is complete and names a check that exists in the repo` |
+| `docs/gates.md`, `docs/fixes.md` | The pages a reader sees, written by `npm run policy` | `docs/gates.md is the current output`, so the page cannot go stale |
+
+The checks prove the threshold text is where the list says it is, and how many times. They do not prove the job is switched on (an `if: false` would still match), and a harmless reformat can fail them: that is the price of a list that cannot quietly disagree with CI. Two gates are listed as reported only (the mutation score has `break: null`, and a run that needed a re-run is a CI health problem, not a red job). The list says so, instead of calling every number a gate. "Fix time" in the log is the pull request open to merge, not the length of the red; the length of a red is the metric in the report.
+
 ## Configuration
 
 | Option | Default | What it does |
@@ -86,8 +96,9 @@ The pages are written for a reader, and their tables are checked by `scripts/rca
 
 ```bash
 cd packages/ci-and-flaky-tooling
-npm test            # 50 tests, node --test
+npm test            # 62 tests, node --test
 npm run report -- --month 2026-11
+npm run policy      # checks the gates and the fix log, then rewrites docs/gates.md and docs/fixes.md
 ```
 
 The label is a repository setting. To create it: on GitHub, open **Issues**, then **Labels**, then **New label**; type `escaped-bug`, choose a colour and select **Create label**.

@@ -58,7 +58,18 @@ export const manualOnly = (events) => events.length > 0 && events.every((e) => e
 // `manual` marks a workflow that only runs when started by hand.
 export const finished = (runs) => runs.filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled' && r.conclusion !== 'skipped');
 
-export function assess(name, runs, overdueAfterHours, now, { manual = false } = {}) {
+// Dependabot Updates is a dynamic workflow: one run per update job, and one failed run often
+// means a single dependency could not be bumped, not that main is broken. Two finished runs
+// failing in a row is a pattern (2026-11-11: node-forge, two failed runs, nothing reported it),
+// so that is what counts as a problem. A run in between that passes resets the count.
+export const BOT_FAILURES_IN_A_ROW = 2;
+export const isBot = (workflowPath) => workflowPath.startsWith('dynamic/');
+
+// The workflow file is read only when there is no run to go by, and never for a dynamic workflow:
+// it has no file in the repo, so the read would 404 and stop the whole check.
+export const readsWorkflowFile = (workflowPath, runs) => !finished(runs).length && !isBot(workflowPath);
+
+export function assess(name, runs, overdueAfterHours, now, { manual = false, bot = false } = {}) {
   const done = finished(runs);
   const last = done[0];
   const limit = overdueAfterHours[name];
@@ -67,6 +78,12 @@ export function assess(name, runs, overdueAfterHours, now, { manual = false } = 
   const ageHours = (now - Date.parse(last.created_at)) / HOUR;
   const passed = done.filter((r) => r.conclusion === 'success').length;
   const base = { workflow: name, conclusion: last.conclusion, url: last.html_url, at: last.created_at, event: last.event, passed, total: done.length };
+  if (bot && FAILED.includes(last.conclusion)) {
+    const streak = done.findIndex((r) => !FAILED.includes(r.conclusion));
+    const inARow = streak === -1 ? done.length : streak;
+    if (inARow < BOT_FAILURES_IN_A_ROW) return { ...base, state: 'ok', detail: `the latest run failed; it is a problem at ${BOT_FAILURES_IN_A_ROW} in a row` };
+    return { ...base, state: 'failing', detail: `${inARow} runs failed in a row` };
+  }
   if (FAILED.includes(last.conclusion)) return { ...base, state: 'failing' };
   if (limit && ageHours > limit) return { ...base, state: 'overdue', detail: `last run ${Math.round(ageHours)} hours ago, expected within ${limit}` };
   return { ...base, state: 'ok' };
@@ -194,22 +211,19 @@ if (isMain) {
   const results = [];
   for (const { repo, overdueAfterHours } of WATCH) {
     const { workflows } = await api(`/repos/${repo}/actions/workflows?per_page=100`, token);
-    // Dynamic workflows (Dependabot) are left out: a failed run there means a dependency
-    // couldn't be bumped, not that main is broken, and GitHub emails its alerts itself.
-    const active = workflows.filter((w) => w.state === 'active' && !w.path.startsWith('dynamic/'));
+    const active = workflows.filter((w) => w.state === 'active');
     const rows = [];
     let prs = null; // fetched once, only if a run needed a re-run
     for (const w of active) {
       // Unfiltered, then picked here: GitHub's branch filter returned nothing during an incident.
       const { workflow_runs: all } = await api(`/repos/${repo}/actions/workflows/${w.id}/runs?per_page=100`, token);
       const runs = onMain(all);
-      // The workflow file is read only when there is no run to go by.
       let manual = false;
-      if (!finished(runs).length) {
+      if (readsWorkflowFile(w.path, runs)) {
         const file = await api(`/repos/${repo}/contents/${w.path}`, token);
         manual = manualOnly(triggers(Buffer.from(file.content, 'base64').toString('utf8')));
       }
-      rows.push(assess(w.name, runs, overdueAfterHours, now.getTime(), { manual }));
+      rows.push(assess(w.name, runs, overdueAfterHours, now.getTime(), { manual, bot: isBot(w.path) }));
       for (const r of reruns(runs, now.getTime())) {
         const { jobs } = await api(`/repos/${repo}/actions/runs/${r.id}/attempts/1/jobs?per_page=100`, token);
         prs ??= await mergedPrs(repo, token, now.getTime(), RERUN_WINDOW_HOURS);
