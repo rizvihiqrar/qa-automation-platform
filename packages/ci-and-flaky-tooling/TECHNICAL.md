@@ -52,6 +52,44 @@ The six pages hold seven bugs: five escaped and two were caught before main (the
 
 The checks prove the threshold text is where the list says it is, and how many times. They do not prove the job is switched on (an `if: false` would still match), and a harmless reformat can fail them: that is the price of a list that cannot quietly disagree with CI. Two gates are listed as reported only (the mutation score has `break: null`, and a run that needed a re-run is a CI health problem, not a red job). The list says so, instead of calling every number a gate. "Fix time" in the log is the pull request open to merge, not the length of the red; the length of a red is the metric in the report.
 
+### Stop a run that is already lost
+
+`src/stop-lost-run.ts` is a Playwright reporter. Playwright's own `maxFailures` is a plain count: a big suite reaches it late and a small suite reaches it too early. This reporter uses a rate after a minimum, so a broken deploy fails in about a minute and not after the whole suite has run.
+
+| Rule | Behaviour |
+|---|---|
+| When it stops | The share of finished tests that failed reaches `rate` (default 0.3, 30%) once `after` tests (default 20) have finished. The first few failures are never judged |
+| What counts | A test counts once, at its final result. A failure that a retry will redo is not counted. A test that failed and then passed counts as a pass. A skipped test is not counted. A test marked as expected to fail counts as a pass when it fails |
+| What it does | Prints one message with the numbers (`Stopping the run: 20 of 20 finished tests failed (100%; ...)`) and exits with code 1. It asks to stop once, however many more failures arrive |
+| Bad options | A rate outside 0 to 1 or a minimum below 1 throws an error naming the option, instead of quietly using a default |
+
+It has no dependencies: it reads only the three fields of Playwright's test and result objects that it needs. The tests feed it fake results. `npm run live-proof` runs it in real Playwright with 60 small checks that need no browser, in four runs: healthy with the reporter on, broken with it off, broken with it on, and 5 flaky failures in the first 20 with it on. Exiting stops the other reporters too, so an HTML report of that run is not written: the point is a fast red, not a full report. The proof borrows `@playwright/test` from another package (default `llm-judge-check`, after `npm ci` there; or `--playwright <folder>`), so it runs by hand and not in CI, which keeps this package free of dependencies.
+
+### Sprint burndown
+
+`src/burndown.ts` reads `data/sprint.json` (a ticket export with opened and closed dates, and the last test run of each day) and gives, for each working day (Monday to Friday):
+
+| Column | How it is worked out |
+|---|---|
+| Tickets left | Opened on or before the day and not closed on or before it, so a ticket closed on a day is gone by that evening and one opened that day is counted |
+| Even line | From day 1's count to zero on the last day, to one decimal |
+| Failing cases | The latest run on or before the day. A day with no run shows the earlier number and says `no run: shows <date>`. Before the first run there is no number, never a zero |
+| Note | `tickets grew` or `failing cases grew` on a day the work went up instead of down |
+
+The sample sprint (13 tickets, 3 added after day 1, two left open at the end) has a test with the hand count written out in a comment: 10, 9, 10, 9, 8, 7, 5, 4, 3, 2 tickets and 12, 11, 14, 14, 9, 7, 5, 5, 2, 1 failing cases. Bad data (a repeated ticket, a ticket closed before it opened, two runs on one day, more failing than total, a weekend start) is reported by `checkSprint`, not drawn. The page `docs/burndown.md` is written by `npm run planning`, and a test fails when it is stale. A ticket closed or a run made on a weekend is counted on the next working day, because only working days are drawn. A run's `interrupted` tests (Ctrl-C, a global timeout) are never counted by the reporter as failures. There is no reader for live ticket data yet: the file is the interface.
+
+### Estimates against actuals
+
+`src/estimates.ts` reads `data/releases.json` (estimate and actual hours per release). Variance is actual minus estimate; the percent is that divided by the estimate, so above zero means the release took longer than planned.
+
+| Item | Rule |
+|---|---|
+| Over budget | More than `overBudgetPercent` (10) over. Exactly 10% is not flagged |
+| Trend line | A least-squares line through the percent variance of the last `trendReleases` (5) releases. Under 0.5 points per release is `steady`; above is `over-runs growing`, below is `over-runs shrinking` |
+| Totals | All estimated hours, all actual hours, and the overall percent |
+
+The six releases are invented and the file says so: there are no real hour logs. They are chosen so a hand calculation is short: the last five percents are 10, 20, 25, 20 and 25, the slope is 3.0 points per release, four of six are over budget, and the total is 305 hours estimated against 358 actual (+17.4%). A test checks each of those, and `checkEstimates` rejects an empty list, a zero estimate, a repeated release and fewer than two trend releases. If the file has fewer releases than `trendReleases`, the line uses all of them.
+
 ## Configuration
 
 | Option | Default | What it does |
@@ -60,6 +98,13 @@ The checks prove the threshold text is where the list says it is, and how many t
 | `--repo` | `GITHUB_REPOSITORY`, else `rizvihiqrar/qa-automation-platform` | The repository to read |
 | `--out` | none (prints the report) | A file to write, relative to the package folder |
 | `GITHUB_TOKEN` or `GH_TOKEN` | the GitHub CLI's token, if signed in | Raises the API rate limit. Public data is read without one |
+
+The reporter takes two options in the Playwright config:
+
+| Option | Default | What it does |
+|---|---|---|
+| `rate` | `0.3` | Stop when this share of finished tests failed (above 0, at most 1) |
+| `after` | `20` | Do not judge before this many tests have finished (a whole number, 1 or more) |
 
 ## CI integration
 
@@ -96,9 +141,11 @@ The pages are written for a reader, and their tables are checked by `scripts/rca
 
 ```bash
 cd packages/ci-and-flaky-tooling
-npm test            # 62 tests, node --test
+npm test            # 96 tests, node --test
 npm run report -- --month 2026-11
 npm run policy      # checks the gates and the fix log, then rewrites docs/gates.md and docs/fixes.md
+npm run planning    # checks the sprint and release data, then rewrites docs/burndown.md and docs/estimates.md
+npm run live-proof -- --playwright ../llm-judge-check   # the reporter in real Playwright (needs npm ci there)
 ```
 
 The label is a repository setting. To create it: on GitHub, open **Issues**, then **Labels**, then **New label**; type `escaped-bug`, choose a colour and select **Create label**.

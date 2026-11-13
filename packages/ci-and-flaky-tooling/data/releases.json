@@ -1,0 +1,13 @@
+{
+  "label": "Sample data, not real hour logs: six invented releases, chosen so the numbers can be worked out by hand.",
+  "overBudgetPercent": 10,
+  "trendReleases": 5,
+  "releases": [
+    { "release": "R1", "estimateHours": 40, "actualHours": 38 },
+    { "release": "R2", "estimateHours": 50, "actualHours": 55 },
+    { "release": "R3", "estimateHours": 30, "actualHours": 36 },
+    { "release": "R4", "estimateHours": 60, "actualHours": 75 },
+    { "release": "R5", "estimateHours": 45, "actualHours": 54 },
+    { "release": "R6", "estimateHours": 80, "actualHours": 100 }
+  ]
+}

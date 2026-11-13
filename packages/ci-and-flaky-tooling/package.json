@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node --test",
     "report": "node src/cli.ts",
-    "policy": "node src/policy.ts"
+    "policy": "node src/policy.ts",
+    "planning": "node src/planning.ts",
+    "live-proof": "node src/live-proof.ts"
   },
   "engines": { "node": ">=24" },
   "license": "MIT"

@@ -35,7 +35,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 34 packages, about 2,400 automated tests and checks, all run by one CI workflow
+- 34 packages, about 2,460 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -109,7 +109,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [ci-dashboard](packages/ci-dashboard) | The live web page of this repo's CI health, plus the published reports, the traceability matrix and the uptime of four public sites | 59 |
 | [synthetic-monitor](packages/synthetic-monitor) | A real browser checks four public sites every 30 minutes and keeps 30 days of history: down after two failed runs, slow at three times a site's own median, and a GitHub issue that opens and closes itself | 56 |
 | [flaky-test-analyzer](packages/flaky-test-analyzer) | Points out the tests that only pass after a retry, and keeps one GitHub issue per flaky test | 37 |
-| [ci-and-flaky-tooling](packages/ci-and-flaky-tooling) | A one-page quality report for a manager (escaped bugs, flaky rate, time to fix a red main, CI run time), each with how it can mislead, and the escaped-bug log behind it, every quality gate in one checked policy file and a fix-the-pipeline log | 62 |
+| [ci-and-flaky-tooling](packages/ci-and-flaky-tooling) | A one-page quality report for a manager (escaped bugs, flaky rate, time to fix a red main, CI run time), each with how it can mislead, and the escaped-bug log behind it, every quality gate in one checked policy file, a fix-the-pipeline log, a Playwright reporter that stops a run that is already lost, a sprint burndown and an estimate-against-actuals page | 96 |
 | [release-gate](packages/release-gate) | Reads smoke, contract and performance results, applies a policy, and blocks a deployment with clear reasons | 15 |
 | [mutation-testing-demo](packages/mutation-testing-demo) | Deliberately breaks the code to prove the tests would notice (89.2% caught) | 89 |
 | [pipeline-templates-demo](packages/pipeline-templates-demo) | One reusable CI/CD pipeline written for GitHub Actions, GitLab CI, and Azure DevOps | 28 |
