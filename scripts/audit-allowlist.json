@@ -15,13 +15,6 @@
   },
   {
     "package": "llm-judge-check",
-    "advisory": "GHSA-c475-qrg2-pj4r",
-    "library": "basic-ftp",
-    "reason": "Inside promptfoo's proxy support (proxy-agent > pac-proxy-agent > get-uri), reached only when a PAC proxy file is fetched over ftp://. No proxy is configured and the eval makes no network calls. Fixed only in basic-ftp 6, which get-uri 8 does not accept.",
-    "review_by": "2027-01-18"
-  },
-  {
-    "package": "llm-judge-check",
     "advisory": "GHSA-xcx6-jx8p-x3h5",
     "library": "@azure/msal-node",
     "reason": "Inside promptfoo, through @azure/identity, which pins msal-node 6 (the fix is 7.1.0). It matters only for Azure sign-in flows. This package runs only a local replay provider: no Azure provider, no sign-in. Revisit when @azure/identity allows msal-node 7.",

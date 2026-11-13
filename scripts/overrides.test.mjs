@@ -69,3 +69,18 @@ test('only an exact release is compared; a range or an object is left alone', ()
   assert.equal(isExact('1.4.3'), true);
   for (const value of ['^1.4.3', '~1.4', '$qs', { '.': '1.0.0' }, undefined]) assert.equal(isExact(value), false);
 });
+
+// promptfoo pins @hono/node-server to one release and asks get-uri for basic-ftp 5, so Dependabot's
+// security updates for both failed on 2026-11-13 (security_update_not_possible, ci-health issue 165).
+// llm-judge-check overrides them with the fixed releases; the lockfile test above keeps them applied.
+test('llm-judge-check overrides the two libraries promptfoo pins to vulnerable releases', () => {
+  const pkg = withOverrides.find((p) => p.name === 'llm-judge-check');
+  assert.ok(pkg, 'llm-judge-check lost its overrides block: Dependabot security updates for basic-ftp and @hono/node-server will fail again');
+  // First releases with the advisories fixed (hono 2.1.6, basic-ftp 6.2.4): an exact but older pin would pass the lockfile test and bring the failure back.
+  const fixedFrom = { '@hono/node-server': [2, 1, 6], 'basic-ftp': [6, 2, 4] };
+  const atLeast = (version, min) => { const v = version.split('.').map(Number); for (let i = 0; i < 3; i += 1) if (v[i] !== min[i]) return v[i] > min[i]; return true; };
+  for (const [dep, min] of Object.entries(fixedFrom)) {
+    assert.ok(isExact(pkg.overrides[dep]), `llm-judge-check must override ${dep} with an exact release`);
+    assert.ok(atLeast(pkg.overrides[dep], min), `${dep} ${pkg.overrides[dep]} still has the advisory: use ${min.join('.')} or newer`);
+  }
+});
