@@ -23,5 +23,10 @@
   "devDependencies": {
     "@playwright/test": "^1.65.0",
     "promptfoo": "^0.125.1"
+  },
+  "//overrides": "promptfoo pins @hono/node-server to 2.1.5 exactly and its proxy support (get-uri) asks for basic-ftp 5; both have advisories fixed in later releases, so Dependabot security updates could not resolve them (runs of 2026-11-13). These are the fixed releases; the eval never uses either code path.",
+  "overrides": {
+    "@hono/node-server": "2.1.8",
+    "basic-ftp": "6.2.6"
   }
 }
