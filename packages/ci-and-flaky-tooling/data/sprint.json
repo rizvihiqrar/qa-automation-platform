@@ -1,0 +1,31 @@
+{
+  "label": "Sample sprint, 2 to 13 March 2026: invented data, written by hand so the burndown can be checked against a hand count.",
+  "start": "2026-03-02",
+  "days": 10,
+  "tickets": [
+    { "id": "T-1", "opened": "2026-03-02", "closed": "2026-03-03" },
+    { "id": "T-2", "opened": "2026-03-02", "closed": "2026-03-05" },
+    { "id": "T-3", "opened": "2026-03-02", "closed": "2026-03-04" },
+    { "id": "T-4", "opened": "2026-03-02", "closed": "2026-03-06" },
+    { "id": "T-5", "opened": "2026-03-02", "closed": "2026-03-09" },
+    { "id": "T-6", "opened": "2026-03-02", "closed": "2026-03-10" },
+    { "id": "T-7", "opened": "2026-03-02", "closed": "2026-03-10" },
+    { "id": "T-8", "opened": "2026-03-02", "closed": "2026-03-12" },
+    { "id": "T-9", "opened": "2026-03-02", "closed": "2026-03-13" },
+    { "id": "T-10", "opened": "2026-03-02", "closed": null },
+    { "id": "T-11", "opened": "2026-03-04", "closed": "2026-03-09" },
+    { "id": "T-12", "opened": "2026-03-04", "closed": null },
+    { "id": "T-13", "opened": "2026-03-09", "closed": "2026-03-11" }
+  ],
+  "testRuns": [
+    { "date": "2026-03-02", "failing": 12, "total": 40 },
+    { "date": "2026-03-03", "failing": 11, "total": 40 },
+    { "date": "2026-03-04", "failing": 14, "total": 44 },
+    { "date": "2026-03-06", "failing": 9, "total": 44 },
+    { "date": "2026-03-09", "failing": 7, "total": 44 },
+    { "date": "2026-03-10", "failing": 5, "total": 46 },
+    { "date": "2026-03-11", "failing": 5, "total": 46 },
+    { "date": "2026-03-12", "failing": 2, "total": 46 },
+    { "date": "2026-03-13", "failing": 1, "total": 46 }
+  ]
+}
