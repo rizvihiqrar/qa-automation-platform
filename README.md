@@ -80,7 +80,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [food-truck-postman](packages/food-truck-postman) | A food truck API tested from Postman: test-card payments, a chained order flow, data-driven runs and schema checks in Newman. Nine planted bugs must go red on every run | 39 + 266 Postman tests |
 | [contract-testing-demo](packages/contract-testing-demo) | Checks that a live API still returns what the app that uses it expects | 5 |
 | [sql-data-integrity](packages/sql-data-integrity) | Runs 15 SQL rules over an orders database and lists the exact rows that break them | 35 |
-| [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 25 |
+| [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 36 |
 
 ### Data conversion
 

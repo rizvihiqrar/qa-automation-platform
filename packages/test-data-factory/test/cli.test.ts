@@ -8,7 +8,7 @@ const CLI = fileURLToPath(new URL('../src/index.ts', import.meta.url));
 const run = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
 
 test('parseArgs applies defaults', () => {
-  assert.deepEqual(parseArgs([]), { type: 'users', format: 'json', count: 10, seed: null, output: null, table: 'users' });
+  assert.deepEqual(parseArgs([]), { type: 'users', format: 'json', count: 10, seed: null, run: null, output: null, table: 'users' });
 });
 
 test('parseArgs rejects unknown types and formats', () => {
