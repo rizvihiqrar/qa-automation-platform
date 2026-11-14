@@ -233,6 +233,8 @@ Deliberate breaks, each put back alone:
 
 **The filename never names a place.** Only the last path segment is kept, anything outside letters, digits, `.`, `-` and `_` becomes `_`, leading dots go, it is cut to 100 characters, and a name with nothing left is `upload`.
 
+**Inside an image (A492).** The first bytes say the type; `src/routes/image.ts` then reads the few places a phone photo or a screenshot goes wrong, without decoding anything. A PNG must start with a 13-byte `IHDR` block, and every block after it must fit in the file up to the `IEND` block, or it is a `400 PNG file is damaged` (bytes after IEND are allowed, as some tools append them); a JPEG must end with the `FFD9` marker, with zero padding allowed after it. A HEIC photo (an `ftyp` box with a `heic`, `heix`, `heif` or similar brand; the generic `mif1` is left out because AVIF uses it too) is a `415` that tells the user to export JPEG or PNG, while another `ftyp` file such as an MP4 gets the general 415. The reply adds `hasAlpha` for a PNG (colour type 4 or 6, or a `tRNS` block before the image data) and `orientation` for a JPEG (the EXIF tag `0x0112`, 1 to 8, in either byte order, found past a JFIF block and fill bytes; null when absent, out of range or not a single SHORT), so a client knows to flatten or rotate. Checked at every length: cutting a file at any byte never makes the check throw (UP-59). The test images are built to this structure and are not drawable pictures; the size limit and the very-large-photo answer were already tested (UP-30 to UP-32, plus UP-58 with a rotation tag).
+
 **What the tests found.**
 - **A 401 sent before the body was read cut the client's connection.** UP-10 (no token) failed 4 runs in 30 with `fetch failed … write ECONNABORTED`: the route answered 401 first, and a client that had asked for `Connection: close` was still writing when Node closed the socket. The client saw a network error, not the 401. A 200 KB body made it fail on 7 of 20 runs. The route now reads the (capped) body before it answers anything (`bufferBody`), the cost being a read before the token check (see Known limits). UP-10 now sends 200 KB with no token.
 - **Node's `fetch` left `ECONNRESET` lines in the server log.** The test client's pooled keep-alive sockets were cut when the Playwright worker exited. The tests send `Connection: close`, so no socket outlives its test.
@@ -282,6 +284,11 @@ Each was put in, shown to fail, and taken out:
 | Filter value pasted into the SQL text (Postgres) | OW-A03-01 and OW-A03-02: 2 rows for 0, and a 500 |
 | Products with no category left out of `/products/facets` | the filter-count gap test: expected at least 1 under the empty name, got 0 (the other four pass) |
 | A plain `{}` as the facets counter | the property-name test (`constructor` reads as an inherited function) |
+| The PNG block-fits check removed | UP-52 and UP-62: a cut-short PNG, or one with a damaged block length, was created |
+| Zero padding after a JPEG not allowed | UP-60: a real file with padding was refused |
+| The orientation entry type and count not checked | UP-63: a text entry was read as a number |
+| EXIF read in the wrong byte order | UP-55 and UP-56: every rotation tag but a few read wrong |
+| The HEIC check removed | UP-50: the general 415 instead of the advice |
 | Upload type taken from the label, the filename kept as sent, no size limit on the file, several files accepted, the declared type not compared, extra fields allowed | UP-20 to UP-22 (and UP-02), five UP-06 cases and UP-07, UP-31, UP-13, UP-21, UP-14 |
 | The 401 sent before the upload body is read (the bug above) | UP-10: 7 of 20 runs failed with `write ECONNABORTED` |
 | Six of the certificate checks, listed under [HTTPS and certificate tests](#https-and-certificate-tests) | TLS-01, TLS-10, TLS-11, TLS-30 and TLS-32 |
