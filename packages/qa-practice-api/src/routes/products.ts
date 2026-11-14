@@ -31,6 +31,26 @@ router.get('/', handle(async (req, res) => {
   res.json({ data, page, limit, total, pages });
 }));
 
+// Counts for filter chips: one per category, plus the All total. A product with no
+// category (cleared with PUT) is counted under the empty name "", exactly what
+// ?category= returns for it, so the chips always add up to All (A496) and every count
+// can be reproduced with the filter. A Map, so a category called "constructor" or
+// "__proto__" is an ordinary key. Read page by page, so it works on both stores.
+router.get('/facets', handle(async (_req, res) => {
+  const categories = new Map<string, number>();
+  let all = 0;
+  for (let page = 1; ; page++) {
+    const { data, pages } = await store.products.findAll({}, { page, limit: 100 });
+    for (const p of data) {
+      const name = typeof p.category === 'string' ? p.category : '';
+      categories.set(name, (categories.get(name) ?? 0) + 1);
+      all++;
+    }
+    if (page >= pages) break;
+  }
+  res.json({ all, categories: Object.fromEntries(categories) });
+}));
+
 router.get('/:id', handle(async (req, res) => {
   const product = await store.products.findById(String(req.params.id));
   if (!product) return res.status(404).json({ error: `Product ${req.params.id} not found` });

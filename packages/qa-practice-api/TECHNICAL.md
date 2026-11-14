@@ -280,6 +280,8 @@ Each was put in, shown to fail, and taken out:
 | Password hash in a response, fixed salt, any password verifies | OW-A02-01, OW-A02-04, OW-A02-05 and four more |
 | X-Powered-By on, CORS open, unknown email answered differently | OW-A05-01, OW-A05-02, OW-A07-11 |
 | Filter value pasted into the SQL text (Postgres) | OW-A03-01 and OW-A03-02: 2 rows for 0, and a 500 |
+| Products with no category left out of `/products/facets` | the filter-count gap test: expected at least 1 under the empty name, got 0 (the other four pass) |
+| A plain `{}` as the facets counter | the property-name test (`constructor` reads as an inherited function) |
 | Upload type taken from the label, the filename kept as sent, no size limit on the file, several files accepted, the declared type not compared, extra fields allowed | UP-20 to UP-22 (and UP-02), five UP-06 cases and UP-07, UP-31, UP-13, UP-21, UP-14 |
 | The 401 sent before the upload body is read (the bug above) | UP-10: 7 of 20 runs failed with `write ECONNABORTED` |
 | Six of the certificate checks, listed under [HTTPS and certificate tests](#https-and-certificate-tests) | TLS-01, TLS-10, TLS-11, TLS-30 and TLS-32 |
