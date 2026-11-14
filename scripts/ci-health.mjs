@@ -24,7 +24,7 @@ const HOUR = 3600_000;
 // schedules off after 60 days without activity) must not look fine.
 // scripts/ci-health.test.mjs fails when a scheduled workflow is missing from this list.
 export const WATCH = [
-  { repo: 'rizvihiqrar/qa-automation-platform', overdueAfterHours: { CI: 26, Dashboard: 6, Mutation: 8 * 24, Monitor: 3 } },
+  { repo: 'rizvihiqrar/qa-automation-platform', overdueAfterHours: { CI: 26, Dashboard: 6, Mutation: 8 * 24, Monitor: 3, 'Refresh README screenshots': 8 * 24 } },
   { repo: 'rizvihiqrar/cicd-pipeline-demo', overdueAfterHours: {} },
   { repo: 'rizvihiqrar/rizvihiqrar', overdueAfterHours: { 'Refresh screenshots': 8 * 24 } },
 ];
