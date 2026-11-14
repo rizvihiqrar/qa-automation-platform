@@ -8,7 +8,8 @@
     "report": "node src/cli.ts",
     "policy": "node src/policy.ts",
     "planning": "node src/planning.ts",
-    "live-proof": "node src/live-proof.ts"
+    "live-proof": "node src/live-proof.ts",
+    "revert-demo": "node src/revert-cli.ts"
   },
   "engines": { "node": ">=24" },
   "license": "MIT"
