@@ -2,6 +2,7 @@ import { Router, type Request } from 'express';
 import { createHash } from 'node:crypto';
 import { requireAuth } from '../middleware/auth.ts';
 import { handle } from '../middleware/handle.ts';
+import { inspectJpeg, inspectPng, isHeic } from './image.ts';
 
 // A form-data endpoint to test (A57): it checks a file upload and describes what it got.
 // Nothing is stored, so the in-memory and Postgres stores behave the same. The parser is
@@ -103,10 +104,21 @@ router.post('/', bufferBody, requireAuth, handle(async (req, res) => {
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const detectedType = detectType(bytes);
+  // An iPhone's default photo format gets its own answer: the user can fix it.
+  if (!detectedType && isHeic(bytes)) return res.status(415).json({ error: 'HEIC photos are not supported: export the photo as JPEG or PNG' });
   if (!detectedType) return res.status(415).json({ error: 'Unsupported file type: PNG, JPEG and PDF only' });
   // No type, or the generic one clients use when they don't know, claims nothing to contradict.
   if (file.type && file.type !== 'application/octet-stream' && file.type !== detectedType) {
     return res.status(400).json({ error: `File content is ${detectedType} but it was sent as ${file.type}` });
+  }
+
+  // A file with the right first bytes can still be cut short or damaged (A492), and a client
+  // needs to know about a rotation tag or transparency, so the reply carries both.
+  let details: Record<string, unknown> = {};
+  if (detectedType === 'image/png' || detectedType === 'image/jpeg') {
+    const inspected = detectedType === 'image/png' ? inspectPng(bytes) : inspectJpeg(bytes);
+    if (!inspected.ok) return res.status(400).json({ error: inspected.error });
+    details = inspected.details;
   }
 
   res.status(201).json({
@@ -115,6 +127,7 @@ router.post('/', bufferBody, requireAuth, handle(async (req, res) => {
     size: bytes.length,
     sha256: createHash('sha256').update(bytes).digest('hex'),
     description,
+    ...details,
   });
 }));
 
