@@ -6,8 +6,9 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
 import { fetchRuns } from './github.js';
-import { computeMetrics } from './metrics.js';
+import { computeMetrics, listPackageFolders } from './metrics.js';
 import { renderHtml } from './render.js';
 import { loadMonitoring } from './monitoring.js';
 import { buildReports, renderReportsPage, tracesEntry } from './reports.js';
@@ -39,7 +40,10 @@ if (!token) {
 
 try {
   const runs = await fetchRuns({ repo, token, limit });
-  const metrics = computeMetrics(runs);
+  // The folders under packages/ tell a job from a package (H1). Missing (a run outside the repo): jobs only.
+  const packagesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const packageFolders = listPackageFolders(packagesDir);
+  const metrics = computeMetrics(runs, { packageFolders });
   fs.mkdirSync(out, { recursive: true });
   const generatedAt = new Date().toISOString();
 
@@ -75,7 +79,7 @@ try {
 
   fs.writeFileSync(path.join(out, 'index.html'), renderHtml(metrics, { repo, generatedAt, reportsHref, tracesHref, monitoringHtml }));
   fs.writeFileSync(path.join(out, 'metrics.json'), JSON.stringify(metrics, null, 2));
-  console.log(`${metrics.overall.runs} runs, ${metrics.overall.packages} packages, ${metrics.overall.flakyJobs} flaky job result(s) -> ${path.join(out, 'index.html')}`);
+  console.log(`${metrics.overall.runs} runs, ${metrics.overall.jobs} CI jobs from ${metrics.overall.distinctPackages ?? '?'} packages, ${metrics.overall.flakyJobs} flaky job result(s) -> ${path.join(out, 'index.html')}`);
 } catch (err) {
   console.error(err.message);
   process.exit(1);

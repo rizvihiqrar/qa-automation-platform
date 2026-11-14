@@ -12,6 +12,7 @@ A dashboard of this repository's CI health: how often each package passes, how l
 
 | Section | Shows |
 |---|---|
+| Headline | The number of CI jobs and, separately, the number of packages they belong to (for example "47 CI jobs from 35 packages"): qa-practice-api also runs on Postgres and through the Collector, banking-api also runs its UI tests, and typecheck and lint belong to no package |
 | Summary tiles | Runs analysed, share of runs fully green, median run time, flaky job results |
 | Jobs passed per run | Share of package jobs that passed in each of the last runs |
 | Run duration | Wall-clock minutes per run (a separate chart, not a second axis) |
@@ -99,7 +100,7 @@ Checked by putting two fixed bugs back into qa-practice-api (shipped orders coul
 ## Tests
 
 ```bash
-npm test   # 35 tests
+npm test   # 69 tests
 ```
 
-They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail. For the traceability matrix (13 tests): parsing the real plan (18 requirements, 119 cases), Playwright statuses through nested suites, the worst result winning for a duplicated ID, the requirement status rules, unplanned and orphan cases, a missing or corrupt results file, and escaping plan text. Six deliberate breaks (ignoring missing results, best result winning, skipping nested suites, matching an ID anywhere in a title, unknown statuses passing, unescaped text) each made a test fail.
+They cover pass rates by last attempt, both kinds of flaky detection, medians and p90s, API paging and errors with a fake `fetch`, escaping of a hostile job name, and the page being self-contained. For the reports: each secret pattern, text that must not be redacted, stored and deflated zips (built by a small zip writer in the test), picking the page to link, mapping reports to CI jobs by last attempt, publishing vs withholding (including a token inside a trace and a corrupt archive), and escaping on the index page. Four deliberate breaks to the publish guard each made a test fail. For the traceability matrix (13 tests): parsing the real plan (18 requirements, 119 cases), Playwright statuses through nested suites, the worst result winning for a duplicated ID, the requirement status rules, unplanned and orphan cases, a missing or corrupt results file, and escaping plan text. The job and package counts (4 tests): a job counts toward the longest package folder it equals or starts with plus a dash; taking the dash rule out failed the test. Six deliberate breaks (ignoring missing results, best result winning, skipping nested suites, matching an ID anywhere in a title, unknown statuses passing, unescaped text) each made a test fail.

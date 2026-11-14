@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeMetrics, quantile } from '../src/metrics.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { computeMetrics, distinctPackages, listPackageFolders, quantile } from '../src/metrics.js';
 import { normalizeRun, fetchRuns } from '../src/github.js';
 import { renderHtml, esc, niceMax, statusOf } from '../src/render.js';
 
@@ -304,4 +307,48 @@ test('every audit step in ci.yml is named "Dependency audit", the name the dashb
   const steps = yml.split(/\r?\n\s*- name: /).slice(1).filter((s) => /\n\s*run: .*(audit\.mjs|npm audit)/.test(s));
   assert.ok(steps.length >= 3, `expected at least 3 audit steps, found ${steps.length}`);
   for (const s of steps) assert.match(s.split(/\r?\n/)[0], /dependency audit/i, s.split(/\r?\n/)[0]);
+});
+
+// H1: the headline said "47 packages" for 47 CI jobs. A job belongs to the longest folder name
+// it equals or starts with plus a dash; typecheck and playwright lint belong to none.
+test('H1 jobs are counted apart from the packages they belong to', () => {
+  const folders = ['banking-api', 'qa-practice-api', 'money-course'];
+  const names = ['banking-api', 'banking-api-ui', 'qa-practice-api', 'qa-practice-api-postgres', 'qa-practice-api-collector', 'money-course', 'typecheck', 'playwright lint'];
+  assert.equal(distinctPackages(names, folders), 3);
+  assert.equal(distinctPackages(['banking-api-ui'], folders), 1, 'a job named after a package and a suffix is that package');
+  // a longer folder wins: qa-practice-api-collector's own folder, if it existed, would be its package
+  assert.equal(distinctPackages(['qa-practice-api-collector'], ['qa-practice-api', 'qa-practice-api-collector']), 1);
+  assert.equal(distinctPackages(['api-extra'], ['api', 'api-extra']), 1);
+  assert.equal(distinctPackages(['apiary'], ['api']), 0, 'a name that only begins with the folder name is not that package');
+});
+
+test('H1 the headline shows both counts, and only jobs when the folders are unknown', () => {
+  const folders = ['api', 'ui'];
+  const withFolders = computeMetrics([...runs, run(5, 'ddd', 'success', [job('api', 'success'), job('api-slow', 'success'), job('ui', 'success'), job('lint', 'success')])], { packageFolders: folders });
+  assert.deepEqual([withFolders.overall.jobs, withFolders.overall.distinctPackages], [4, 2]);
+  assert.match(renderHtml(withFolders, { repo: 'o/r', generatedAt: '2026-11-14T00:00:00Z' }), /across 4 CI jobs from 2 packages/);
+  const without = computeMetrics(runs);
+  assert.equal(without.overall.distinctPackages, null);
+  assert.match(renderHtml(without, { repo: 'o/r', generatedAt: '2026-11-14T00:00:00Z' }), /across 2 CI jobs[;.]/);
+});
+
+test('H1 only folders with a package.json are package folders, and a missing directory means unknown', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pkgs-'));
+  try {
+    for (const name of ['a-pkg', 'b-pkg']) { fs.mkdirSync(path.join(dir, name)); fs.writeFileSync(path.join(dir, name, 'package.json'), '{}'); }
+    fs.mkdirSync(path.join(dir, 'stray'));
+    fs.writeFileSync(path.join(dir, 'a-file.txt'), '');
+    assert.deepEqual(listPackageFolders(dir).sort(), ['a-pkg', 'b-pkg']);
+    assert.equal(listPackageFolders(path.join(dir, 'nope')), null);
+    // the real repository: every folder under packages/ that this build would read has a package.json
+    const real = listPackageFolders(path.join(import.meta.dirname, '..', '..'));
+    assert.ok(real.includes('ci-dashboard') && real.length > 20, 'the repository packages are found from ci-dashboard/test');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('H1 one package reads "1 package", and zero matches still shows both counts', () => {
+  const one = computeMetrics(runs, { packageFolders: ['api'] });
+  assert.match(renderHtml(one, { repo: 'o/r', generatedAt: '2026-11-14T00:00:00Z' }), /across 2 CI jobs from 1 package[;.]/);
+  const none = computeMetrics(runs, { packageFolders: [] });
+  assert.match(renderHtml(none, { repo: 'o/r', generatedAt: '2026-11-14T00:00:00Z' }), /across 2 CI jobs from 0 packages[;.]/);
 });
