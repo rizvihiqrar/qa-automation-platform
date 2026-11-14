@@ -42,6 +42,7 @@ It reads the finished CI runs on main for that month (and two weeks either side,
 ```bash
 npm run planning     # rewrites docs/burndown.md and docs/estimates.md from data/sprint.json and data/releases.json
 npm run live-proof   # runs the stop-lost-run reporter in real Playwright, four runs, and fails if any does the wrong thing
+npm run revert-demo  # merges a bad change in a scratch repository, reverts it, then shows the force-push way going wrong
 ```
 
 The reporter is one line in a Playwright config: `reporter: [['list'], ['path/to/stop-lost-run.ts', { rate: 0.3, after: 20 }]]`. [Technical guide](TECHNICAL.md) has the rules and the options.
@@ -63,13 +64,14 @@ The reporter is one line in a Playwright config: `reporter: [['list'], ['path/to
 - A Playwright reporter, `src/stop-lost-run.ts`, that stops a run once 30% of the first 20 or more finished tests have failed, with a plain message: a broken deploy fails in a minute, not after the whole suite. A failure a retry will redo is not counted, and a few flaky failures do not trip it
 - A sprint burndown from a ticket export and the day's last test run, checked against a hand count for every day of a 10-day sample sprint ([page](docs/burndown.md))
 - Estimates against actuals per release: variance in hours and percent, a flag above 10% over, and a trend line over the last five releases ([page](docs/estimates.md)). The sample hours are invented and labelled as such
-- 96 tests, and each fixed bug was put back once to show a test fails
+- A walkthrough of undoing a bad merge ([page](docs/revert.md)): `git revert -m 1` and an ordinary push take a scratch repository from red to green in about a second and keep a teammate's work, while a reset and force push leaves the teammate with no error and their next push brings the bug back
+- 105 tests, and each fixed bug was put back once to show a test fails
 
 ## Results
 
 | Check | Result |
 |---|---|
-| Tests | 96, run three times with no failures |
+| Tests | 105, run five times with no failures |
 | Bugs put back | 46 of 46 made a test fail |
 | Stop a lost run (real Playwright) | A broken run stops at check 20 of 60 (13.6 s, against 42.1 s for all 60 with the reporter off); a healthy run and one with 5 flaky failures in the first 20 are left alone |
 | Burndown | All 10 days of the sample sprint match the hand count (tickets left, the even line and failing cases) |

@@ -90,6 +90,15 @@ The sample sprint (13 tickets, 3 added after day 1, two left open at the end) ha
 
 The six releases are invented and the file says so: there are no real hour logs. They are chosen so a hand calculation is short: the last five percents are 10, 20, 25, 20 and 25, the slope is 3.0 points per release, four of six are over budget, and the total is 305 hours estimated against 358 actual (+17.4%). A test checks each of those, and `checkEstimates` rejects an empty list, a zero estimate, a repeated release and fewer than two trend releases. If the file has fewer releases than `trendReleases`, the line uses all of them.
 
+### Undoing a Bad Merge (A60)
+
+`src/revert.ts` builds two throwaway repositories in the temp folder (a local bare "origin" and two clones, the author's and a teammate's) and runs the same situation twice: a bad change merged into main, the suite (two `node --test` tests) going red, and the teammate committing on top of it. The first copy is fixed with `git revert -m 1` and an ordinary push; the second with `git reset --hard` and `git push --force`. `npm run revert-demo` prints the steps and the time from the bad merge being pushed to a green suite; [docs/revert.md](docs/revert.md) is the explanation.
+
+- The suite run stands in for CI. On a real pipeline the same time includes the queue and the run, and the quality report's time to fix a red main measures that from real runs.
+- `git log --topo-order` is used for the history, because a merge and its revert made in the same second have no fixed order by date (this flaked once, in the second of five runs, before the fix).
+- 9 tests (RV-01 to RV-09). The scratch repositories ignore the user's own git settings (global config, hooks, language). The measured time leaves out the teammate's pull and commit, and RV-06 proves it with an injected clock. Deliberate breaks, put back after: resetting and force-pushing in place of the revert failed RV-02 (the bad merge is gone from the history) and RV-03 (the teammate's pull no longer works); reverting with `-m 2` made git refuse, which fails the whole walkthrough.
+- Limits: it uses a local origin, so it shows no branch protection. The repository's own ruleset blocks a force-push to main (`non_fast_forward`), which is the real guard.
+
 ## Configuration
 
 | Option | Default | What it does |
@@ -141,7 +150,7 @@ The pages are written for a reader, and their tables are checked by `scripts/rca
 
 ```bash
 cd packages/ci-and-flaky-tooling
-npm test            # 96 tests, node --test
+npm test            # 105 tests, node --test
 npm run report -- --month 2026-11
 npm run policy      # checks the gates and the fix log, then rewrites docs/gates.md and docs/fixes.md
 npm run planning    # checks the sprint and release data, then rewrites docs/burndown.md and docs/estimates.md
