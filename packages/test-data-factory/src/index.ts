@@ -5,6 +5,7 @@
  *   node src/index.ts --type orders   --count 100 --format csv  --output output/orders.csv
  *   node src/index.ts --type products --count 20  --format sql  --table products --output output/seed.sql
  *   node src/index.ts --type users    --count 5   --seed 42     # same data every run
+ *   node src/index.ts --type users    --count 5   --seed 42 --run worker-3   # own data for one parallel worker
  *
  * Defaults: count=10, format=json, output=stdout
  */
@@ -17,6 +18,7 @@ import { generateProducts } from './generators/productGenerator.ts';
 import { exportJson, toJsonString } from './exporters/jsonExporter.ts';
 import { exportCsv,  toCsvString  } from './exporters/csvExporter.ts';
 import { exportSql,  toSqlString  } from './exporters/sqlExporter.ts';
+import { checkRunName, runSeed, stampRun } from './isolation.ts';
 import type { DataType, Format } from './types.ts';
 
 export const GENERATORS: Record<DataType, (count: number) => object[]> = {
@@ -43,6 +45,7 @@ export interface Options {
   format: Format;
   count: number;
   seed: number | null;
+  run: string | null;
   output: string | null;
   table: string;
 }
@@ -68,7 +71,10 @@ export function parseArgs(argv: readonly string[]): Options {
   const seed = rawSeed === null ? null : Number(rawSeed);
   if (seed !== null && !Number.isInteger(seed)) throw new Error(`--seed must be a whole number, got "${rawSeed}"`);
 
-  return { type, format, count, seed, output: get('--output', null), table: get('--table', type) ?? type };
+  const rawRun = get('--run', null);
+  const run = rawRun === null ? null : checkRunName(rawRun);
+
+  return { type, format, count, seed, run, output: get('--output', null), table: get('--table', type) ?? type };
 }
 
 export function render(data: readonly object[], format: Format, table: string): string {
@@ -78,10 +84,12 @@ export function render(data: readonly object[], format: Format, table: string): 
 }
 
 function main(): void {
-  const { type, format, count, seed, output, table } = parseArgs(process.argv.slice(2));
-  if (seed !== null) applySeed(seed);
+  const { type, format, count, seed, run, output, table } = parseArgs(process.argv.slice(2));
+  // A run name gives this worker its own data: its own seed, and its keys stamped with the run (A114).
+  if (seed !== null) applySeed(run === null ? seed : runSeed(seed, run));
 
-  const data = GENERATORS[type](count);
+  const generated = GENERATORS[type](count);
+  const data = run === null ? generated : stampRun(generated, run);
 
   if (!output) {
     console.log(render(data, format, table));

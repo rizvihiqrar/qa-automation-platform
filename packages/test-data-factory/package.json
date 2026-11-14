@@ -5,7 +5,8 @@
   "description": "CLI tool to generate realistic test data (users, orders, products) and export to JSON, CSV, or SQL",
   "scripts": {
     "start": "node src/index.ts",
-    "test": "node --test"
+    "test": "node --test",
+    "parallel-demo": "node src/parallel.ts"
   },
   "engines": { "node": ">=24" },
   "dependencies": {

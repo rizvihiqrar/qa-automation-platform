@@ -173,7 +173,7 @@ The full description of each package, with its check count. The [overview](READM
 | [log-signature-grouper](packages/log-signature-grouper) | Groups thousands of log errors into a few patterns and flags error patterns that are new since the last release | 15 |
 | [defect-report-linter](packages/defect-report-linter) | Checks bug reports for missing steps, results, severity and evidence, and scores whether a developer could act on them | 20 |
 | [test-management-kit](packages/test-management-kit) | Keeps test cases as plain data with a validator and exporters for TestRail and other tools, then sends run results to TestRail and files Jira issues for failed cases, each tested against a local mock | 128 |
-| [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 25 |
+| [test-data-factory](packages/test-data-factory) | Generates realistic, repeatable test data as JSON, CSV, or SQL | 36 |
 | [mutation-testing-demo](packages/mutation-testing-demo) | Deliberately breaks the code to prove the tests would notice (89.2% caught) | 89 |
 | [postman-api-collection](packages/postman-api-collection) | API checks in Postman, runnable from the command line | 25 |
 | [food-truck-postman](packages/food-truck-postman) | A food truck API tested from Postman: test-card payments, a chained order flow, data-driven runs and schema checks in Newman. Nine planted bugs must go red on every run | 39 + 266 Postman tests |
