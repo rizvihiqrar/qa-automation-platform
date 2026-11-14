@@ -55,7 +55,10 @@ jobs:
       - run: npm ci
       - name: Dependency audit
         run: npm audit --audit-level=high
-      - name: The lint catches a deliberately unawaited expect
+      # The stale-state demonstration (test/stale-state.test.mjs) runs in a real browser
+      - name: Install Chromium
+        run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh" chromium
+      - name: The lint catches a deliberately unawaited expect, a bare count() and a stored state read
         run: npm test
       - name: No unawaited Playwright calls
         run: npm run lint

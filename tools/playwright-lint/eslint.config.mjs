@@ -25,6 +25,25 @@ const COUNT_BAN = {
   message: 'locator.count() does not wait. Use await expect(locator).toHaveCount(n).',
 };
 
+// A195: a Locator is lazy and finds the element when it is used; isVisible(), textContent()
+// and the like return the page as it was at that moment. A result kept in a variable is
+// the old page by the time it is used. Read it inside expect(locator) instead, which waits.
+const STATE_METHODS = 'isVisible|isHidden|isEnabled|isDisabled|isChecked|isEditable|textContent|innerText|innerHTML|inputValue|getAttribute|allTextContents|allInnerTexts';
+const STATE_CALL = `CallExpression[callee.property.name=/^(${STATE_METHODS})$/]`;
+const KEPT = ':matches(VariableDeclarator, AssignmentExpression)';
+// What a kept read looks like: the variable's value is the await itself, or the await
+// inside one or two wrappers (a call such as Number(await ...), a method call on it such
+// as (await ...).trim(), or a fallback such as (await ...) ?? '').
+const WRAP = ':matches(CallExpression, MemberExpression, LogicalExpression, ChainExpression, TSNonNullExpression)';
+const STATE_BAN = [
+  `${KEPT} > AwaitExpression > ${STATE_CALL}`,
+  `${KEPT} > ${WRAP} > AwaitExpression > ${STATE_CALL}`,
+  `${KEPT} > ${WRAP} > ${WRAP} > AwaitExpression > ${STATE_CALL}`,
+].map((selector) => ({
+  selector,
+  message: 'A state read kept in a variable goes stale. Keep the Locator and assert with expect(locator).toBeVisible()/toHaveText()/..., which waits. A read kept to compare with another page may be disabled with a reason.',
+}));
+
 export default [
   {
     ignores: [
@@ -55,7 +74,7 @@ export default [
     // expect(locator).toHaveCount(n), which waits. Page objects and checks in src/ may
     // count after they have waited for something themselves.
     files: PACKAGES.map((p) => `packages/${p}/**/*.spec.{js,mjs,cjs,ts,mts}`),
-    rules: { 'no-restricted-syntax': ['error', COUNT_BAN] },
+    rules: { 'no-restricted-syntax': ['error', COUNT_BAN, ...STATE_BAN] },
   },
   {
     // The check's own proof: a deliberately unawaited expect and a bare count() that must be reported.
@@ -64,7 +83,7 @@ export default [
     plugins: { playwright },
     rules: {
       'playwright/missing-playwright-await': 'error',
-      'no-restricted-syntax': ['error', COUNT_BAN],
+      'no-restricted-syntax': ['error', COUNT_BAN, ...STATE_BAN],
     },
   },
 ];

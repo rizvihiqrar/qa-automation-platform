@@ -19,7 +19,11 @@ test.describe('Product Details', () => {
   });
 
   test('details page shows the same name and price as the list @regression', async ({ page }) => {
+    // The list page is settled here. The two values are kept on purpose, to compare with the
+    // details page after navigating: a read kept for a later comparison, not a branch on it.
+    // eslint-disable-next-line no-restricted-syntax -- value kept to compare with the next page
     const listName = await page.locator('[data-test="inventory-item-name"]').first().innerText();
+    // eslint-disable-next-line no-restricted-syntax -- value kept to compare with the next page
     const listPrice = await page.locator('[data-test="inventory-item-price"]').first().innerText();
 
     await page.locator('[data-test="inventory-item-name"]').first().click();
