@@ -332,17 +332,19 @@ test('H1 the headline shows both counts, and only jobs when the folders are unkn
   assert.match(renderHtml(without, { repo: 'o/r', generatedAt: '2026-11-14T00:00:00Z' }), /across 2 CI jobs[;.]/);
 });
 
-test('H1 only folders with a package.json are package folders, and a missing directory means unknown', () => {
+test('H1 every folder is a package whatever its language, hidden folders are not, and a missing directory means unknown', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pkgs-'));
   try {
-    for (const name of ['a-pkg', 'b-pkg']) { fs.mkdirSync(path.join(dir, name)); fs.writeFileSync(path.join(dir, name, 'package.json'), '{}'); }
-    fs.mkdirSync(path.join(dir, 'stray'));
+    fs.mkdirSync(path.join(dir, 'a-pkg')); fs.writeFileSync(path.join(dir, 'a-pkg', 'package.json'), '{}');
+    fs.mkdirSync(path.join(dir, 'py-pkg')); fs.writeFileSync(path.join(dir, 'py-pkg', 'requirements.txt'), '');
+    for (const skipped of ['.cache', '_templates', 'node_modules']) fs.mkdirSync(path.join(dir, skipped));
     fs.writeFileSync(path.join(dir, 'a-file.txt'), '');
-    assert.deepEqual(listPackageFolders(dir).sort(), ['a-pkg', 'b-pkg']);
+    assert.deepEqual(listPackageFolders(dir).sort(), ['a-pkg', 'py-pkg']);
     assert.equal(listPackageFolders(path.join(dir, 'nope')), null);
-    // the real repository: every folder under packages/ that this build would read has a package.json
+    // the real repository: the packages are found from ci-dashboard/test, the Python ones (no package.json) included
     const real = listPackageFolders(path.join(import.meta.dirname, '..', '..'));
     assert.ok(real.includes('ci-dashboard') && real.length > 20, 'the repository packages are found from ci-dashboard/test');
+    assert.ok(real.includes('api-pytest') && real.includes('hcm-conversion-validation'), 'the Python packages count too');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -351,4 +353,14 @@ test('H1 one package reads "1 package", and zero matches still shows both counts
   assert.match(renderHtml(one, { repo: 'o/r', generatedAt: '2026-11-14T00:00:00Z' }), /across 2 CI jobs from 1 package[;.]/);
   const none = computeMetrics(runs, { packageFolders: [] });
   assert.match(renderHtml(none, { repo: 'o/r', generatedAt: '2026-11-14T00:00:00Z' }), /across 2 CI jobs from 0 packages[;.]/);
+});
+
+// The live page said 33 packages for 35 folders (2026-11-14) because the folder list asked for a
+// package.json and the Python packages have none. The root README has one row per package folder
+// (scripts/readme-totals.test.mjs), so the two counts are compared here.
+test('H1 the folders counted as packages are the ones the root README lists', () => {
+  const root = path.join(import.meta.dirname, '..', '..', '..');
+  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+  const rows = readme.split(/\r?\n/).filter((l) => /^\| \[[^\]]+\]\(packages\//.test(l)).length;
+  assert.equal(listPackageFolders(path.join(root, 'packages')).length, rows);
 });
