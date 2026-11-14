@@ -24,14 +24,14 @@ Software teams change their product every day, and each change can break somethi
 
 Each folder under `packages/` is a small project that either tests something (a website, an API, a database, an AI feature) or helps testers do their job (finding unreliable tests, checking bug reports, generating test data). [The packages](#the-packages) says what each one does.
 
-<a href="docs/assets/dashboard.png">
+<a href="https://raw.githubusercontent.com/rizvihiqrar/qa-automation-platform/screenshots/dashboard.png">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/dashboard-dark.png">
-    <img src="docs/assets/dashboard.png" alt="The CI dashboard: 39 CI runs on main, 100% fully green, median run time 1.3 minutes, 0 failing, with charts of jobs passed per run and run duration">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rizvihiqrar/qa-automation-platform/screenshots/dashboard-dark.png">
+    <img src="https://raw.githubusercontent.com/rizvihiqrar/qa-automation-platform/screenshots/dashboard.png" alt="The CI dashboard: pass rate, run time and flaky jobs, with charts of jobs passed per run and run duration">
   </picture>
 </a>
 
-*The [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) as it looked on 2026-10-20: pass rate, run time and flaky jobs, rebuilt after every run on main. The live page has today's figures. Shown in the viewer's light or dark theme.*
+*The [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/): pass rate, run time and flaky jobs, rebuilt after every run on main. This picture is retaken every Monday by the [Refresh README screenshots](.github/workflows/screenshots.yml) workflow; the live page has today's figures. Shown in the viewer's light or dark theme.*
 
 ## At a glance
 

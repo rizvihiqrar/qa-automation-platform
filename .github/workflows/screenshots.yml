@@ -1,0 +1,81 @@
+name: Refresh README screenshots
+
+# H2: the pictures of the live CI dashboard at the top of README.md (light and dark) go stale
+# (the caption said "as it looked on 2026-10-20"). Every Monday, and on demand, this retakes them
+# from the live page with scripts/screenshots/capture.mjs.
+#
+# - main only accepts pull requests, so the pictures are not committed to main. They live on the
+#   screenshots branch, which keeps a single commit (each run replaces it), and README.md links to
+#   the raw files there. Nothing here writes to main.
+# - If the live page does not answer, capture.mjs fails and the branch keeps the last good pictures.
+on:
+  schedule:
+    - cron: '41 12 * * 1'   # Mondays, off the hour (GitHub delays and drops runs queued at :00)
+  workflow_dispatch:
+
+permissions:
+  contents: write   # push the pictures to the screenshots branch
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: false
+
+jobs:
+  screenshots:
+    # A fork that enables Actions must not photograph this repository's dashboard.
+    if: github.repository == 'rizvihiqrar/qa-automation-platform'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: scripts/screenshots/package-lock.json
+
+      - name: Install
+        working-directory: scripts/screenshots
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: scripts/screenshots
+        run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh"
+
+      # A second working tree for the screenshots branch, started empty the first time. Only
+      # "no such branch" (exit code 2) starts a new one: any other failure stops the run.
+      - name: Check out the screenshots branch
+        run: |
+          found=0
+          git ls-remote --exit-code --heads origin screenshots >/dev/null || found=$?
+          if [ "$found" -eq 0 ]; then
+            git fetch --depth 1 origin screenshots
+            git worktree add --detach screenshots FETCH_HEAD
+          elif [ "$found" -eq 2 ]; then
+            git worktree add --orphan -b screenshots screenshots
+          else
+            echo "::error::Could not look for the screenshots branch (git exit code $found)"
+            exit "$found"
+          fi
+
+      - name: Take the screenshots
+        working-directory: scripts/screenshots
+        env:
+          SCREENSHOT_OUT: ${{ github.workspace }}/screenshots
+        run: npm run capture -- dashboard dashboard-dark
+
+      - name: Save them to the screenshots branch
+        working-directory: screenshots
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          [ -f README.md ] || printf '%s\n' '# screenshots' '' 'Written by the Refresh README screenshots workflow in rizvihiqrar/qa-automation-platform. The README there links to these pictures. Do not edit by hand.' > README.md
+          git add -A
+          if git rev-parse -q --verify HEAD >/dev/null; then
+            if git diff --cached --quiet; then echo "Pictures unchanged"; exit 0; fi
+            git commit -q --amend -m "Screenshots, run $GITHUB_RUN_ID"
+          else
+            git commit -q -m "Screenshots, run $GITHUB_RUN_ID"
+          fi
+          bash "$GITHUB_WORKSPACE/scripts/retry.sh" git push --force origin HEAD:refs/heads/screenshots
