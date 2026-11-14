@@ -107,7 +107,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 
 | Package | What it does | Checks |
 |---|---|---:|
-| [ci-dashboard](packages/ci-dashboard) | The live web page of this repo's CI health, plus the published reports, the traceability matrix and the uptime of four public sites | 69 |
+| [ci-dashboard](packages/ci-dashboard) | The live web page of this repo's CI health, plus the published reports, the traceability matrix and the uptime of four public sites | 70 |
 | [synthetic-monitor](packages/synthetic-monitor) | A real browser checks four public sites every 30 minutes and keeps 30 days of history: down after two failed runs, slow at three times a site's own median, and a GitHub issue that opens and closes itself | 56 |
 | [flaky-test-analyzer](packages/flaky-test-analyzer) | Points out the tests that only pass after a retry, and keeps one GitHub issue per flaky test | 37 |
 | [ci-and-flaky-tooling](packages/ci-and-flaky-tooling) | A one-page quality report for a manager (escaped bugs, flaky rate, time to fix a red main, CI run time), each with how it can mislead, and the escaped-bug log behind it, every quality gate in one checked policy file, a fix-the-pipeline log, a Playwright reporter that stops a run that is already lost, a sprint burndown and an estimate-against-actuals page | 105 |

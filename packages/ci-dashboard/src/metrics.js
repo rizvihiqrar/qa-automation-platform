@@ -46,11 +46,16 @@ export function distinctPackages(jobNames, folders) {
   return found.size;
 }
 
-/** The package folders under a directory: only folders with a package.json, so a stray folder is not a package. */
+/**
+ * The package folders under a directory. Every folder counts, whatever the language: api-pytest and
+ * hcm-conversion-validation are Python and have no package.json (the first version of this asked for
+ * one and the live page said 33 packages for 35 folders). Hidden and underscore folders and
+ * node_modules are not packages.
+ */
 export function listPackageFolders(dir) {
   if (!fs.existsSync(dir)) return null;
   return fs.readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && fs.existsSync(path.join(dir, d.name, 'package.json')))
+    .filter((d) => d.isDirectory() && !/^[._]/.test(d.name) && d.name !== 'node_modules')
     .map((d) => d.name);
 }
 
