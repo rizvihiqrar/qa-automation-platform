@@ -35,7 +35,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 34 packages, about 2,460 automated tests and checks, all run by one CI workflow
+- 35 packages, about 2,460 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -50,7 +50,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 - A release gate that blocks a deployment, with reasons, when a rule is broken
 - A daily CI health check, and an automatic one-time re-run when CI fails on main
 - Uptime monitoring: a real browser checks four public sites every 30 minutes, the history sits on the dashboard, and a site that fails twice in a row opens a GitHub issue that closes itself on recovery
-- Strict TypeScript in sixteen packages, type-checked in CI with no build step
+- Strict TypeScript in seventeen packages, type-checked in CI with no build step
 
 ## The packages
 
@@ -62,6 +62,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 |---|---|---:|
 | [multi-user-flow-patterns](packages/multi-user-flow-patterns) | Runs several users at once to catch bugs that only appear when people share a system | 9 |
 | [visual-regression-demo](packages/visual-regression-demo) | Compares screenshots of the banking UI with baselines in light, dark and phone width, in two browsers, and proves it by planting visual bugs | 46 |
+| [selector-drill](packages/selector-drill) | Finds 30 elements three ways (a recorder's path, CSS, XPath), changes the page layout four ways and measures which selectors still find the right element | 11 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios + 4 |
 | [a11y-aoda-audit](packages/a11y-aoda-audit) | Audits a demo store against the WCAG 2.0 AA standard Ontario's AODA requires, before and after fixes | 16 |
 
