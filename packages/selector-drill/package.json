@@ -1,0 +1,18 @@
+{
+  "name": "selector-drill",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Selector fluency drill: 30 elements, each found three ways (the path a recorder writes, a hand-written CSS selector, a hand-written XPath), then the page layout is changed and the share of selectors that still find the right element is measured",
+  "scripts": {
+    "test": "playwright test",
+    "drill": "node src/cli.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^24.19.2"
+  }
+}

@@ -30,6 +30,7 @@ export const PACKAGES = [
   'banking-api',
   'money-course',
   'visual-regression-demo',
+  'selector-drill',
   'synthetic-monitor',
   'test-management-kit',
   'food-truck-postman',
