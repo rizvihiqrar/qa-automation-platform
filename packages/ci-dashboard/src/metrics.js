@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 // Turns normalized runs into the numbers the dashboard shows.
 
 const COUNTED = new Set(['success', 'failure']);
@@ -29,7 +31,30 @@ function finalJobs(run) {
 // change still being worked on, not something broken, and counting it made healthy
 // packages read "Has failures". Flaky detection uses every run: a job that fails and
 // then passes on the same commit is flaky whichever branch it ran on.
-export function computeMetrics(runsInput, { branch = 'main' } = {}) {
+// A CI job is not always one package: qa-practice-api also runs as qa-practice-api-postgres and
+// qa-practice-api-collector, banking-api as banking-api-ui, and some jobs (typecheck, playwright
+// lint) belong to no package. The headline said "47 packages" for 47 jobs, and a reader who
+// counted the folders found 35 (H1). A job belongs to the longest folder name it equals or starts
+// with followed by a dash.
+export function distinctPackages(jobNames, folders) {
+  const longestFirst = [...folders].sort((a, b) => b.length - a.length);
+  const found = new Set();
+  for (const name of jobNames) {
+    const match = longestFirst.find((f) => name === f || name.startsWith(`${f}-`));
+    if (match) found.add(match);
+  }
+  return found.size;
+}
+
+/** The package folders under a directory: only folders with a package.json, so a stray folder is not a package. */
+export function listPackageFolders(dir) {
+  if (!fs.existsSync(dir)) return null;
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && fs.existsSync(path.join(dir, d.name, 'package.json')))
+    .map((d) => d.name);
+}
+
+export function computeMetrics(runsInput, { branch = 'main', packageFolders = null } = {}) {
   const all = [...runsInput].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   const runs = all.filter((r) => r.branch === branch);
   const pkgs = new Map();
@@ -115,7 +140,11 @@ export function computeMetrics(runsInput, { branch = 'main' } = {}) {
       medianRunMinutes: quantile(trend.map((t) => t.minutes), 0.5),
       flakyJobs: packages.reduce((n, p) => n + p.flaky, 0),
       failingNow: packages.filter((p) => p.latest === 'failure').length,
+      // Jobs, one row each in the table. `packages` keeps its old meaning (the same number)
+      // for anything that already reads it; `distinctPackages` is the number of folders.
+      jobs: packages.length,
       packages: packages.length,
+      distinctPackages: packageFolders ? distinctPackages(packages.map((p) => p.name), packageFolders) : null,
     },
     packages,
     trend,
