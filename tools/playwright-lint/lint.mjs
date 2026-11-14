@@ -18,6 +18,6 @@ if (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const output = await formatter.format(results);
   const errors = results.reduce((n, r) => n + r.errorCount, 0);
   if (output) console.log(output);
-  console.log(`${results.length} files in ${PACKAGES.length} Playwright packages, ${errors} unawaited Playwright calls`);
+  console.log(`${results.length} files in ${PACKAGES.length} Playwright packages, ${errors} findings (unawaited Playwright calls, bare count() reads and stored state reads)`);
   process.exitCode = errors ? 1 : 0;
 }

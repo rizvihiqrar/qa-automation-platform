@@ -58,14 +58,11 @@ test.describe('Pattern: Session state isolation', () => {
     // User A sorts by name Z to A
     await sessionA.page.selectOption('[data-test="product-sort-container"]', 'za');
 
-    // Each user sees their own sort — first item names will differ
-    const firstItemA = await sessionA.page.locator('[data-test="inventory-item-name"]').first().innerText();
-    const firstItemB = await sessionB.page.locator('[data-test="inventory-item-name"]').first().innerText();
-
-    // Assert each user's exact first item: only checking that they differ would also
-    // pass if one sort silently didn't apply.
-    expect(firstItemA).toBe('Test.allTheThings() T-Shirt (Red)');
-    expect(firstItemB).toBe('Sauce Labs Fleece Jacket');
+    // Each user sees their own sort. Assert each user's exact first item: only checking
+    // that they differ would also pass if one sort silently didn't apply. The locator is
+    // asserted on directly (it waits), not read into a variable first (A195).
+    await expect(sessionA.page.locator('[data-test="inventory-item-name"]').first()).toHaveText('Test.allTheThings() T-Shirt (Red)');
+    await expect(sessionB.page.locator('[data-test="inventory-item-name"]').first()).toHaveText('Sauce Labs Fleece Jacket');
 
     await Promise.all([teardownSession(sessionA), teardownSession(sessionB)]);
   });

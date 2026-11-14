@@ -9,6 +9,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "eslint": "^10.14.0",
     "eslint-plugin-playwright": "^2.12.2",
     "globals": "^17.14.0",
