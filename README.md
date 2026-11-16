@@ -70,7 +70,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 
 | Package | What it does | Checks |
 |---|---|---:|
-| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested: 119 designed cases, run in memory and on a real Postgres in Docker, with race, fault-injection, tracing, logs joined to traces, a real OpenTelemetry Collector in Docker, migration, OWASP Top 10, form-data upload and HTTPS certificate tests, a live incident game day with a postmortem and a ZAP scan in CI. One OWASP test caught a real SQL injection hole put back on purpose | 475 + 4 on the Collector + 17 properties + ZAP scan |
+| [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested: 119 designed cases, run in memory and on a real Postgres in Docker, with race, fault-injection, tracing, logs joined to traces, a real OpenTelemetry Collector in Docker, migration, OWASP Top 10, form-data upload and HTTPS certificate tests, a live incident game day with a postmortem and a ZAP scan in CI. One OWASP test caught a real SQL injection hole put back on purpose | 485 + 4 on the Collector + 17 properties + ZAP scan |
 | [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, and 14 SQL checks prove every transfer balances. A small banking UI on top is tested by Cypress in Chrome and Firefox | 236 + 7 runner checks + 8 properties + 69 Cypress |
 | [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 39-step live check |
 | [api-pytest](packages/api-pytest) | The same designed cases as the Playwright API suite, written again in Python with pytest and requests, under the same case IDs. A fixture starts the API, so one command runs it | 40 |
@@ -118,7 +118,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [defect-report-linter](packages/defect-report-linter) | Checks bug reports for missing steps, results, severity and evidence | 20 |
 | [test-management-kit](packages/test-management-kit) | Keeps test cases as plain data with a validator and exporters for TestRail and other tools, then sends run results to TestRail and files Jira issues for failed cases, each tested against a local mock | 128 |
 | [log-signature-grouper](packages/log-signature-grouper) | Groups thousands of log errors into a few patterns and flags patterns that are new since the last release | 15 |
-| [exploratory-session-tracker](packages/exploratory-session-tracker) | Structures exploratory testing (charters, timeboxes, tagged notes) and turns sessions into a team debrief | 10 |
+| [exploratory-session-tracker](packages/exploratory-session-tracker) | Structures exploratory testing (charters, timeboxes, tagged notes) and turns sessions into a team debrief | 14 |
 
 ### Learning
 

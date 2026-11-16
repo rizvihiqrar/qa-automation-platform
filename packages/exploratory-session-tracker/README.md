@@ -4,7 +4,7 @@ A light tool for **session-based exploratory testing**: write a charter, test fo
 
 **In plain English:** exploratory testing is a skilled tester investigating the product without a script. Without some structure it's hard to show what was covered or what was found. Charters, timeboxes and tagged notes give it that structure, and the debrief makes it reportable.
 
-> The sample sessions in `sessions/` are **made up** to show the format and the debrief. They don't describe a real application.
+> The sample sessions in `sessions/` are **made up** to show the format and the debrief. They don't describe a real application. The three in `sessions/qa-practice-api/` are **real**: [what they found](docs/exploratory-charters.md) on the product list of [qa-practice-api](../qa-practice-api) (5 bugs, 1 risk, 6 questions), each one pinned by a test there.
 
 ---
 
@@ -85,7 +85,7 @@ node src/cli.js new --charter "Explore refunds with partial amounts to find roun
 ## Tests
 
 ```bash
-npm test   # 10 tests
+npm test   # 14 tests
 ```
 
-A round-trip test (create a session from the template, then parse it) caught a bug: the help comment in the template was being read as a note. HTML comments are now skipped. Switching off overrun detection made 3 tests fail.
+A round-trip test (create a session from the template, then parse it) caught a bug: the help comment in the template was being read as a note. HTML comments are now skipped. Switching off overrun detection made 3 tests fail. The 4 newest tests read the real sessions and check the hand counts (3 sessions, 5 bugs, 6 questions, 1 risk, and 4, 5 and 3 edge cases per charter); removing one RISK line made 3 of them fail.
