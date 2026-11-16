@@ -5,6 +5,8 @@ traces-report/
 blob-report/
 coverage/
 reports/
+# The monthly quality reports the ci-and-flaky-tooling README links to are part of the proof.
+!packages/ci-and-flaky-tooling/reports/
 .stryker-tmp/
 *.log
 # Sample logs are test fixtures, not output.
