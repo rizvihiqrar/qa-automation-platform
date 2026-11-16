@@ -99,6 +99,17 @@ The six releases are invented and the file says so: there are no real hour logs.
 - 9 tests (RV-01 to RV-09). The scratch repositories ignore the user's own git settings (global config, hooks, language). The measured time leaves out the teammate's pull and commit, and RV-06 proves it with an injected clock. Deliberate breaks, put back after: resetting and force-pushing in place of the revert failed RV-02 (the bad merge is gone from the history) and RV-03 (the teammate's pull no longer works); reverting with `-m 2` made git refuse, which fails the whole walkthrough.
 - Limits: it uses a local origin, so it shows no branch protection. The repository's own ruleset blocks a force-push to main (`non_fast_forward`), which is the real guard.
 
+### CI Cost Audit (A452)
+
+`npm run cost` turns the timing of every CI job into minutes, the way a bill would count them: each job is rounded up to a whole minute, so a six-second job costs as much as a fifty-nine-second one. The repository is public, so its runs are free; the page reports minutes, and the reader applies a rate.
+
+- **The data.** `--refresh` reads the finished CI runs of the last 14 days, on every branch and event (pull request runs are the point), and the jobs of each run (`filter=latest`, so a re-run counts its last attempt). The result is saved as `data/cost-snapshot.json`; without `--refresh` the page is rewritten from that file, so the tests and the page never depend on the network. A job that was skipped is not counted; one that was cancelled is billed for the time it ran.
+- **The kinds.** `data/job-tags.json` gives every job one kind: browser, api, container, ai, tools or housekeeping. A job with no kind, a kind that does not exist, or a tag for a job that is gone fails the command and the test, so the kinds always add up to the whole bill. The first real refresh found four job names with no kind (the older three-shard regression names), which is what the check is for.
+- **Savings, measured, not guessed.** Two are worked out from the timings. Running the jobs that never passed 30 seconds as one job saves the whole minutes lost to rounding (the checkout and install each job repeats is not counted, so the real saving is larger). Moving a job that failed on none of the pull request runs to main saves its pull request minutes; this is a list of places to look, not a decision, because a job that never failed in 82 runs may catch the next bug.
+- **What the first run showed.** Of 7,523 billed minutes, 3,841.1 (51%) were rounding. The quick-job merge saves only 3% of the bill, so most of the rounding cannot be recovered by merging: a job of 31 to 59 seconds is billed a full minute whatever is done. The larger saving is in the pull request list, and its top five include `playwright lint` and `burn-in`, which are gates by design: the list says where minutes go, not what to cut.
+- **Checks.** 19 tests. The arithmetic is worked out by hand on two invented runs (billed minutes, totals, medians, the merge, the pull request list). The real snapshot is checked three ways: every job has a kind, one real run (46 jobs, 1,593 s, 56 billed minutes) matches a direct count from the GitHub API, and `docs/ci-cost.md` must equal what the snapshot and the kinds produce, so the page cannot be edited by hand or fall behind. Deliberate breaks, each put back: rounding to the nearest minute instead of up (4 tests failed), counting jobs that failed on pull requests as candidates, billing the merged jobs one by one, counting skipped jobs as billable, editing a number in the page, and removing a kind. Review fixes, each with a test: the shards of one matrix are counted as one job, a job that timed out on a pull request counts as failed, every attempt of a re-run is read (it is billed too), a 5xx answer from GitHub is tried again, and an unknown option or a missing value stops the command.
+- **Limits.** Fourteen days is a sample, not a year; a refresh changes the numbers. The kinds are one person's judgment of what each package mostly does. Runner minutes are all counted at one rate, because the runs are all on Linux.
+
 ## Configuration
 
 | Option | Default | What it does |
@@ -150,7 +161,7 @@ The pages are written for a reader, and their tables are checked by `scripts/rca
 
 ```bash
 cd packages/ci-and-flaky-tooling
-npm test            # 105 tests, node --test
+npm test            # 124 tests, node --test
 npm run report -- --month 2026-11
 npm run policy      # checks the gates and the fix log, then rewrites docs/gates.md and docs/fixes.md
 npm run planning    # checks the sprint and release data, then rewrites docs/burndown.md and docs/estimates.md
