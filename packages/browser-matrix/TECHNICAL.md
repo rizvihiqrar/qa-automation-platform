@@ -17,7 +17,7 @@
 | `src/matrix.ts` | `askBrowser(name)` launches one browser and asks every probe on a fresh page. `combine`, `differing` and `toTable` put the answers side by side and mark the rows that differ. |
 | `src/expected.ts` | The recorded answers: for each probe, what each browser says, written once or once per platform. |
 | `src/cli.ts` | `npm run matrix`: asks all three browsers, prints the table, and appends it to the job summary when `GITHUB_STEP_SUMMARY` is set. |
-| `tests/matrix.spec.ts` | One test per probe and browser, plus five checks of the table that run once. |
+| `tests/matrix.spec.ts` | One test per probe and browser, plus six checks of the table that run once. |
 
 The Playwright config has three projects (Chromium, Firefox, WebKit), `locale: 'en-CA'`, one retry in CI and `failOnFlakyTests`, so a test that passes only on the retry fails the job. The CI job installs all three browsers (`browserList: chromium firefox webkit` in `ci.yml`), and the burn-in script runs the specs repeatedly in all three.
 
@@ -52,9 +52,9 @@ Lookalike characters are written as code points by `visible()` in `probes.ts` (`
 | Group | Tests | What they check |
 |---|---:|---|
 | One per probe and browser | 33 | The browser answers the way it is recorded to on this platform |
-| The table | 5 | Every probe has an answer for all three browsers and nothing else; ids are unique; `differing`; `toTable`; `expectedAnswer` reads a per-platform answer and returns nothing for an unknown platform |
+| The table | 6 | Every probe has an answer for all three browsers and nothing else; Linux and Windows have an answer for each; ids are unique; `differing`; `toTable`; `expectedAnswer` reads a per-platform answer and returns nothing for an unknown platform |
 
-The five run in the first project only, so Firefox and WebKit report them as skipped. The count is 38 tests that ran.
+The six run in the first project only, so Firefox and WebKit report them as skipped. The count is 39 tests that ran. In CI a missing recorded answer fails the test instead of skipping it, and a table check requires an answer for every probe and browser on Linux and Windows.
 
 ## Deliberate Breaks
 

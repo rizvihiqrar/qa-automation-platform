@@ -6,9 +6,13 @@ import { BROWSERS, differing, toTable, type Answers } from '../src/matrix.ts';
 // One test per probe and browser: the browser must still answer the way the table in src/expected.ts says.
 // A difference between browsers is not a failure (it is the point); a browser changing its answer is.
 for (const probe of PROBES) {
-  test(`${probe.id}: ${probe.question} @regression`, async ({ page, browserName }) => {
+  // The title is the id, which does not change; the question can be reworded without losing the test's history.
+  test(`${probe.id} @regression`, async ({ page, browserName }) => {
+    test.info().annotations.push({ type: 'question', description: probe.question });
     await page.setContent(PAGE_HTML);
     const expected = expectedAnswer(probe.id, browserName, process.platform);
+    // A platform with no recorded answer skips on a person's machine, but CI must never skip: that would be coverage lost with a green job.
+    if (process.env.CI) expect(expected, `${browserName} has no recorded answer for ${probe.id} on ${process.platform}`).toBeDefined();
     test.skip(expected === undefined, `no answer is recorded for ${browserName} on ${process.platform}`);
     expect(await probe.ask(page), `${browserName} on ${process.platform}`).toBe(expected);
   });
@@ -21,6 +25,12 @@ test.describe('the table', () => {
   test('every probe has an answer recorded for all three browsers, and nothing else is recorded', () => {
     expect(Object.keys(EXPECTED).sort()).toEqual(PROBES.map((p) => p.id).sort());
     for (const probe of PROBES) expect(Object.keys(EXPECTED[probe.id] ?? {}).sort(), probe.id).toEqual([...BROWSERS].sort());
+  });
+
+  test('the two platforms in use (CI runs linux, the author uses win32) have an answer for every probe and browser', () => {
+    for (const platform of ['linux', 'win32']) {
+      for (const probe of PROBES) for (const browser of BROWSERS) expect(expectedAnswer(probe.id, browser, platform), `${probe.id} ${browser} ${platform}`).toBeDefined();
+    }
   });
 
   test('probe ids are unique', () => {

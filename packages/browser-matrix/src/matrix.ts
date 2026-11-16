@@ -13,10 +13,14 @@ export async function askBrowser(name: BrowserName, probes: Probe[] = PROBES): P
   try {
     const answers: Record<string, string> = {};
     for (const probe of probes) {
-      const page = await (await browser.newContext({ locale: 'en-CA' })).newPage();
-      await page.setContent(PAGE_HTML);
-      answers[probe.id] = await probe.ask(page);
-      await page.context().close();
+      const context = await browser.newContext({ locale: 'en-CA' });
+      try {
+        const page = await context.newPage();
+        await page.setContent(PAGE_HTML);
+        answers[probe.id] = await probe.ask(page);
+      } finally {
+        await context.close();
+      }
     }
     return answers;
   } finally {
@@ -31,7 +35,13 @@ export function differing(answers: Answers): string[] {
 
 /** Puts the answers of each browser side by side: one entry per probe, one answer per browser. */
 export function combine(perBrowser: Record<BrowserName, Record<string, string>>, probes: Probe[] = PROBES): Answers {
-  return Object.fromEntries(probes.map((p) => [p.id, { chromium: perBrowser.chromium[p.id] ?? '', firefox: perBrowser.firefox[p.id] ?? '', webkit: perBrowser.webkit[p.id] ?? '' }]));
+  // An empty string is a real answer (WebKit on Windows offers no date inputs); a missing one is a bug.
+  const answer = (name: BrowserName, id: string) => {
+    const value = perBrowser[name][id];
+    if (value === undefined) throw new Error(`${name} gave no answer to ${id}`);
+    return value;
+  };
+  return Object.fromEntries(probes.map((p) => [p.id, { chromium: answer('chromium', p.id), firefox: answer('firefox', p.id), webkit: answer('webkit', p.id) }]));
 }
 
 const cell = (text: string) => '`' + text.replace(/`/g, "'").replace(/\|/g, '\\|') + '`';

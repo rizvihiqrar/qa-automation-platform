@@ -20,7 +20,7 @@ Node 24 or later.
 
 ```bash
 npm run matrix   # asks the eleven questions in all three browsers and prints the table
-npm test         # 38 checks: each browser still answers the way it is recorded to
+npm test         # 39 checks: each browser still answers the way it is recorded to
 ```
 
 ## The Result
@@ -45,7 +45,7 @@ The differences left are in what the browser itself says and draws: its words, i
 
 ## At a Glance
 
-- 11 questions, 3 browsers, 33 recorded answers (some per operating system) and 5 checks of the table itself
+- 11 questions, 3 browsers, 33 recorded answers (some per operating system) and 6 checks of the table itself
 - A difference between browsers is not a failure. A browser changing its answer is
 - Each answer is a short string read from the page, with nothing from the network or the machine
 - Lookalike characters (a no-break space and a narrow no-break space) are written as code points, so a difference can be seen

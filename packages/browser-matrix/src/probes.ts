@@ -75,8 +75,6 @@ export const PROBES: Probe[] = [
     id: 'tab-order',
     question: 'On a fresh page, which element does the first Tab press reach?',
     ask: async (page) => {
-      await page.goto('about:blank');
-      await page.setContent(PAGE_HTML);
       await page.keyboard.press('Tab');
       return page.evaluate(() => document.activeElement?.id ?? 'nothing');
     },
