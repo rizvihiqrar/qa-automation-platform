@@ -14,6 +14,6 @@
     "eslint-plugin-playwright": "^2.12.2",
     "globals": "^17.14.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.72.1"
+    "typescript-eslint": "^8.72.2"
   }
 }
