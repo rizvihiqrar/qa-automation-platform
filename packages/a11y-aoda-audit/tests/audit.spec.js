@@ -110,11 +110,12 @@ test.describe('upload checks: harder cases', () => {
     <script>document.getElementById('f').addEventListener('change', () => { document.querySelector('[data-status]').textContent = 'added'; });</script>`;
 
   test('only a button (or the file input) makes a keyboard path: a link or plain text in the drop zone does not', async ({ page: p }) => {
-    for (const [zone, expected] of [
-      ['<a href="#help">Help</a><p>Drop photos here</p>', ['dropzone-no-keyboard-path']],
-      ['<p>Drop photos here</p>', ['dropzone-no-keyboard-path']],
-      ['<button type="button">Choose</button>', []],
-    ]) {
+    const cases = [
+      { zone: '<a href="#help">Help</a><p>Drop photos here</p>', expected: ['dropzone-no-keyboard-path'] },
+      { zone: '<p>Drop photos here</p>', expected: ['dropzone-no-keyboard-path'] },
+      { zone: '<button type="button">Choose</button>', expected: [] },
+    ];
+    for (const { zone, expected } of cases) {
       await p.setContent(page(zone, '<p data-status></p>'));
       expect((await dropzoneKeyboardPath(p)).map((i) => i.rule), zone).toEqual(expected);
     }

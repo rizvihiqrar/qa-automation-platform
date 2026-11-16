@@ -88,7 +88,7 @@ const LIVE = '[aria-live]:not([aria-live="off"]), [role="status"], [role="alert"
 export async function addSampleFile(page) {
   const before = await page.evaluate((live) => {
     const el = document.querySelector('[data-status]');
-    window.__statusWasLive = !!el && !!el.closest(live);
+    /** @type {any} */ (window).__statusWasLive = !!el && !!el.closest(live);
     return el ? el.textContent : '';
   }, LIVE);
   await page.locator('input[type=file]').setInputFiles(SAMPLE_FILE);
@@ -102,7 +102,7 @@ export async function statusNotAnnounced(page) {
   return page.evaluate((live) => {
     const el = document.querySelector('[data-status]');
     if (!el || !el.textContent.trim()) return [];
-    const announced = !!el.closest(live) && window.__statusWasLive !== false;
+    const announced = !!el.closest(live) && /** @type {any} */ (window).__statusWasLive !== false;
     return announced ? [] : [{ rule: 'status-not-announced', criteria: ['4.1.3'], level: 'AA', target: '[data-status]', label: el.textContent.trim().slice(0, 40) }];
   }, LIVE);
 }
