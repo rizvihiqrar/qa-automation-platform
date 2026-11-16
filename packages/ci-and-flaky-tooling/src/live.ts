@@ -22,7 +22,7 @@ interface ApiRun {
 }
 interface ApiIssue extends IssueLike { pull_request?: unknown }
 
-async function pages<T>(url: string, { token, fetchImpl = fetch }: LiveOptions, pick: (body: unknown) => T[]): Promise<T[]> {
+export async function pages<T>(url: string, { token, fetchImpl = fetch }: LiveOptions, pick: (body: unknown) => T[]): Promise<T[]> {
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
   if (token) headers.Authorization = `Bearer ${token}`;
   const out: T[] = [];
