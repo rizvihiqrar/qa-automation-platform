@@ -16,6 +16,7 @@ export const PACKAGES = [
   'qa-for-ai-features',
   'qa-practice-api',
   'selector-drill',
+  'browser-matrix',
   'synthetic-monitor',
   'visual-regression-demo',
 ];

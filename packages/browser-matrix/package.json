@@ -1,0 +1,18 @@
+{
+  "name": "browser-matrix",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A cross-browser matrix without a paid grid: one page of features browsers handle differently, run in Chromium, Firefox and WebKit through Playwright, with what each browser is expected to do recorded and a table of where they differ",
+  "scripts": {
+    "test": "playwright test",
+    "matrix": "node src/cli.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^24.19.2"
+  }
+}

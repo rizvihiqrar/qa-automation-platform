@@ -27,6 +27,7 @@ export const PLAYWRIGHT = [
   { pkg: 'money-course', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'multi-user-flow-patterns', config: 'playwright.config.ts', dirs: ['tests/'] },
   { pkg: 'selector-drill', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
+  { pkg: 'browser-matrix', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox', 'webkit'] },
   { pkg: 'synthetic-monitor', config: 'playwright.config.ts', dirs: ['tests/browser/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'visual-regression-demo', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'qa-for-ai-features', config: 'playwright.config.ts', dirs: ['tests/'] },

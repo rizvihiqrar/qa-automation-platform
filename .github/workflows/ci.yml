@@ -110,6 +110,8 @@ jobs:
           - { package: visual-regression-demo,   browsers: true,  browserList: chromium firefox, command: npm test }
           # Selector drill: 30 elements found three ways, before and after four layout changes, in Chromium and Firefox
           - { package: selector-drill,           browsers: true,  browserList: chromium firefox, command: npm test }
+          # Browser matrix: 11 probes of things browsers do differently, asked in Chromium, Firefox and WebKit, with each browser's recorded answer
+          - { package: browser-matrix,           browsers: true,  browserList: chromium firefox webkit, command: npm test }
           # Synthetic monitoring: the history, down and slow rules and issue logic, and the page check against a local site that misbehaves
           - { package: synthetic-monitor,        browsers: true,  browserList: chromium firefox, command: npm test }
           - { package: graphql-test-suite,       browsers: false, command: npm test }
