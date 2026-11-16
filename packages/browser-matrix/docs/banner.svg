@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+  <title id="t">Browser matrix</title>
+  <desc id="d">Eleven questions asked in Chromium, Firefox and WebKit, with each answer recorded and the differences listed.</desc>
+  <rect width="1280" height="240" rx="12" fill="#0f172a"/>
+  <rect x="0" y="228" width="1280" height="12" fill="#2563eb"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="96" y="76" width="44" height="80" rx="6"/>
+    <rect x="152" y="76" width="44" height="80" rx="6"/>
+    <rect x="208" y="76" width="44" height="80" rx="6" stroke="#f59e0b"/>
+  </g>
+  <text x="300" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc">Browser matrix</text>
+  <text x="302" y="162" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#cbd5e1">Three browsers, eleven questions, no paid grid.</text>
+</svg>
