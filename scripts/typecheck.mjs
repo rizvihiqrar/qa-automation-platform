@@ -31,6 +31,7 @@ export const PACKAGES = [
   'money-course',
   'visual-regression-demo',
   'selector-drill',
+  'browser-matrix',
   'synthetic-monitor',
   'test-management-kit',
   'food-truck-postman',

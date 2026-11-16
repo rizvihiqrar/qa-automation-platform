@@ -36,6 +36,7 @@
   "regression scope": "housekeeping",
   "release-gate": "tools",
   "selector-drill": "browser",
+  "browser-matrix": "browser",
   "sql-data-integrity": "tools",
   "synthetic-monitor": "browser",
   "test-data-factory": "tools",
