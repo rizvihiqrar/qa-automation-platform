@@ -1,7 +1,14 @@
 // Builds findings from page results and writes the audit report.
 import { criteriaFromTags, scName, fixFor, AODA_NOTE } from './wcag.js';
 
-// pages: [{ page, axe: [...], focus: [...], placeholders: [...] }]
+// pages: [{ page, axe: [...], focus: [...], placeholders: [...], upload: [...] }] (upload is optional)
+const HELP = {
+  'focus-not-visible': ['serious', 'Keyboard focus is not visible'],
+  'placeholder-only-label': ['moderate', 'Field is labelled only by a placeholder'],
+  'dropzone-no-keyboard-path': ['critical', 'Drop zone has no keyboard path'],
+  'status-not-announced': ['serious', 'Status message is not announced'],
+  'focus-lost-after-delete': ['moderate', 'Focus is lost after deleting'],
+};
 export function buildFindings(pages) {
   const byRule = new Map();
   const add = (rule, info, pageName, targets) => {
@@ -16,8 +23,9 @@ export function buildFindings(pages) {
       const { criteria, level } = criteriaFromTags(v.tags);
       add(v.rule, { criteria, level, impact: v.impact, help: v.help }, p.page, v.targets);
     }
-    for (const f of [...p.focus, ...p.placeholders]) {
-      add(f.rule, { criteria: f.criteria, level: f.level, impact: f.rule === 'focus-not-visible' ? 'serious' : 'moderate', help: f.rule === 'focus-not-visible' ? 'Keyboard focus is not visible' : 'Field is labelled only by a placeholder' }, p.page, [f.target]);
+    for (const f of [...p.focus, ...p.placeholders, ...(p.upload ?? [])]) {
+      const [impact, help] = HELP[f.rule] ?? ['moderate', f.rule];
+      add(f.rule, { criteria: f.criteria, level: f.level, impact, help }, p.page, [f.target]);
     }
   }
   const order = { critical: 0, serious: 1, moderate: 2, minor: 3 };
@@ -31,7 +39,8 @@ export function toMarkdown({ version, pages, findings }) {
   const lines = [
     `# Accessibility audit: ${version}`,
     '',
-    `${pages.length} page(s) checked against WCAG 2.0 A/AA rules, plus keyboard focus and placeholder-only labels.`,
+    `${pages.length} page(s) checked against WCAG 2.0 A/AA rules, plus keyboard focus and placeholder-only labels` +
+      (pages.some((p) => Array.isArray(p.upload)) ? ', and the drag and drop upload (keyboard path, announced status, focus after delete; the status check is WCAG 2.1)' : '') + '.',
     '',
     total === 0 ? '**No issues found.**' : `**${findings.length} issue type(s), ${total} instance(s).**`,
   ];

@@ -64,7 +64,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | [visual-regression-demo](packages/visual-regression-demo) | Compares screenshots of the banking UI with baselines in light, dark and phone width, in two browsers, and proves it by planting visual bugs | 46 |
 | [selector-drill](packages/selector-drill) | Finds 30 elements three ways (a recorder's path, CSS, XPath), changes the page layout four ways and measures which selectors still find the right element | 11 |
 | [bdd-playwright-demo](packages/bdd-playwright-demo) | Tests written as plain-language scenarios that a product owner can read | 9 scenarios + 4 |
-| [a11y-aoda-audit](packages/a11y-aoda-audit) | Audits a demo store against the WCAG 2.0 AA standard Ontario's AODA requires, before and after fixes | 16 |
+| [a11y-aoda-audit](packages/a11y-aoda-audit) | Audits a demo store against the WCAG 2.0 AA standard Ontario's AODA requires, before and after fixes, with a drag and drop upload page | 30 |
 
 ### API
 

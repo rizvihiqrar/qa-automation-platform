@@ -6,18 +6,31 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { chromium } from '@playwright/test';
 import { startSite } from './server.js';
-import { axeViolations, focusIssues, placeholderOnlyFields } from './checks.js';
+import { axeViolations, focusIssues, placeholderOnlyFields, dropzoneKeyboardPath, addSampleFile, statusNotAnnounced, focusLostAfterDelete } from './checks.js';
 import { buildFindings, toMarkdown } from './report.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const PAGES = ['index.html', 'product.html', 'checkout.html'];
+export const PAGES = ['index.html', 'product.html', 'checkout.html', 'upload.html'];
+
+// One page. A page with a drop zone (data-dropzone) is checked in three states, in this order: before
+// anything is added (the keyboard path), with a file added (the status line, then axe and focus, which need
+// the delete button to exist), and last after the file is deleted (where focus lands). Pages without a drop
+// zone get no upload key at all, so their report does not claim upload checks.
+export async function auditPage(page, name) {
+  const hasDropzone = (await page.locator('[data-dropzone]').count()) > 0;
+  const upload = hasDropzone ? [...await dropzoneKeyboardPath(page)] : null;
+  if (hasDropzone) { await addSampleFile(page); upload.push(...await statusNotAnnounced(page)); }
+  const result = { page: name, axe: await axeViolations(page), focus: await focusIssues(page), placeholders: await placeholderOnlyFields(page) };
+  if (hasDropzone) result.upload = [...upload, ...await focusLostAfterDelete(page)];
+  return result;
+}
 
 export async function auditVersion(browser, baseUrl, version) {
   const pages = [];
   for (const name of PAGES) {
     const page = await (await browser.newContext()).newPage();
     await page.goto(`${baseUrl}/${version}/${name}`);
-    pages.push({ page: name, axe: await axeViolations(page), focus: await focusIssues(page), placeholders: await placeholderOnlyFields(page) });
+    pages.push(await auditPage(page, name));
     await page.context().close();
   }
   return { version, pages, findings: buildFindings(pages) };
