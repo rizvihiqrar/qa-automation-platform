@@ -259,6 +259,17 @@ The expired certificate needs `openssl ca` with `-startdate` and `-enddate`: `op
 
 **Deliberate breaks of the TLS tests** (each shown to fail, then removed): the server on plain HTTP (TLS-01 times out waiting for HTTPS), the both-or-neither check removed (TLS-32), the handshake line not logged (TLS-30), the client not checking certificates (TLS-10), the expired certificate not expired (TLS-10), the wrong-host certificate naming `localhost` (TLS-11).
 
+## Exploratory charters
+
+[tests/exploratory-charters.spec.ts](tests/exploratory-charters.spec.ts) holds 10 tests, one for each finding of three exploratory sessions on the product list (write-up and findings table: [exploratory-charters.md](../exploratory-session-tracker/docs/exploratory-charters.md)).
+
+- **Pins** (EX-00, 04, 08, 09, 10) pass today. They record behaviour that was looked at on purpose, so changing it is a decision.
+- **Expected failures** (EX-01, 02, 03, 05, 06) call `test.fail()`: each is a real bug written as the behaviour it should have. While the bug is there the test passes. The day it is fixed Playwright reports "Expected to fail, but passed", and the fix removes the `test.fail()` line. Nothing in the API was changed to make them pass.
+- **Isolation:** every test makes its own categories, named with the run time, so the other specs creating products at the same time cannot change what is counted. The suite runs in parallel against one server.
+- **A right answer can be `400`.** Where a bad value could be refused or fixed, the test accepts the `400` and only fails if the value is accepted and misread.
+
+**Deliberate break:** EX-02 fixed for one run (`parseInt(v, 10)` in `src/routes/query.ts`): its test failed with "Expected to fail, but passed", then the fix was removed. The suite ran five times green first.
+
 ## Deliberate breaks
 
 Each was put in, shown to fail, and taken out:

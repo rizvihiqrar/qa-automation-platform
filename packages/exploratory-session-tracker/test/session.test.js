@@ -92,3 +92,35 @@ test('the CLI main rejects unknown commands and missing folders', () => {
   assert.throws(() => main(['debrief']), /Usage: debrief/);
   assert.match(main(['debrief', SESSIONS]), /3 session\(s\)/);
 });
+
+// A162: three real sessions on the qa-practice-api product list (not made up, unlike the
+// sample sessions above). The numbers below were counted by hand from the session files and
+// are the same ones the write-up in docs/ and the tests in qa-practice-api quote.
+const REAL = SESSIONS + 'qa-practice-api';
+const real = () => loadSessions(REAL);
+const ids = (notes) => notes.map((t) => t.match(/EX-\d\d/)?.[0]);
+
+test('the real qa-practice-api sessions: 3 sessions, 5 bugs, 6 questions, 1 risk', () => {
+  const sessions = real();
+  assert.deepEqual(sessions.map((s) => s.source), ['2026-11-16-category-filter.md', '2026-11-16-filter-counts.md', '2026-11-16-pagination.md']);
+  const total = (tag) => sessions.reduce((n, s) => n + s.counts[tag], 0);
+  assert.deepEqual([total('BUG'), total('QUESTION'), total('RISK'), total('ISSUE')], [5, 6, 1, 0]);
+  assert.deepEqual(summarizeSessions(sessions).areas.length, 3);
+});
+
+test('the real sessions: edge cases found per charter (bugs + questions + risks) are 4, 5 and 3', () => {
+  const found = Object.fromEntries(real().map((s) => [s.source, s.counts.BUG + s.counts.QUESTION + s.counts.RISK]));
+  assert.deepEqual(found, { '2026-11-16-category-filter.md': 4, '2026-11-16-pagination.md': 5, '2026-11-16-filter-counts.md': 3 });
+});
+
+test('the real sessions: every bug and risk carries its EX id, and the ids are the ones the tests pin', () => {
+  const parsed = fs.readdirSync(REAL).map((f) => parseSession(fs.readFileSync(`${REAL}/${f}`, 'utf8'), f));
+  const tagged = (tag) => parsed.flatMap((s) => s.notes.filter((n) => n.tag === tag).map((n) => n.text));
+  const [bugs, risks] = [tagged('BUG'), tagged('RISK')];
+  assert.deepEqual(ids(bugs).sort(), ['EX-01', 'EX-02', 'EX-03', 'EX-05', 'EX-06']);
+  assert.deepEqual(ids(risks), ['EX-04']);
+});
+
+test('the real sessions ran in under a minute each, so the minute clock reads 0 and the sessions count as short', () => {
+  for (const s of real()) assert.deepEqual([s.duration, s.timebox, s.pace, s.warnings], [0, 10, 'short', []], s.source);
+});
