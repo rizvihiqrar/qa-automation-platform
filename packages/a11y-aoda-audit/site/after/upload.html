@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Upload photos | Maple Outfitters</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #222; background: #fff; }
+    .drop { border: 2px dashed #595959; padding: 32px; text-align: center; max-width: 360px; }
+    .drop.over { background: #eef3fb; }
+    .choose { padding: 10px; background: #1a5fb4; color: #fff; border: 0; }
+    ul { list-style: none; padding: 0; max-width: 360px; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+    .x { width: 32px; height: 32px; border: 1px solid #222; background: #fff; }
+    #status { color: #595959; }
+    :focus-visible { outline: 3px solid #1a5fb4; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Upload photos</h1>
+    <!-- The same page with each defect fixed: the drop zone holds a real button (the keyboard path),
+         the delete button is named, the status is a live region, and focus moves to the choose
+         button when the focused delete button goes away. -->
+    <div class="drop" id="drop" data-dropzone>
+      <p>Drop photos here, or</p>
+      <button class="choose" id="choose" type="button">Choose photos</button>
+    </div>
+    <input id="file" type="file" accept="image/*" multiple hidden>
+    <ul id="files" aria-label="Added photos"></ul>
+    <p id="status" role="status" data-status></p>
+  </main>
+  <script>
+    const drop = document.getElementById('drop'), input = document.getElementById('file'), choose = document.getElementById('choose');
+    const list = document.getElementById('files'), status = document.getElementById('status');
+    const count = () => { status.textContent = list.children.length ? list.children.length + ' photo(s) added' : 'No photos'; };
+    function add(files) {
+      for (const f of files) {
+        const li = document.createElement('li');
+        li.innerHTML = '<span></span><button class="x" type="button"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" stroke="#222"/></svg></button>';
+        li.firstChild.textContent = f.name;
+        const remove = li.querySelector('button');
+        remove.setAttribute('aria-label', 'Remove ' + f.name);
+        remove.addEventListener('click', () => { li.remove(); count(); choose.focus(); });
+        list.appendChild(li);
+      }
+      count();
+    }
+    choose.addEventListener('click', () => input.click());
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); add(e.dataTransfer.files); });
+    input.addEventListener('change', () => { add(input.files); input.value = ''; });
+  </script>
+</body>
+</html>

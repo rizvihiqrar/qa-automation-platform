@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Upload photos | Maple Outfitters</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #222; background: #fff; }
+    .drop { border: 2px dashed #595959; padding: 32px; text-align: center; max-width: 360px; cursor: pointer; }
+    .drop.over { background: #eef3fb; }
+    ul { list-style: none; padding: 0; max-width: 360px; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+    .x { width: 32px; height: 32px; border: 1px solid #222; background: #fff; }
+    #status { color: #595959; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Upload photos</h1>
+    <!-- Planted defects (see the README): a drop zone made of a div, so no keyboard path; an icon
+         button with no name; a status line that changes without being announced; focus that is
+         lost when the focused button is deleted. -->
+    <div class="drop" id="drop" data-dropzone>Drop photos here or click to choose</div>
+    <input id="file" type="file" accept="image/*" multiple style="display:none">
+    <ul id="files"></ul>
+    <p id="status" data-status></p>
+  </main>
+  <script>
+    const drop = document.getElementById('drop'), input = document.getElementById('file');
+    const list = document.getElementById('files'), status = document.getElementById('status');
+    const count = () => { status.textContent = list.children.length ? list.children.length + ' photo(s) added' : 'No photos'; };
+    function add(files) {
+      for (const f of files) {
+        const li = document.createElement('li');
+        li.innerHTML = '<span></span><button class="x" type="button"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="#222"/></svg></button>';
+        li.firstChild.textContent = f.name;
+        li.querySelector('button').addEventListener('click', () => { li.remove(); count(); });
+        list.appendChild(li);
+      }
+      count();
+    }
+    drop.addEventListener('click', () => input.click());
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); add(e.dataTransfer.files); });
+    input.addEventListener('change', () => { add(input.files); input.value = ''; });
+  </script>
+</body>
+</html>

@@ -4,12 +4,15 @@ const SC_NAMES = {
   '1.1.1': 'Non-text Content',
   '1.3.1': 'Info and Relationships',
   '1.4.3': 'Contrast (Minimum)',
+  '2.1.1': 'Keyboard',
   '2.4.2': 'Page Titled',
+  '2.4.3': 'Focus Order',
   '2.4.4': 'Link Purpose (In Context)',
   '2.4.7': 'Focus Visible',
   '3.1.1': 'Language of Page',
   '3.3.2': 'Labels or Instructions',
   '4.1.2': 'Name, Role, Value',
+  '4.1.3': 'Status Messages (WCAG 2.1)',
 };
 
 const FIXES = {
@@ -22,6 +25,9 @@ const FIXES = {
   'select-name': 'Connect a visible <label for="..."> to every select.',
   label: 'Connect a visible <label for="..."> to every form field.',
   'placeholder-only-label': 'Add a visible label; a placeholder disappears as soon as someone types.',
+  'dropzone-no-keyboard-path': 'Put a real button in the drop zone that opens the file picker; a div that only listens for clicks cannot be reached with Tab.',
+  'status-not-announced': 'Make the status line a live region (role="status"), so a screen reader says what happened.',
+  'focus-lost-after-delete': 'When the focused button is removed, move focus to a control that is still there, such as the choose button.',
   'focus-not-visible': 'Do not remove the focus outline; style :focus-visible with a clear outline instead.',
 };
 
