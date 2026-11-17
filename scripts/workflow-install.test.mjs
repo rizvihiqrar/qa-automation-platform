@@ -7,7 +7,9 @@
 // after 120 s (300 s for the later tries), waits for any running apt to finish, and tries up to 3 times. Every workflow must
 // install through it, and this test keeps new ones from calling `playwright install` directly.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -71,4 +73,37 @@ test('a stalled try is cleaned up, and the next try uses another mirror', () => 
   assert.ok(loop.includes('mirror\\+file:/etc/apt/apt-mirrors\\.txt'), 'the mirror list file is replaced');
   // A lock that is still held says who holds it.
   assert.match(loop, /ps -eo pid,etimes,args/);
+});
+
+// 2026-11-11: ten jobs failed with "Temporary failure resolving 'security.ubuntu.com'". The script now
+// waits for the Ubuntu hosts to resolve before each try that uses apt.
+const dnsFunction = () => fs.readFileSync(path.join(ROOT, SCRIPT), 'utf8').replaceAll(String.fromCharCode(13), '').match(/^wait_for_dns\(\) \{\n[\s\S]*?\n\}\n/m)?.[0];
+const runWaitForDns = (getentBody) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dns-'));
+  const counter = path.join(dir, 'count').split(path.sep).join('/');
+  fs.writeFileSync(path.join(dir, 'getent'), `#!/usr/bin/env bash\nn=$(cat "${counter}" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "${counter}"\n${getentBody}\n`, { mode: 0o755 });
+  const result = spawnSync('bash', ['-c', `${dnsFunction()}\nwait_for_dns`], { env: { ...process.env, PATH: `${dir.split(path.sep).join('/')}${path.delimiter}${process.env.PATH}`, DNS_WAIT: '0' }, encoding: 'utf8' });
+  const looks = Number(fs.readFileSync(path.join(dir, 'count'), 'utf8'));
+  fs.rmSync(dir, { recursive: true, force: true });
+  return { status: result.status, looks };
+};
+
+test('the install script waits for DNS before a try that uses apt, and installs without apt if it never answers (the break: remove the wait)', () => {
+  const script = fs.readFileSync(path.join(ROOT, SCRIPT), 'utf8');
+  assert.ok(dnsFunction(), 'the script defines wait_for_dns');
+  const lf = script.replaceAll(String.fromCharCode(13), '');
+  const loop = lf.slice(lf.indexOf('for attempt'));
+  const early = loop.match(/\n  else\n([\s\S]*?)\n  fi\n/)[1];
+  assert.ok(early.indexOf('wait_for_dns') !== -1 && early.indexOf('wait_for_dns') < early.indexOf('--with-deps'), 'wait for DNS before the with-deps install');
+  assert.match(early, /::warning::[^\n]*resolves/, 'the run shows that DNS was down');
+  assert.ok(!early.slice(early.indexOf('else')).includes('playwright install'), 'a try skipped for DNS does not install and exit: the next try uses apt again');
+  assert.ok(script.indexOf('wait_for_dns()') < script.indexOf('for attempt'), 'defined before the first try');
+});
+
+test('wait_for_dns returns at once when the hosts resolve, retries through a blip, accepts any one host, and gives up after six looks', () => {
+  assert.deepEqual(runWaitForDns('exit 0'), { status: 0, looks: 1 });
+  assert.deepEqual(runWaitForDns('[ "$n" -ge 5 ]'), { status: 0, looks: 5 });
+  assert.deepEqual(runWaitForDns('exit 2'), { status: 1, looks: 18 });
+  // one host answering is enough (the Azure mirror can be up while security.ubuntu.com is not)
+  assert.deepEqual(runWaitForDns('[ "$n" -ge 3 ]'), { status: 0, looks: 3 });
 });
