@@ -42,6 +42,32 @@ test('the OpenTelemetry hold-back lasts exactly as long as sdk-trace-node is on 
   }
 });
 
+// Dependabot pull requests 184 and 185 (2026-11-17) bumped express to 5 and failed six
+// qa-practice-api tests. The major stays held back until that package runs on express 5, so the
+// same pull requests do not come back every Monday.
+test('express majors stay held back while any package is still on express 4', () => {
+  // The hold-back is global (Dependabot cannot ignore per directory), so it lasts until no package
+  // is left on a 4.x range, for express and for its types separately.
+  const ranges = { express: [], '@types/express': [] };
+  for (const dir of fs.readdirSync(path.join(ROOT, 'packages'))) {
+    const file = path.join(ROOT, 'packages', dir, 'package.json');
+    if (!fs.existsSync(file)) continue;
+    const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+    for (const name of Object.keys(ranges)) {
+      const range = pkg.dependencies?.[name] ?? pkg.devDependencies?.[name];
+      if (range) ranges[name].push(range);
+    }
+  }
+  assert.ok(ranges.express.length >= 2, 'expected qa-practice-api and pipeline-templates-demo to depend on express: update this test if that moved');
+  const block = npmBlock();
+  for (const [name, found] of Object.entries(ranges)) {
+    const held = found.some((range) => /^\D*4(\D|$)/.test(range));
+    const entry = new RegExp(String.raw`dependency-name: "${name}"\s*\n\s*update-types: \["version-update:semver-major"\]`);
+    if (held) assert.match(block, entry, `a package is still on ${name} 4: keep the major hold-back in .github/dependabot.yml`);
+    else assert.doesNotMatch(block, entry, `no package is on ${name} 4 any more: remove the major hold-back from .github/dependabot.yml`);
+  }
+});
+
 // Found by looking for requirements.txt, so a new Python package can't be missed (the second
 // one, hcm-conversion-validation, was added by hand on 2026-11-04).
 test('Dependabot watches every Python package', () => {
