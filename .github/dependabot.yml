@@ -32,6 +32,13 @@ updates:
         versions: [">=1.10.0"]
       - dependency-name: "@opentelemetry/exporter-*"
         versions: [">=0.300.0"]
+      # Held back on purpose (Dependabot pull requests 184 and 185, 2026-11-17): express 5 fails six
+      # qa-practice-api tests (EX-01, 02, 03, 05, 06 and OW-A05-07) on Postgres and in memory.
+      # Remove this entry on the day qa-practice-api is ported to express 5.
+      - dependency-name: "express"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/express"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directories:
       - "/packages/api-pytest"
