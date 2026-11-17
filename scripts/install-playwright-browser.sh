@@ -22,6 +22,22 @@ fi
 #  - 2026-10-26: the install takes 21 to 42 s when the mirror is healthy, but three jobs sat on a
 #    stalled Azure mirror for the whole 300 s of try 1 and then finished in seconds on the main archive.
 #    So try 1 is cut off after 120 s (about 3 times the slowest healthy run) and the later tries keep 300 s.
+#  - 2026-11-11: ten jobs failed with "Temporary failure resolving 'security.ubuntu.com'". A DNS
+#    blip lasts seconds to minutes, and a try that starts inside it spends its whole cut-off on
+#    `apt-get update` failing. So before each try that uses apt, this waits for an Ubuntu host to
+#    resolve (6 looks, 10 s apart; DNS_WAIT changes the wait). If none does, that try is skipped
+#    and the next one looks again; the last try never uses apt anyway.
+wait_for_dns() {
+  command -v getent >/dev/null 2>&1 || return 0
+  for look in 1 2 3 4 5 6; do
+    for host in security.ubuntu.com archive.ubuntu.com azure.archive.ubuntu.com; do
+      getent hosts "$host" >/dev/null 2>&1 && return 0
+    done
+    echo "Look $look of 6: no Ubuntu host resolves yet." >&2
+    if [ "$look" -lt 6 ]; then sleep "${DNS_WAIT:-10}"; fi
+  done
+  return 1
+}
 for attempt in 1 2 3; do
   limit=300
   [ "$attempt" -gt 1 ] || limit=120
@@ -33,7 +49,11 @@ for attempt in 1 2 3; do
     echo "::warning::Two installs with system packages failed, so this last try installs the browser only (no apt)."
     timeout -k 10 "$limit" npx playwright install "${@:-chromium}" && exit 0
   else
-    timeout -k 10 "$limit" npx playwright install --with-deps "${@:-chromium}" && exit 0
+    if wait_for_dns; then
+      timeout -k 10 "$limit" npx playwright install --with-deps "${@:-chromium}" && exit 0
+    else
+      echo "::warning::No Ubuntu host resolves, so this try is skipped; the last try installs the browser without apt."
+    fi
   fi
   echo "Browser install attempt $attempt of 3 failed."
   [ "$attempt" -lt 3 ] || break
