@@ -41,7 +41,7 @@
     "checks": [
       {
         "pattern": "pip-audit -r requirements.txt",
-        "count": 2
+        "count": 3
       }
     ]
   },
