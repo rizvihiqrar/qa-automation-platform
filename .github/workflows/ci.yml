@@ -53,8 +53,9 @@ jobs:
           cache: npm
           cache-dependency-path: tools/playwright-lint/package-lock.json
       - run: npm ci
+      # Through the same allowlist as every package, so one place records what is accepted
       - name: Dependency audit
-        run: npm audit --audit-level=high
+        run: node "$GITHUB_WORKSPACE/scripts/audit.mjs" tools/playwright-lint
       # The stale-state demonstration (test/stale-state.test.mjs) runs in a real browser
       - name: Install Chromium
         run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh" chromium

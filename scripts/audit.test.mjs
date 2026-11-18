@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { advisories, triage } from './audit.mjs';
+import { advisories, triage, auditDir } from './audit.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const allowlist = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'audit-allowlist.json'), 'utf8'));
@@ -48,7 +48,7 @@ test('an entry that matches nothing is stale, and one past its review date is ex
 });
 
 test('every allowlist entry is complete, names a real package, and has a review date', () => {
-  const packages = ['.', ...fs.readdirSync(path.join(ROOT, 'packages'))];
+  const packages = ['.', ...fs.readdirSync(path.join(ROOT, 'packages')), ...fs.readdirSync(path.join(ROOT, 'tools')).map((t) => `tools/${t}`)];
   for (const e of allowlist) {
     assert.deepEqual(Object.keys(e), ['package', 'advisory', 'library', 'reason', 'review_by'], e.advisory);
     assert.ok(packages.includes(e.package), `${e.advisory}: no package ${e.package}`);
@@ -58,4 +58,24 @@ test('every allowlist entry is complete, names a real package, and has a review 
   }
   const keys = allowlist.map((e) => `${e.package} ${e.advisory}`);
   assert.equal(new Set(keys).size, keys.length, 'duplicate entries');
+});
+
+test('an audit name maps to the root, a tool folder or a package folder, and each has a lockfile', () => {
+  assert.equal(auditDir('.'), ROOT);
+  assert.equal(auditDir('tools/playwright-lint'), path.join(ROOT, 'tools', 'playwright-lint'));
+  assert.equal(auditDir('banking-api'), path.join(ROOT, 'packages', 'banking-api'));
+  for (const e of allowlist.filter((x) => x.package.startsWith('tools/'))) {
+    assert.ok(fs.existsSync(path.join(auditDir(e.package), 'package-lock.json')), e.package);
+  }
+});
+
+// A raw `npm audit` in CI fails on every new advisory with no way to triage one that has no
+// fix yet (picomatch, 2026-11-17: eight jobs red at once). Every JavaScript audit goes through
+// the allowlist script instead.
+test('no CI job runs a raw npm audit: they all go through scripts/audit.mjs', () => {
+  const ci = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');
+  // Any line that is not a comment, so a matrix `command:` or a multi-line `run: |` block counts too
+  const raw = ci.split(/\r?\n/).filter((l) => /^[^#]*\bnpm audit\b/.test(l));
+  assert.deepEqual(raw, []);
+  assert.match(ci, /audit\.mjs" tools\/playwright-lint/);
 });

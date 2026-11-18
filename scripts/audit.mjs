@@ -5,7 +5,7 @@
 // anything here, and a date to look again. Also fails when an entry no longer
 // matches anything (fixed upstream: delete it) or its review date has passed.
 //
-//   node scripts/audit.mjs <package folder name, or . for the root>
+//   node scripts/audit.mjs <package folder name, tools/<tool>, or . for the root>
 //
 // Moderate and low advisories are listed but don't fail the build.
 import { spawnSync } from 'node:child_process';
@@ -29,6 +29,12 @@ export function advisories(audit) {
   return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
+// The folder an audit name stands for: . is the root, tools/x is a tool, anything else a package.
+export function auditDir(pkg) {
+  if (pkg === '.') return ROOT;
+  return pkg.startsWith('tools/') ? path.join(ROOT, pkg) : path.join(ROOT, 'packages', pkg);
+}
+
 // Which advisories fail the build, which are accepted, and which entries are stale or expired.
 export function triage(found, allowlist, pkg, today) {
   const entries = allowlist.filter((e) => e.package === pkg);
@@ -47,8 +53,10 @@ export function triage(found, allowlist, pkg, today) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const pkg = process.argv[2] ?? '.';
-  const dir = pkg === '.' ? ROOT : path.join(ROOT, 'packages', pkg);
+  const dir = auditDir(pkg);
   const res = spawnSync('npm audit --json', { cwd: dir, shell: true, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  if (!fs.existsSync(path.join(dir, 'package-lock.json'))) throw new Error(`no package-lock.json in ${dir}: is "${pkg}" a package, tools/<tool> or . ?`);
+  if (!res.stdout.trim()) throw new Error(`npm audit gave no JSON in ${pkg}: ${res.stderr.trim().slice(0, 300)}`);
   const audit = JSON.parse(res.stdout);
   if (audit.error) throw new Error(`npm audit failed in ${pkg}: ${audit.error.summary}`);
   const allowlist = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'audit-allowlist.json'), 'utf8'));

@@ -4,7 +4,7 @@ Every gate in one list, from `data/gates.json`. A test reads each file named bel
 
 | Gate | Threshold | Effect | Owner | Set in |
 |---|---|---|---|---|
-| Dependency audit of the root workspace (npm) | fails on any high or critical advisory | Blocks the job | Iqrar Rizvi | `.github/workflows/ci.yml` |
+| Dependency audit of the root workspace and the playwright-lint tool (npm) | fails on a high or critical advisory not triaged in scripts/audit-allowlist.json | Blocks the job | Iqrar Rizvi | `.github/workflows/ci.yml` |
 | Dependency audit of every Node package | fails on a high or critical advisory not triaged in scripts/audit-allowlist.json | Blocks the job | Iqrar Rizvi | `scripts/audit.mjs` |
 | Dependency audit of the Python packages (pip-audit) | fails on any known advisory | Blocks the job | Iqrar Rizvi | `.github/workflows/ci.yml` |
 | A Playwright test that passes only on a retry | fails the CI job (failOnFlakyTests in every Playwright config; scripts/playwright-config.test.mjs checks them all) | Blocks the job | Iqrar Rizvi | `packages/a11y-aoda-audit/playwright.config.js` |

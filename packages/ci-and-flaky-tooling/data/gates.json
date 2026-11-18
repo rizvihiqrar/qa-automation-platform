@@ -1,14 +1,18 @@
 [
   {
     "id": "npm-audit-root",
-    "gate": "Dependency audit of the root workspace (npm)",
-    "threshold": "fails on any high or critical advisory",
+    "gate": "Dependency audit of the root workspace and the playwright-lint tool (npm)",
+    "threshold": "fails on a high or critical advisory not triaged in scripts/audit-allowlist.json",
     "blocks": true,
     "owner": "Iqrar Rizvi",
     "enforcedIn": ".github/workflows/ci.yml",
     "checks": [
       {
-        "pattern": "npm audit --audit-level=high",
+        "pattern": "node scripts/audit.mjs .",
+        "count": 1
+      },
+      {
+        "pattern": "node \"$GITHUB_WORKSPACE/scripts/audit.mjs\" tools/playwright-lint",
         "count": 1
       }
     ]
