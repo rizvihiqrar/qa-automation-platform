@@ -71,12 +71,21 @@ test('every scheduled workflow in this repo is watched for being overdue', () =>
   assert.deepEqual(scheduled.filter((n) => !watched.includes(n)), [], 'add it to WATCH in scripts/ci-health.mjs');
 });
 
-test('Monitor, run every 30 minutes, is overdue after 3 hours without a run', () => {
+test('Monitor, run every 30 minutes, is overdue after 12 hours without a run', () => {
   const { overdueAfterHours } = WATCH.find((w) => w.repo === 'rizvihiqrar/qa-automation-platform');
-  assert.equal(overdueAfterHours.Monitor, 3);
-  assert.equal(assess('Monitor', [run('success', 2.9)], overdueAfterHours, NOW).state, 'ok');
-  assert.equal(assess('Monitor', [run('success', 3.1)], overdueAfterHours, NOW).state, 'overdue');
+  assert.equal(overdueAfterHours.Monitor, 12);
+  assert.equal(assess('Monitor', [run('success', 11.9)], overdueAfterHours, NOW).state, 'ok');
+  assert.equal(assess('Monitor', [run('success', 12.1)], overdueAfterHours, NOW).state, 'overdue');
   assert.equal(assess('Monitor', [run('failure', 0.5)], overdueAfterHours, NOW).state, 'failing', 'a broken monitor is a problem');
+});
+
+// Issue #188: GitHub delayed scheduled runs overnight and CI health alerted at 3 and 6 hours.
+// The longest gaps seen must stay quiet; a workflow that has really stopped must not.
+test('the longest overnight delays seen (2026-11-17) are not overdue', () => {
+  const { overdueAfterHours } = WATCH.find((w) => w.repo === 'rizvihiqrar/qa-automation-platform');
+  assert.equal(assess('Monitor', [run('success', 8.6)], overdueAfterHours, NOW).state, 'ok');
+  assert.equal(assess('Dashboard', [run('success', 9)], overdueAfterHours, NOW).state, 'ok');
+  assert.equal(assess('Dashboard', [run('success', 13)], overdueAfterHours, NOW).state, 'overdue');
 });
 
 test('a watched scheduled workflow that no longer exists is reported', () => {
