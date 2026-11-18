@@ -1,0 +1,4 @@
+2026-11-17T14:00:00Z INFO server started on port 3000
+{"time": "2026-11-17T14:02:05Z", "method": "GET", "path": "/products/3", "user": "sam", "status": 200}
+
+{"time": "2026-11-17T14:02:11Z", "method": "POST", "path": "/orders", "user": "sam", "body": {"items": [{"product_id": 3, "quantity": 5}]}, "status": 400, "error": "Insufficient stock for product 3 (available: 2)"}

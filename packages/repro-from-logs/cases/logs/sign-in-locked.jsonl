@@ -1,0 +1,6 @@
+{"time": "2026-11-17T18:30:01Z", "method": "POST", "path": "/auth/login", "user": "anonymous", "body": {"email": "pat@example.com", "password": "[masked]"}, "status": 401, "error": "Invalid credentials"}
+{"time": "2026-11-17T18:30:09Z", "method": "POST", "path": "/auth/login", "user": "anonymous", "body": {"email": "pat@example.com", "password": "[masked]"}, "status": 401, "error": "Invalid credentials"}
+{"time": "2026-11-17T18:30:20Z", "method": "POST", "path": "/auth/login", "user": "anonymous", "body": {"email": "pat@example.com", "password": "[masked]"}, "status": 401, "error": "Invalid credentials"}
+{"time": "2026-11-17T18:30:31Z", "method": "POST", "path": "/auth/login", "user": "anonymous", "body": {"email": "pat@example.com", "password": "[masked]"}, "status": 401, "error": "Invalid credentials"}
+{"time": "2026-11-17T18:30:44Z", "method": "POST", "path": "/auth/login", "user": "anonymous", "body": {"email": "pat@example.com", "password": "[masked]"}, "status": 401, "error": "Invalid credentials"}
+{"time": "2026-11-17T18:31:02Z", "method": "POST", "path": "/auth/login", "user": "anonymous", "body": {"email": "pat@example.com", "password": "[masked]"}, "status": 429, "error": "Too many sign-in attempts. Try again later."}

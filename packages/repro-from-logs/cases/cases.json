@@ -1,0 +1,63 @@
+[
+  {
+    "id": "RFL-01",
+    "title": "Order refused: not enough stock",
+    "report": "I tried to buy five garden gnomes and the checkout said no.",
+    "log": "logs/out-of-stock.jsonl",
+    "setup": { "products": [{ "logged_id": 3, "name": "Garden Gnome", "price": 12.5, "stock": 2 }] },
+    "expect": "reproduces",
+    "why": "Working as designed: only 2 were in stock. The reply names the stock left, so support can answer the customer."
+  },
+  {
+    "id": "RFL-02",
+    "title": "Discount code refused: codes switched off",
+    "report": "My spring code worked last week and now the order is refused.",
+    "log": "logs/discounts-off.jsonl",
+    "flags": "discount-codes:off",
+    "setup": {
+      "products": [{ "logged_id": 7, "name": "Seed Pack", "price": 4.5, "stock": 50 }],
+      "discounts": [{ "code": "SPRING10", "type": "percent", "value": 10 }]
+    },
+    "expect": "reproduces",
+    "why": "The discount-codes flag was off in the deployment the log came from.",
+    "fix": { "flags": "discount-codes:on" }
+  },
+  {
+    "id": "RFL-03",
+    "title": "Sign-in refused after wrong passwords",
+    "report": "I know my password is right but the site says to try later.",
+    "log": "logs/sign-in-locked.jsonl",
+    "setup": { "accounts": [{ "email": "pat@example.com", "password": "Pass123!" }] },
+    "expect": "reproduces",
+    "why": "Working as designed: after 5 attempts in 15 minutes every attempt is refused, even a correct one."
+  },
+  {
+    "id": "RFL-04",
+    "title": "Discount code used up",
+    "report": "My welcome code says it has reached its limit but I never used it.",
+    "log": "logs/code-used-up.jsonl",
+    "setup": {
+      "products": [{ "logged_id": 9, "name": "Watering Can", "price": 18, "stock": 20 }],
+      "discounts": [{ "code": "WELCOME5", "type": "fixed", "value": 5, "max_uses": 1 }]
+    },
+    "expect": "reproduces",
+    "why": "The code was set to one use in total, not one use per customer, and another customer used it first.",
+    "fix": { "steps": [{ "method": "PATCH", "path": "/discounts/WELCOME5", "body": { "max_uses": 100 } }] }
+  },
+  {
+    "id": "RFL-05",
+    "title": "Sign-up refused: email already in use",
+    "report": "I signed up, went back an hour later and could not sign up again.",
+    "log": "logs/email-taken.jsonl",
+    "expect": "reproduces",
+    "why": "Working as designed: the first sign-up worked, so the address is taken. The customer should sign in."
+  },
+  {
+    "id": "RFL-06",
+    "title": "Sign-up fails with a server error",
+    "report": "The sign-up page showed an error and nothing else.",
+    "log": "logs/register-500.jsonl",
+    "expect": "does-not-reproduce",
+    "why": "The request on its own is fine. The 500 came from the server (a database error), which the request log does not hold, so the server's own log is needed before this can be rebuilt."
+  }
+]
