@@ -1,0 +1,2 @@
+{"time": "2026-11-17T09:15:40Z", "method": "POST", "path": "/orders", "user": "alex", "body": {"items": [{"product_id": 7, "quantity": 1}], "discount_code": "SPRING10"}, "status": 400, "error": "Discount codes are switched off"}
+{"time": "2026-11-17T09:16:02Z", "method": "POST", "path": "/orders", "user": "jo", "body": {"items": [{"product_id": 7, "quantity": 1}], "discount_code": "SPRING10"}, "status": 400, "error": "Discount codes are switched off"}

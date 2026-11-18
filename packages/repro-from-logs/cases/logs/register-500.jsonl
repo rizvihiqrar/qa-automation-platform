@@ -1,0 +1,1 @@
+{"time": "2026-11-17T20:05:44Z", "method": "POST", "path": "/auth/register", "user": "anonymous", "body": {"name": "Robin", "email": "robin@example.com", "password": "[masked]"}, "status": 500, "error": "Registration failed"}

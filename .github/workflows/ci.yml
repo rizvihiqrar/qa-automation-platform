@@ -259,6 +259,43 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Replays customer-style failures from request logs against qa-practice-api (Python, pytest).
+  repro-from-logs:
+    name: repro-from-logs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/repro-from-logs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/qa-practice-api/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: packages/repro-from-logs/requirements.txt
+      - run: npm ci --prefix ../qa-practice-api
+      - run: pip install -r requirements.txt pip-audit
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt
+      - name: Test
+        run: pytest
+      - name: Replay the log set
+        run: python -m repro
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-repro-from-logs
+          path: packages/repro-from-logs/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # HR and payroll data conversion checks in Python (FastAPI mock API, pytest, SQLite and
   # openpyxl). The mock API runs in-process, so the job needs Python only. After the tests,
   # mock cycles 1 to 3 run for real and must end with every check passed and no open

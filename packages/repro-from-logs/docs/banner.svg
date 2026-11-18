@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 220" role="img" aria-labelledby="t d">
+  <title id="t">repro-from-logs</title>
+  <desc id="d">Rebuild a customer-style failure from a request log, replay it, and check the fix.</desc>
+  <style>
+    .bg { fill: #f4f6fa; }
+    .name { fill: #14213d; font: 700 56px system-ui, -apple-system, Segoe UI, sans-serif; }
+    .tag { fill: #3d4a66; font: 400 26px system-ui, -apple-system, Segoe UI, sans-serif; }
+    .line { fill: #5b6b8c; font: 400 18px ui-monospace, Menlo, Consolas, monospace; }
+    .bad { fill: #b3261e; }
+    .good { fill: #1b7f4b; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #161b26; }
+      .name { fill: #f2f5fb; }
+      .tag { fill: #b9c3d9; }
+      .line { fill: #8d9bb8; }
+      .bad { fill: #ff8a80; }
+      .good { fill: #6fd69b; }
+    }
+  </style>
+  <rect class="bg" width="1200" height="220" rx="12"/>
+  <text class="name" x="60" y="100">repro-from-logs</text>
+  <text class="tag" x="60" y="148">A customer's failure, rebuilt from the log, then checked against the fix.</text>
+  <text class="line bad" x="760" y="62">POST /orders  400  Insufficient stock</text>
+  <text class="line" x="760" y="92">replay  &#8594;  400  same words</text>
+  <text class="line good" x="760" y="122">after the fix  &#8594;  201</text>
+</svg>

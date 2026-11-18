@@ -1,0 +1,2 @@
+{"time": "2026-11-17T11:00:12Z", "method": "POST", "path": "/orders", "user": "lee", "body": {"items": [{"product_id": 9, "quantity": 1}], "discount_code": "WELCOME5"}, "status": 201}
+{"time": "2026-11-17T11:41:50Z", "method": "POST", "path": "/orders", "user": "sam", "body": {"items": [{"product_id": 9, "quantity": 1}], "discount_code": "WELCOME5"}, "status": 422, "error": "Discount code has reached its usage limit"}
