@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { advisories, triage, auditDir } from './audit.mjs';
+import { advisories, triage, auditDir, failCount } from './audit.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const allowlist = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'audit-allowlist.json'), 'utf8'));
@@ -45,6 +45,21 @@ test('an entry that matches nothing is stale, and one past its review date is ex
   const r = triage(advisories(audit(['a', 'high', 'GHSA-1'])), list, 'pkg', '2026-10-18');
   assert.equal(r.expired.length, 1);
   assert.equal(r.failures.length, 0);
+});
+
+test('a stale entry only warns, but an expired entry or an untriaged high advisory fails', () => {
+  const list = [{ package: 'pkg', advisory: 'GHSA-1', reason: 'why', review_by: '2026-12-01' }];
+  // The advisory was withdrawn: the entry is stale, and the build stays green
+  const stale = triage([], list, 'pkg', '2026-10-18');
+  assert.equal(stale.stale.length, 1);
+  assert.equal(failCount(stale), 0);
+  // Past its review date still fails, so a kept entry cannot be forgotten
+  const expired = triage(advisories(audit(['a', 'high', 'GHSA-1'])), list, 'pkg', '2026-12-02');
+  assert.equal(failCount(expired), 1);
+  // A stale entry past its review date fails too, so it cannot sit in the file for ever
+  assert.equal(failCount(triage([], list, 'pkg', '2026-12-02')), 1);
+  // A new high advisory with no entry fails
+  assert.equal(failCount(triage(advisories(audit(['a', 'high', 'GHSA-9'])), [], 'pkg', '2026-10-18')), 1);
 });
 
 test('every allowlist entry is complete, names a real package, and has a review date', () => {
