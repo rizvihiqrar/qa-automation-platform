@@ -2,8 +2,9 @@
 // high or critical advisory that hasn't been triaged in scripts/audit-allowlist.json.
 // Triaged the way the ZAP findings are (packages/qa-practice-api/zap/rules.tsv): an
 // accepted advisory names its package, its GitHub advisory ID, why it can't reach
-// anything here, and a date to look again. Also fails when an entry no longer
-// matches anything (fixed upstream: delete it) or its review date has passed.
+// anything here, and a date to look again. A review date that has passed fails.
+// An entry that no longer matches anything (fixed or withdrawn upstream: delete it) only warns,
+// until its review date passes too.
 //
 //   node scripts/audit.mjs <package folder name, tools/<tool>, or . for the root>
 //
@@ -35,6 +36,13 @@ export function auditDir(pkg) {
   return pkg.startsWith('tools/') ? path.join(ROOT, pkg) : path.join(ROOT, 'packages', pkg);
 }
 
+// What fails the build. A stale entry (the advisory went away, e.g. GitHub withdrew it) only warns:
+// it is good news and an outside change must not turn a passing commit red. It is deleted when its
+// review_by date comes up. Untriaged high or critical advisories and expired entries still fail.
+export function failCount(r) {
+  return r.failures.length + r.expired.length;
+}
+
 // Which advisories fail the build, which are accepted, and which entries are stale or expired.
 export function triage(found, allowlist, pkg, today) {
   const entries = allowlist.filter((e) => e.package === pkg);
@@ -46,7 +54,7 @@ export function triage(found, allowlist, pkg, today) {
     else if (FAILING.includes(a.severity)) failures.push(a);
   }
   const stale = entries.filter((e) => !found.some((a) => a.id === e.advisory));
-  const expired = entries.filter((e) => found.some((a) => a.id === e.advisory) && e.review_by < today);
+  const expired = entries.filter((e) => e.review_by < today);
   return { failures, accepted, stale, expired, others: found.filter((a) => !FAILING.includes(a.severity) && !accepted.some((x) => x.id === a.id)) };
 }
 
@@ -67,9 +75,9 @@ if (isMain) {
   if (r.accepted.length) console.log(`Accepted (scripts/audit-allowlist.json):\n${r.accepted.map((a) => `${line(a)}\n           ${a.entry.reason}`).join('\n')}`);
   if (r.others.length) console.log(`Moderate or low, not failing:\n${r.others.map(line).join('\n')}`);
   if (r.failures.length) console.log(`HIGH OR CRITICAL, not triaged:\n${r.failures.map(line).join('\n')}`);
-  for (const e of r.stale) console.log(`STALE allowlist entry: ${e.advisory} no longer applies to ${pkg}; delete it`);
+  for (const e of r.stale) console.log(`::warning::STALE allowlist entry (warning only): ${e.advisory} no longer applies to ${pkg}; delete it`);
   for (const e of r.expired) console.log(`EXPIRED allowlist entry: ${e.advisory} was due for review on ${e.review_by}`);
-  const bad = r.failures.length + r.stale.length + r.expired.length;
-  console.log(bad ? `${pkg}: audit FAILED` : `${pkg}: no untriaged high or critical advisories`);
+  const bad = failCount(r);
+  console.log(bad ? `${pkg}: audit FAILED` : `${pkg}: no untriaged high or critical advisories${r.stale.length ? ` (${r.stale.length} stale allowlist entries to delete)` : ''}`);
   process.exit(bad ? 1 : 0);
 }
