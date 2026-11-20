@@ -53,7 +53,7 @@ jobs:
           fi
           cat "$GITHUB_OUTPUT"
 
-      - name: Audit every package and the lint tool
+      - name: Dependency audit of every package and the lint tool
         id: audit
         if: steps.scope.outputs.needed == 'true'
         continue-on-error: true # reported below, then the last step fails the job

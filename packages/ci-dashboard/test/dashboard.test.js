@@ -305,7 +305,8 @@ test('every audit step in ci.yml is named "Dependency audit", the name the dashb
   const { readFile } = await import('node:fs/promises');
   const yml = await readFile(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   const steps = yml.split(/\r?\n\s*- name: /).slice(1).filter((s) => /\n\s*run: .*(audit\.mjs|npm audit)/.test(s));
-  assert.ok(steps.length >= 3, `expected at least 3 audit steps, found ${steps.length}`);
+  // One dependency-audit job now runs the audit for every package (it was a step in each test job)
+  assert.ok(steps.length >= 1, `expected the audit step, found ${steps.length}`);
   for (const s of steps) assert.match(s.split(/\r?\n/)[0], /dependency audit/i, s.split(/\r?\n/)[0]);
 });
 
