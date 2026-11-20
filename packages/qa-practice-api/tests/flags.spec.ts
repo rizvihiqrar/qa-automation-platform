@@ -12,6 +12,7 @@ test.describe('reading FEATURE_FLAGS', () => {
     expect(parseFlags(undefined)).toEqual(DEFAULTS);
     expect(parseFlags('')).toEqual(DEFAULTS);
     expect(DEFAULTS['discount-codes']).toBe(true);
+    expect(DEFAULTS['fault-injection']).toBe(false);
   });
 
   test('FL-02 name:off switches a flag off and name:on keeps it on @regression', () => {
@@ -26,7 +27,7 @@ test.describe('reading FEATURE_FLAGS', () => {
   test('FL-04 an unknown flag is ignored with a warning that names it and lists the known ones @regression', () => {
     const warnings: string[] = [];
     const flags = parseFlags('new-checkout:on,discount-codes:off', (m) => warnings.push(m));
-    expect(flags).toEqual({ 'discount-codes': false });
+    expect(flags).toEqual({ ...DEFAULTS, 'discount-codes': false });
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('"new-checkout"');
     expect(warnings[0]).toContain('discount-codes');
@@ -144,5 +145,26 @@ test.describe('a bad FEATURE_FLAGS setting', () => {
     expect(code).not.toBe(0);
     expect(code).not.toBeNull(); // it stopped; it did not keep running
     expect(output).toContain('discount-codes must be on or off, not "maybe"');
+  });
+});
+
+// The test-only fault-injection flag: the sampling tests need requests that really fail.
+test.describe('the fault-injection flag on a running server', () => {
+  let server: Started;
+  test.afterEach(() => server?.stop());
+  const get = (url: string, fault?: string) => fetch(`${url}/products`, { headers: fault ? { 'X-Fault': fault } : {} });
+
+  test('FL-17 with no flags, X-Fault: error does nothing: the request is answered as usual @regression', async () => {
+    server = await startServer();
+    expect((await get(server.url, 'error')).status).toBe(200);
+  });
+
+  test('FL-18 with fault-injection on, X-Fault: error gets a 500 in the usual error shape, and nothing else does @regression', async () => {
+    server = await startServer({ FEATURE_FLAGS: 'fault-injection:on' });
+    const failed = await get(server.url, 'error');
+    expect(failed.status).toBe(500);
+    expect(await failed.json()).toEqual({ error: 'Internal server error' });
+    expect((await get(server.url)).status).toBe(200);
+    expect((await get(server.url, 'other')).status).toBe(200);
   });
 });

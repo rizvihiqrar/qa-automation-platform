@@ -53,6 +53,25 @@ test('qa-practice-api Collector specs run inside Docker, never in the plain grou
   assert.equal(run[3].TESTCONTAINERS_RYUK_DISABLED, 'true');
 });
 
+// Same trap again for tests/sampling: they need SAMPLING_OUT, set only by with-sampling.ts. The
+// reader tests next to the folder (tests/sampling-reader.spec.ts) need no Docker and stay plain.
+test('qa-practice-api sampling specs run inside Docker; the reader specs stay in the plain group', () => {
+  const groups = plan([
+    'packages/qa-practice-api/tests/sampling/sampling.spec.ts',
+    'packages/qa-practice-api/tests/sampling-reader.spec.ts',
+  ]);
+  const filesOf = (key) => groups.find((g) => g.key === key)?.files;
+  assert.equal(groups.length, 2);
+  assert.deepEqual(filesOf('qa-practice-api/playwright.config.ts'), ['tests/sampling-reader.spec.ts']);
+  assert.deepEqual(filesOf('qa-practice-api/playwright.config.ts on the sampling Collector'), ['tests/sampling/sampling.spec.ts']);
+  const steps = commands(groups.find((g) => g.sampling));
+  assert.deepEqual(steps.slice(0, -1).map(([, , args]) => args.slice(1)), [['docker', 'pull', '--quiet', collectorImages().find((i) => i.includes('opentelemetry-collector'))]]);
+  const run = steps.at(-1);
+  assert.deepEqual([run[1], run[2].slice(0, 2)], ['node', ['scripts/with-sampling.ts', 'npx']]);
+  assert.ok(run[2].includes('--repeat-each=3') && run[2].includes('--retries=0'));
+  assert.equal(run[3].TESTCONTAINERS_RYUK_DISABLED, 'true');
+});
+
 test('specs are grouped by the config that runs them', () => {
   const groups = plan([
     'packages/ai-test-generator/tests/regression/cart.spec.js',

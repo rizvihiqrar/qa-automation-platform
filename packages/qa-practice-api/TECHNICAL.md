@@ -66,6 +66,7 @@ Decisions worth knowing:
 - **Read once.** A flag changes with a restart, not under a running server, so a request never sees two behaviours and no endpoint needs its own access-control cases. Tests start a copy of the server per setting instead of switching the shared one: Playwright runs the other tests in parallel against that server.
 - **Unknown names warn, bad values stop.** A flag removed from the code can still be in a deployment's settings, so an unknown name is ignored with a warning that lists the known ones. `discount-codes:of` stops the start, because quietly leaving the flag in a state nobody asked for is worse than not starting. A name listed twice stops it too, rather than the last one winning.
 - **Where the flag is checked.** [`POST /orders`](src/routes/orders.ts), after the existing validation of `discount_code`, so a blank or non-string code keeps its old 400 (FL-13). `null` or no code is untouched (FL-12), and the admin's code routes are untouched (FL-14). The check sits inside the line range Stryker mutates (`stryker.config.mjs`), which [`scripts/ai-written-code.test.mjs`](../../scripts/ai-written-code.test.mjs) caught the moment it shifted the lines.
+- **`fault-injection`** (off by default, test-only). A middleware at the top of [`src/app.ts`](src/app.ts), after the body parser, passes any request with `X-Fault: error` to the error handler as a thrown error when the flag is on. The error handler answers the usual 500 `{ error }` and the tracing middleware marks the request's span failed, so a failing request makes a real error trace. It sits before the routes, so the failing trace is one span while a fine order is four (and, never reaching a route, it has no `http.route`: it is an injected fault, not a route failure). With the flag off the header does nothing (FL-17); with it on only the exact value `error` does (FL-18). `playwright.config.ts` switches it on only when `SAMPLING_OUT` is set.
 - **[`tests/start-server.ts`](tests/start-server.ts)** starts a copy on a free port with settings of its own and no `DATABASE_URL`, waits for `/health` (or fails with the server's own output if it stops first), and has a second function for a server that is meant to refuse to start. The OWASP tests use it too, for a server with a known `JWT_SECRET` and for one with no admin.
 
 ## OWASP Top 10 tests
@@ -137,7 +138,7 @@ The first try at the email break changed nothing. It put the email on the span w
 
 **The tests' receiver** also takes `/v1/logs` and answers `GET /logs/:traceId`, so LG-01 and LG-02 run in the ordinary suite with no Docker.
 
-**The Collector.** [`collector/config.yaml`](collector/config.yaml), run by [`scripts/with-collector.ts`](scripts/with-collector.ts) with Testcontainers (a private network so the Collector finds Jaeger as `jaeger`; the config is copied in; a world-writable temp folder is mounted for the log file). Images are pinned (`otel/opentelemetry-collector-contrib:0.141.0`, `jaegertracing/jaeger:2.22.0`) and CI pulls the same tags through `retry.sh` first. Every pipeline starts with `memory_limiter`. Traces and logs then pass `attributes/scrub` (deletes keys that should never be stored: authorization and cookie headers, `password`, `user.email`) and `redaction` (replaces an email address or a bearer token inside any other value, or a log body, with `****`), then `batch`. Metrics go only to the Collector's own log: nothing here reads them back, which is A434's job.
+**The Collector.** [`collector/config.yaml`](collector/config.yaml), run by [`scripts/with-collector.ts`](scripts/with-collector.ts) with Testcontainers (a private network so the Collector finds Jaeger as `jaeger`; the config is copied in; a world-writable temp folder is mounted for the log file). Images are pinned (`otel/opentelemetry-collector-contrib:0.141.0`, `jaegertracing/jaeger:2.22.0`) and CI pulls the same tags through `retry.sh` first. Every pipeline starts with `memory_limiter`. Traces and logs then pass `attributes/scrub` (deletes keys that should never be stored: authorization and cookie headers, `password`, `user.email`) and `redaction` (replaces an email address or a bearer token inside any other value, or a log body, with `****`), then `batch`. Metrics go only to the Collector's own log, and nothing reads them back (the sampling run below drops them too).
 
 **How the tests read it.** `COLLECTOR_URL` (set by the launcher) makes `playwright.config.ts` send the API's telemetry there instead of the in-process receiver, and stops a leftover server on port 4000 from being reused. Jaeger's `/api/traces/:id` shows what was stored; the log file is read from the temp folder. The scrub test posts OTLP/JSON straight to the Collector, as a badly written service would, because the API itself sends no secrets (OT-05, LG-02).
 
@@ -150,6 +151,43 @@ The first try at the email break changed nothing. It put the email on the span w
 | The `redaction` processor removed | CL-04: the email and token were stored in the span and the log |
 | The `attributes/scrub` processor removed | CL-04: `password`, the authorization header and `user.email` stored |
 | CI stops pulling the Jaeger image; or the logs pipeline loses its scrub steps | `scripts/collector-ci.test.mjs` |
+
+## Sampling and cost
+
+**The question.** Head sampling against tail sampling: what each keeps, what it loses and what it costs, measured on one load run instead of argued. One Collector ([`collector/sampling.yaml`](collector/sampling.yaml), run by [`scripts/with-sampling.ts`](scripts/with-sampling.ts), same pinned image as the other Collector job) fans the API's traces out to three pipelines, so the three policies see the same traffic: `all` keeps everything (the control), `head` is `probabilistic_sampler` at 10% (a decision from the trace id alone, which an SDK `traceidratio` sampler also makes, one step earlier), and `tail` is `tail_sampling` with a `status_code` policy for ERROR and a 10% `probabilistic` policy (policies are an OR), holding each trace for `decision_wait: 2s` with room for 20,000. Each pipeline has its own file exporter (`all.jsonl`, `head.jsonl`, `tail.jsonl`); logs and metrics go to a `nop` exporter. Jaeger is not needed, which keeps the job short.
+
+**The load.** [`tests/sampling/load.ts`](tests/sampling/load.ts) plans 1,000 requests from a seeded generator, so the trace ids are the same every run, and sends them as `POST /orders` with its own `traceparent` (the API continues the caller's trace), 20 at a time with `Connection: close`. Every 10th carries `X-Fault: error`. The test therefore knows which traces it made and which failed, and checks each policy against that list, not against the Collector's account of itself. Each order is four spans (request, order, transaction, lock); a failed one is a single span because the fault comes before the routes.
+
+**Reading it back.** The files are written while the test reads them, so `readPolicy` skips a last line that does not parse yet and throws on a broken line before it (SM-09); only spans of the run's own trace ids count (the readiness probe makes traces too). The test waits until the control file holds all 1,000 traces and no file has changed for 5 s, which is longer than the tail's wait. Sizes are the JSON length of each span as the Collector wrote it.
+
+**What the checks say** (SM-01 to SM-05; SM-06 to SM-10 are the readers' own tests, with no Docker):
+
+| Check | Rule |
+|---|---|
+| SM-01 control | all 1,000 traces; the failed ones are exactly the planned 100; the API answered 500 and 201 as planned |
+| SM-02 head | kept within four standard deviations of 10% of 1,000; the same for the failing 100; more than half of them lost |
+| SM-03 tail | all 100 failing traces; the fine ones within four standard deviations of 10% of 900 |
+| SM-04 whole traces | every kept trace has as many spans as the control's |
+| SM-05 cost | head under 20% of the bytes; tail more than head and under 30% of the bytes and of the spans |
+
+**Result.** head kept 112 traces (12 of the 100 failing), 412 spans, 12.3% of the bytes; tail kept 187 traces (all 100 failing), 448 spans, 20.7% of the bytes. A failing trace weighs 2,060 bytes in one span (the exception and its stack are in it), a fine one 1,650 in four, which is why tail's size share is well above its span share. The bounds are wide on purpose: the counts do not move between runs, so the bound is for a change to the rule, not for luck.
+
+**Burn-in.** `tests/sampling/` is ignored without `SAMPLING_OUT`, so [`scripts/burn-in.mjs`](../../scripts/burn-in.mjs) has its own group that runs a changed sampling spec three times inside `with-sampling.ts`; the reader specs (`tests/sampling-reader.spec.ts`) stay in the plain group. Each repeat uses its own seed (434 plus the repeat number), so a repeat never meets the previous one's trace ids in the Collector's files or its tail decisions: three repeats gave head 112, 103 and 122 traces (the table above is seed 434), all inside the bounds. [`scripts/sampling-ci.test.mjs`](../../scripts/sampling-ci.test.mjs) fails if the three pipelines lose their roles, either percentage changes, a file name changes, the image tags differ from with-collector.ts, or CI loses the job.
+
+**A flake found by looping.** Two runs in about 30 failed in setup with `Unterminated string in JSON`: the first reader parsed a line the Collector was still writing. The window is small, so it passed many times in a row first. Fixed by skipping an unfinished last line; SM-09 pins it.
+
+| Break | What failed |
+|---|---|
+| The tail's error policy removed | SM-03: failing traces were kept only by the 10% rule, not all 100 |
+| Head at 50% | SM-02 |
+| Tail's other policy at 40% | SM-03: 345 of 900 fine traces kept |
+| Tail memory cut to 20 traces | SM-03: failing traces evicted before the decision |
+| Tail's wait cut to 1 ms | **nothing**: all of an order's spans arrive in one batch. Not covered; see below |
+| The fault flag on by default; the flag ignored; the header not compared | FL-01 and FL-17; FL-17; FL-18 |
+| A reader that keeps other traces; one that fails on a half-written last line | SM-08; SM-09 |
+| Tail config changed to 40%; a sampler added to the control; image tag drift; the CI row removed | `scripts/sampling-ci.test.mjs`, one test each |
+
+**Limits.** The tests do not show a trace that outlasts `decision_wait`: its late spans would arrive after the decision and be kept or dropped on their own. One service, so no cross-service join and no case of a downstream span arriving late. Head here is the Collector's sampler, not an SDK sampler, so the cost of spans the API creates and then drops is not measured. Sizes are span JSON, not a price: a bill depends on a vendor's unit. The load is one route; error rates other than 10%, and bursts, are not tried.
 
 ## Resilience (Toxiproxy)
 

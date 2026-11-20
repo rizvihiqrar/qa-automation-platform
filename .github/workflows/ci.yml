@@ -164,6 +164,10 @@ jobs:
           # The same API sending its traces and logs through a real OpenTelemetry Collector
           # in Docker, to Jaeger and a log file (collector/config.yaml)
           - { package: qa-practice-api, name: qa-practice-api-collector, browsers: false, collector: true, command: npm run test:collector }
+          # A load run through head and tail sampling side by side in one Collector (collector/sampling.yaml),
+          # counting what each policy keeps against the traces the run sent. The pull step below also
+          # fetches the Jaeger image, which this job does not use.
+          - { package: qa-practice-api, name: qa-practice-api-sampling, browsers: false, collector: true, command: npm run test:sampling }
           - { package: banking-api,              browsers: false, command: npm test && npm run demo && npm run race -- raced.db && npm run check -- --db raced.db }
           # The banking UI in Cypress, in Chrome and then Firefox; each run starts the server
           # on a fresh ui.db and ends with the SQL ledger checks on it
