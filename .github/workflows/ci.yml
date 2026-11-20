@@ -15,6 +15,75 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The one place the npm advisory feed is read (scripts/audit.mjs --all: the root, the lint tool
+  # and every package, from their lockfiles, no install). It used to be a step in 8+ test jobs, so
+  # an advisory published outside the repo (picomatch, 2026-11-17) turned them all red at once.
+  # A pull request runs it only when it changes a lockfile, a package.json or the audit itself;
+  # nightly and on main it always runs, and a finding goes into the ci-health issue.
+  dependency-audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Does this run need the audit?
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            # In its own step first, so a failed git diff fails this step: in a pipe it would give an
+            # empty list, "needed=false", and a lockfile change would go unaudited
+            git diff --name-only "origin/$BASE...HEAD" > changed-files.txt
+            node scripts/audit.mjs --needed < changed-files.txt >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+      - name: Dependency audit of every package and the lint tool
+        id: audit
+        if: steps.scope.outputs.needed == 'true'
+        continue-on-error: true # reported below, then the last step fails the job
+        run: node scripts/audit.mjs --all --out audit.md
+
+      - name: Job summary
+        if: steps.audit.outcome == 'failure'
+        run: cat audit.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Not on a pull request: it has the failing check and the summary. A dropped connection or
+      # HTTP 5xx from api.github.com must not hide the finding (scripts/retry.sh); creating an issue
+      # is not retried, so a lost reply cannot leave two.
+      - name: Open or update the ci-health issue
+        if: steps.audit.outcome == 'failure' && github.event_name != 'pull_request'
+        run: |
+          gh() { if [ "$1 $2" = "issue create" ]; then command gh "$@"; else bash "$GITHUB_WORKSPACE/scripts/retry.sh" command gh "$@"; fi; }
+          gh label create ci-health --color B60205 --description "A workflow on main is failing or overdue" --force
+          open=$(gh issue list --label ci-health --state open --json number -q '.[0].number')
+          if [ -z "$open" ]; then
+            gh issue create --title "CI health: a workflow on main needs attention" --label ci-health --body-file audit.md
+          else
+            gh issue comment "$open" --body-file audit.md
+          fi
+
+      # The failing step is named for the dashboard: it counts a job whose only failed step has
+      # "dependency audit" in its name as time-dependent, not flaky (packages/ci-dashboard/src/metrics.js)
+      - name: Dependency audit found untriaged advisories
+        if: steps.audit.outcome == 'failure'
+        run: exit 1
+
   typecheck:
     name: typecheck
     runs-on: ubuntu-latest
@@ -29,8 +98,6 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - name: Dependency audit (root)
-        run: node scripts/audit.mjs .
       - name: Type-check packages
         run: npm run typecheck -- --install
       - name: Test root scripts
@@ -53,9 +120,6 @@ jobs:
           cache: npm
           cache-dependency-path: tools/playwright-lint/package-lock.json
       - run: npm ci
-      # Through the same allowlist as every package, so one place records what is accepted
-      - name: Dependency audit
-        run: node "$GITHUB_WORKSPACE/scripts/audit.mjs" tools/playwright-lint
       # The stale-state demonstration (test/stale-state.test.mjs) runs in a real browser
       - name: Install Chromium
         run: bash "$GITHUB_WORKSPACE/scripts/install-playwright-browser.sh" chromium
@@ -162,10 +226,6 @@ jobs:
       - name: Install Cypress binary
         if: matrix.cypress
         run: npx cypress install && npx cypress verify
-
-      # Fails on a high or critical advisory not triaged in scripts/audit-allowlist.json.
-      - name: Dependency audit
-        run: node ../../scripts/audit.mjs ${{ matrix.package }}
 
       - name: Install Playwright browser
         if: matrix.browsers
