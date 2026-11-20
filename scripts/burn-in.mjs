@@ -31,13 +31,16 @@ export const PLAYWRIGHT = [
   { pkg: 'synthetic-monitor', config: 'playwright.config.ts', dirs: ['tests/browser/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'visual-regression-demo', config: 'playwright.config.ts', dirs: ['tests/'], browsers: ['chromium', 'firefox'] },
   { pkg: 'qa-for-ai-features', config: 'playwright.config.ts', dirs: ['tests/'] },
-  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'], skip: ['tests/postgres/', 'tests/collector/'] },
+  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/'], skip: ['tests/postgres/', 'tests/collector/', 'tests/sampling/'] },
   // On a Postgres that Testcontainers starts (playwright.config.ts runs tests/postgres
   // only then). The race tests run here too: only on Postgres can they fail. So do
   // the trace tests: on Postgres the spans hold the SQL statements and real lock waits.
   { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/postgres/', 'tests/concurrency.spec.ts', 'tests/telemetry.spec.ts'], postgres: true },
   // Against the OpenTelemetry Collector and Jaeger that scripts/with-collector.ts starts in Docker.
   { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/collector/'], collector: true },
+  // Against the sampling Collector that scripts/with-sampling.ts starts (without SAMPLING_OUT the
+  // plain run ignores tests/sampling/, so a PR that changed one would find no tests).
+  { pkg: 'qa-practice-api', config: 'playwright.config.ts', dirs: ['tests/sampling/'], sampling: true },
 ];
 export const CYPRESS = [{ pkg: 'banking-api', dirs: ['cypress/e2e/'] }];
 
@@ -59,8 +62,8 @@ export function plan(files) {
     const [, pkg, rel] = m;
     for (const s of PLAYWRIGHT) {
       if (s.pkg === pkg && PLAYWRIGHT_SPEC.test(rel) && s.dirs.some((d) => rel.startsWith(d)) && !s.skip?.some((d) => rel.startsWith(d))) {
-        const key = `${pkg}/${s.config}${s.postgres ? ' on Postgres' : ''}${s.collector ? ' on the Collector' : ''}`;
-        add(key, () => ({ runner: 'playwright', pkg, config: s.config, browsers: s.browsers, postgres: s.postgres, collector: s.collector }), rel);
+        const key = `${pkg}/${s.config}${s.postgres ? ' on Postgres' : ''}${s.collector ? ' on the Collector' : ''}${s.sampling ? ' on the sampling Collector' : ''}`;
+        add(key, () => ({ runner: 'playwright', pkg, config: s.config, browsers: s.browsers, postgres: s.postgres, collector: s.collector, sampling: s.sampling }), rel);
       }
     }
     for (const s of CYPRESS) {
@@ -76,6 +79,13 @@ export function plan(files) {
 export function commands(group) {
   if (group.runner === 'playwright') {
     const args = ['playwright', 'test', '-c', group.config, `--repeat-each=${REPEATS}`, '--retries=0', '--reporter=list', ...group.files];
+    if (group.sampling) {
+      return [
+        ...collectorImages().filter((image) => image.includes('opentelemetry-collector')).map((image) =>
+          [`${group.pkg} image ${image}`, 'bash', [path.join(ROOT, 'scripts', 'retry.sh'), 'docker', 'pull', '--quiet', image], {}]),
+        [`${group.pkg} (${group.config}) on the sampling Collector x${REPEATS}`, 'node', ['scripts/with-sampling.ts', 'npx', ...args], { TESTCONTAINERS_RYUK_DISABLED: 'true' }],
+      ];
+    }
     if (group.collector) {
       return [
         ...collectorImages().map((image) =>

@@ -8,7 +8,7 @@ const port = 4000 + Number(process.env.STRYKER_MUTATOR_WORKER ?? 0);
 
 // Set by scripts/with-postgres.ts (npm run test:postgres): the server uses Postgres
 // instead of its in-memory store, and the Postgres-only tests in tests/postgres run.
-const { DATABASE_URL, COLLECTOR_URL } = process.env;
+const { DATABASE_URL, COLLECTOR_URL, JAEGER_URL, SAMPLING_OUT } = process.env;
 
 export default defineConfig({
   testDir: './tests',
@@ -17,8 +17,11 @@ export default defineConfig({
   testIgnore: [
     ...(DATABASE_URL ? [] : [/[\\/]tests[\\/]postgres[\\/]/]),
     // Set by scripts/with-collector.ts (npm run test:collector), which starts the
-    // Docker pipeline these tests read.
-    ...(COLLECTOR_URL ? [] : [/[\\/]tests[\\/]collector[\\/]/]),
+    // Docker pipeline these tests read (JAEGER_URL: the sampling run sets COLLECTOR_URL too).
+    ...(COLLECTOR_URL && JAEGER_URL ? [] : [/[\\/]tests[\\/]collector[\\/]/]),
+    // Set by scripts/with-sampling.ts (npm run test:sampling): the Collector whose files
+    // the sampling tests read.
+    ...(SAMPLING_OUT ? [] : [/[\\/]tests[\\/]sampling[\\/]/]),
   ],
   failOnFlakyTests: !!process.env.CI, // a test that passes only on a retry fails the CI job
   timeout: 30000,
@@ -43,6 +46,8 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test', PORT: String(port), ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password,
       ...(DATABASE_URL ? { DATABASE_URL } : {}),
+      // The sampling load run needs requests that fail (src/flags.ts, X-Fault: error).
+      ...(SAMPLING_OUT ? { FEATURE_FLAGS: [process.env.FEATURE_FLAGS, 'fault-injection:on'].filter(Boolean).join(',') } : {}),
       // OpenTelemetry (src/telemetry.ts): send to the receiver above (or to the Docker
       // Collector, npm run test:collector), every 50 ms for spans and logs and 200 ms
       // for metrics, so the tests don't wait long.

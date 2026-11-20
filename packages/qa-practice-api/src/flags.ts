@@ -5,6 +5,10 @@
 export const DEFAULTS = {
   // Orders may carry a discount code. Off: an order that names one is refused (400).
   'discount-codes': true,
+  // Test-only. On: a request with the header X-Fault: error fails with a 500 (a thrown error, so
+  // the request's span is marked failed). The sampling tests use it to make error traces on
+  // purpose. Off, the header does nothing. Never on in a real deployment.
+  'fault-injection': false,
 } as const;
 
 export type FlagName = keyof typeof DEFAULTS;

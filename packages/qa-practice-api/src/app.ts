@@ -3,6 +3,7 @@ import { trace } from '@opentelemetry/api';
 import { tracing } from './middleware/tracing.ts';
 import { handle } from './middleware/handle.ts';
 import { logError } from './log.ts';
+import { flags } from './flags.ts';
 import { db, DatabaseUnavailable } from './db/store.ts';
 import authRoutes    from './routes/auth.ts';
 import userRoutes    from './routes/users.ts';
@@ -22,6 +23,11 @@ app.use((_req, res, next) => {
   next();
 });
 app.use(express.json());
+// The fault-injection flag (src/flags.ts, off by default): X-Fault: error fails this request.
+app.use((req, _res, next) => {
+  if (flags['fault-injection'] && req.get('x-fault') === 'error') return next(new Error('fault injected by X-Fault: error'));
+  next();
+});
 
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

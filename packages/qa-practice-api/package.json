@@ -12,6 +12,7 @@
     "test:smoke": "playwright test --grep @smoke",
     "test:regression": "playwright test",
     "test:collector": "node scripts/with-collector.ts npx playwright test tests/collector",
+    "test:sampling": "node scripts/with-sampling.ts npx playwright test tests/sampling/",
     "test:postgres": "node scripts/with-postgres.ts npx playwright test",
     "game-day": "node scripts/game-day.ts",
     "test:properties": "node --test \"tests/properties/*.property.ts\"",

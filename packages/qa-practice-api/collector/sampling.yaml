@@ -1,0 +1,77 @@
+# The Collector for the sampling comparison (scripts/with-sampling.ts starts it in Docker;
+# tests/sampling reads what it wrote). One copy of the API's traces is sent through three
+# pipelines at once, so the three policies see exactly the same traffic:
+#
+#   API --OTLP/HTTP--> receiver --+--> all:  keep every trace          -> /out/all.jsonl
+#                                 +--> head: keep 10% of traces, by trace id    -> /out/head.jsonl
+#                                 +--> tail: keep every trace with an error,
+#                                            plus 10% of the others    -> /out/tail.jsonl
+#
+# Head: the decision is made from the trace id alone, before anything is known about the
+# trace, so an error is kept or lost like any other request. (An SDK sampler such as
+# OTEL_TRACES_SAMPLER=traceidratio decides the same way, from the same id, one step earlier.)
+# Tail: the Collector holds every span of a trace until the trace has been quiet for
+# decision_wait, then looks at the whole trace. A policy that matches keeps it; the
+# policies are an OR. The price is memory (num_traces) and delay (decision_wait).
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  batch:
+    timeout: 200ms
+  probabilistic_sampler/head:
+    sampling_percentage: 10
+    hash_seed: 22
+  tail_sampling:
+    decision_wait: 2s
+    num_traces: 20000
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code: { status_codes: [ERROR] }
+      - name: ten-percent-of-the-rest
+        type: probabilistic
+        probabilistic: { sampling_percentage: 10 }
+
+exporters:
+  # One JSON line per batch, in the OTLP shape; the tests read them back.
+  file/all:
+    path: /out/all.jsonl
+  file/head:
+    path: /out/head.jsonl
+  file/tail:
+    path: /out/tail.jsonl
+  # The API also sends logs and metrics; this run has no use for them.
+  nop:
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces/all:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [file/all]
+    traces/head:
+      receivers: [otlp]
+      processors: [memory_limiter, probabilistic_sampler/head, batch]
+      exporters: [file/head]
+    traces/tail:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [file/tail]
+    logs:
+      receivers: [otlp]
+      exporters: [nop]
+    metrics:
+      receivers: [otlp]
+      exporters: [nop]
