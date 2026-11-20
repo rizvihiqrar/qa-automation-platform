@@ -1,26 +1,30 @@
 [
   {
-    "id": "npm-audit-root",
-    "gate": "Dependency audit of the root workspace and the playwright-lint tool (npm)",
-    "threshold": "fails on a high or critical advisory not triaged in scripts/audit-allowlist.json",
+    "id": "npm-audit",
+    "gate": "Dependency audit of the root workspace, the playwright-lint tool and every Node package (npm), in one job",
+    "threshold": "fails on a high or critical advisory not triaged in scripts/audit-allowlist.json; a pull request runs it when it changes a lockfile or package.json, nightly and on main it always runs and files the finding in the ci-health issue",
     "blocks": true,
     "owner": "Iqrar Rizvi",
     "enforcedIn": ".github/workflows/ci.yml",
     "checks": [
       {
-        "pattern": "node scripts/audit.mjs .",
+        "pattern": "run: node scripts/audit.mjs --all --out audit.md",
         "count": 1
       },
       {
-        "pattern": "node \"$GITHUB_WORKSPACE/scripts/audit.mjs\" tools/playwright-lint",
+        "pattern": "node scripts/audit.mjs --needed < changed-files.txt",
+        "count": 1
+      },
+      {
+        "pattern": "--label ci-health --body-file audit.md",
         "count": 1
       }
     ]
   },
   {
-    "id": "npm-audit-packages",
-    "gate": "Dependency audit of every Node package",
-    "threshold": "fails on a high or critical advisory not triaged in scripts/audit-allowlist.json",
+    "id": "npm-audit-severity",
+    "gate": "Which npm advisories fail the dependency audit",
+    "threshold": "high and critical fail; moderate and low are listed only",
     "blocks": true,
     "owner": "Iqrar Rizvi",
     "enforcedIn": "scripts/audit.mjs",
