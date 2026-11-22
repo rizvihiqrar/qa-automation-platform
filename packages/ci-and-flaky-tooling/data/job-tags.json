@@ -35,6 +35,7 @@
   "regression report": "housekeeping",
   "regression scope": "housekeeping",
   "release-gate": "tools",
+  "release-gate-promotion": "container",
   "repro-from-logs": "api",
   "selector-drill": "browser",
   "browser-matrix": "browser",

@@ -147,6 +147,9 @@ jobs:
           - { package: exploratory-session-tracker, browsers: false, command: npm test && npm run debrief }
           - { package: k6-performance,           browsers: false, k6: true, command: npm ci --prefix ../qa-practice-api && npm test && npm run perf:ci }
           - { package: release-gate,             browsers: false, command: npm test }
+          # Build promotion gated on smoke (R120): a registry in Docker, the real qa-practice-api image and the
+          # real smoke tests; a green run moves the release tag to the tested image, a red one leaves it alone
+          - { package: release-gate, name: release-gate-promotion, browsers: false, command: npm ci --prefix ../qa-practice-api && npm run test:promotion }
           - { package: a11y-aoda-audit,          browsers: true,  command: npm test && npm run audit }
           - { package: ci-dashboard,             browsers: false, command: npm test }
           - { package: flaky-test-analyzer,      browsers: false, command: npm test }

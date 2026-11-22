@@ -1,6 +1,6 @@
 # release-gate
 
-Decides whether a release can go out. It reads the results of earlier checks (smoke tests, the API contract check, the k6 performance run), applies a policy, and returns **GO** or **NO-GO** with the reasons. The [Release workflow](../../.github/workflows/release.yml) only runs its deploy job on GO. It also writes a one-page [go / no-go memo](#the-go--no-go-memo) for a reader who does not read test reports, and a [drift check](#the-release-drift-check) flags a release whose numbers moved more than normal noise.
+Decides whether a release can go out. It reads the results of earlier checks (smoke tests, the API contract check, the k6 performance run), applies a policy, and returns **GO** or **NO-GO** with the reasons. The [Release workflow](../../.github/workflows/release.yml) only runs its deploy job on GO. It also writes a one-page [go / no-go memo](#the-go--no-go-memo) for a reader who does not read test reports, a [drift check](#the-release-drift-check) flags a release whose numbers moved more than normal noise, and [build promotion](#build-promotion-gated-on-smoke) only points the release tag at an image that passed smoke.
 
 **[Technical guide →](TECHNICAL.md)**
 
@@ -120,10 +120,34 @@ node src/drift-cli.js --history drift/history.json --playwright smoke.json --lab
 
 ---
 
+## Build Promotion Gated on Smoke
+
+A release should be the exact thing that was tested, not a rebuild of it. The image is built once and pushed with a `staging` tag. Smoke runs against that image, started by its digest from the registry. Only when smoke passes does the `release` tag move to the same digest. A red smoke run leaves `release` where it was.
+
+| Step | What is checked |
+|---|---|
+| Build and push | One build; the registry gives back the image digest |
+| Smoke | The container is started from `repo@digest`, never from a tag, and the container's own image name is compared with that digest |
+| Re-tag | The registry copies the manifest, byte for byte, so the digest cannot change |
+| After | The `release` digest must equal the tested digest, or the run stops with an error |
+
+The real proof is `npm run test:promotion`, which runs in CI as the `release-gate-promotion` job: a registry in Docker, the real qa-practice-api image and its real smoke tests. In the green run the `release` tag ends on the tested digest. In the red run the API container starts with a wrong admin password, the smoke run fails, and the `release` tag stays on the older image.
+
+```bash
+node src/promote-cli.js --registry localhost:5000 --repo qa-practice-api \
+  --context ../qa-practice-api --smoke "npx playwright test --grep @smoke" --smoke-cwd ../qa-practice-api \
+  --container-env ADMIN_EMAIL=admin@qa-practice.test --container-env ADMIN_PASSWORD=...
+```
+
+Exit 0 when promoted, 1 when smoke failed, 2 on bad arguments. The registry in CI is a throwaway container, so nothing is published; to use GitHub's container registry, point `--registry` at `ghcr.io/<owner>` and sign in first.
+
+---
+
 ## Tests
 
 ```bash
-npm test   # 53 tests
+npm test                  # 68 tests, no Docker needed
+npm run test:promotion    # 2 tests with a real registry, image and smoke run (Docker must be running)
 ```
 
 The adapter tests use a real Playwright smoke report and a real k6 summary. Each policy rule is tested in both directions, including a policy that allows a failure. The memo and drift tests each had a deliberate break put back once to show a test fails.

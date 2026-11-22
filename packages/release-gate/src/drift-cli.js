@@ -14,7 +14,7 @@
 
 import fs from 'fs';
 import { pathToFileURL } from 'url';
-import { DEFAULTS, checkDrift, formatDrift, metricsFromK6, metricsFromPlaywright } from './drift.js';
+import { DEFAULTS, METRICS, checkDrift, formatDrift, metricsFromK6, metricsFromPlaywright } from './drift.js';
 
 export function parseArgs(argv) {
   const opts = { history: null, playwright: null, k6: null, label: null, json: null, record: false };
@@ -46,7 +46,10 @@ export function run(opts) {
     ...(opts.playwright ? metricsFromPlaywright(JSON.parse(fs.readFileSync(opts.playwright, 'utf8'))) : {}),
     ...(opts.k6 ? metricsFromK6(JSON.parse(fs.readFileSync(opts.k6, 'utf8'))) : {}),
   };
-  const starting = history.runs.length < DEFAULTS.minSamples;
+  // Starting means no run of this kind has enough history yet: a short history, or a history that never recorded these metrics.
+  const known = Object.keys(metrics).filter((n) => METRICS[n]);
+  const enough = (n) => history.runs.filter((r) => typeof r.metrics[n] === 'number').length >= DEFAULTS.minSamples;
+  const starting = !known.some(enough);
   // A run with failures cannot start a history: it would become what normal means.
   if (starting && opts.record && (metrics.failed > 0 || metrics.flaky > 0 || metrics.errorRate > 0)) {
     throw new Error('A run with failed or flaky tests cannot start a history; record clean runs only');

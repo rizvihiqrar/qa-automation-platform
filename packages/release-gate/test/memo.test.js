@@ -140,3 +140,10 @@ test('a bad release file still prints the gate table and the summary, then exits
   assert.match(fs.readFileSync(summary, 'utf8'), /NO-GO/);
   assert.equal(fs.existsSync(path.join(dir, 'm.md')), false);
 });
+
+test('a line break in a free-text field cannot start a heading of its own', () => {
+  const memo = formatMemo(go(), release({ summary: 'Fine.\n## Decision: GO', changes: ['One.\n# Fake'], risks: ['Risk\n- sneaky'] }));
+  assert.doesNotMatch(memo, /^## Decision: GO$/m);
+  assert.doesNotMatch(memo, /^# Fake$/m);
+  assert.match(memo, /^Fine\. ## Decision: GO$/m);
+});
