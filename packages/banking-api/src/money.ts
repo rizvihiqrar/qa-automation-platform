@@ -15,6 +15,23 @@ export const isCurrency = (value: unknown): value is Currency =>
 // double can't hold exactly (90,071,992,547,409.93) are still exact here.
 export const MAX_MINOR = 10n ** 17n - 1n;
 
+// Payment scheme limits per currency, in minor units. A payment out (a withdrawal or a
+// transfer) may not pass `single` (BK-R39), and one account may not send more than
+// `daily` in one UTC day (BK-R40). Deposits are not payments out and have neither.
+export const PAYMENT_LIMITS: Record<Currency, { single: bigint; daily: bigint }> = {
+  CAD: { single: 1_000_000n, daily: 2_500_000n }, // 10,000.00 and 25,000.00
+  USD: { single: 1_000_000n, daily: 2_500_000n },
+  JPY: { single: 1_000_000n, daily: 2_500_000n }, // 1,000,000 and 2,500,000
+  KWD: { single: 3_000_000n, daily: 7_500_000n }, // 3,000.000 and 7,500.000
+};
+
+// The payment reference a scheme message carries (BK-R38): 1 to 35 characters from the
+// restricted set letters, digits, space and / - ? : ( ) . , ' +, with no space at either
+// end. Anything else (accented letters, emoji, line breaks, # & % ;) is refused.
+export const REFERENCE_MAX = 35;
+const REFERENCE = /^[A-Za-z0-9/?:().,'+-](?:[A-Za-z0-9 /?:().,'+-]{0,33}[A-Za-z0-9/?:().,'+-])?$/;
+export const isReference = (value: unknown): value is string => typeof value === 'string' && REFERENCE.test(value);
+
 export type Parsed = { ok: true; minor: bigint } | { ok: false; error: string };
 
 // Reads a request amount. BK-R01 to BK-R05: a string of plain digits, at most the

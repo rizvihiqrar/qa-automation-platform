@@ -10,7 +10,8 @@
     "check": "node src/check.ts",
     "race": "node src/race.ts",
     "test:ui": "node src/ui-test.ts",
-    "cy:open": "cypress open"
+    "cy:open": "cypress open",
+    "test:proxy": "node --test \"test-proxy/*.test.ts\""
   },
   "engines": {
     "node": ">=24"

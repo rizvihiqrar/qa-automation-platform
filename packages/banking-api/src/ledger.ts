@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
-import { MAX_MINOR, formatAmount, type Currency } from './money.ts';
+import { MAX_MINOR, PAYMENT_LIMITS, formatAmount, type Currency } from './money.ts';
 
 const SCHEMA = readFileSync(new URL('../sql/schema.sql', import.meta.url), 'utf8');
 
@@ -27,6 +27,8 @@ export interface Transfer {
   to_account_id: number | null;
   amount: bigint;
   currency: Currency;
+  // The payment reference sent with the movement, or null (BK-R38)
+  reference: string | null;
   created_at: string;
 }
 
@@ -48,12 +50,13 @@ export interface Movement {
   to: number | null;
   amount: bigint;
   currency: Currency;
+  reference?: string | null;
 }
 
 export interface Refusal {
   ok: false;
   status: 404 | 422;
-  code: 'not_found' | 'same_account' | 'currency_mismatch' | 'insufficient_funds' | 'limit_exceeded';
+  code: 'not_found' | 'same_account' | 'currency_mismatch' | 'insufficient_funds' | 'limit_exceeded' | 'payment_limit' | 'daily_limit';
   error: string;
 }
 export type Result<T> = { ok: true; value: T } | Refusal;
@@ -85,7 +88,17 @@ export class Ledger {
     this.db = new DatabaseSync(path, { timeout: busyTimeoutMs });
     this.db.exec('PRAGMA foreign_keys = ON');
     this.#write(() => this.db.exec(SCHEMA));
+    this.#addMissingColumns();
     this.#now = now;
+  }
+
+  // A ledger file made before the payment reference (BK-R38) has a transfers table without
+  // the column, and CREATE TABLE IF NOT EXISTS leaves it as it was: add the column, so an old
+  // file keeps working. Rows already there keep a null reference.
+  #addMissingColumns(): void {
+    const columns = this.db.prepare('PRAGMA table_info(transfers)').all() as { name: string }[];
+    if (columns.some((c) => c.name === 'reference')) return;
+    this.#write(() => this.db.exec('ALTER TABLE transfers ADD COLUMN reference TEXT CHECK (reference IS NULL OR length(reference) BETWEEN 1 AND 35)'));
   }
 
   close(): void {
@@ -136,6 +149,18 @@ export class Ledger {
     if (row) return id(row.id);
     const created = this.#sql("INSERT INTO accounts (kind, owner, currency, created_at) VALUES ('funding', 'Funding', ?, ?)").run(currency, this.#now());
     return id(created.lastInsertRowid);
+  }
+
+  // What an account has sent in the current UTC day: its withdrawals and transfers out
+  // (BK-R40). Read inside the writing transaction by apply(), so two payments at once
+  // can't both fit under the limit.
+  #sentToday(accountId: number): bigint {
+    const start = `${this.#now().slice(0, 10)}T00:00:00.000Z`;
+    const end = new Date(Date.parse(start) + 24 * 60 * 60 * 1000).toISOString();
+    const row = this.#sql(`
+      SELECT COALESCE(SUM(amount), 0) AS sent FROM transfers
+      WHERE from_account_id = ? AND kind IN ('transfer', 'withdrawal') AND created_at >= ? AND created_at < ?`).get(accountId, start, end);
+    return row?.sent as bigint;
   }
 
   openAccount(owner: string, currency: Currency): Account {
@@ -190,6 +215,15 @@ export class Ledger {
       if (from.balance < m.amount) {
         return refuse(422, 'insufficient_funds', `insufficient funds: balance is ${formatAmount(from.balance, m.currency)}, amount is ${formatAmount(m.amount, m.currency)}`);
       }
+      // A payment out: the scheme's limits come after the funds (BK-R39, BK-R40).
+      const limits = PAYMENT_LIMITS[m.currency];
+      if (m.amount > limits.single) {
+        return refuse(422, 'payment_limit', `a payment may be at most ${formatAmount(limits.single, m.currency)} ${m.currency}; this one is ${formatAmount(m.amount, m.currency)}`);
+      }
+      const sent = this.#sentToday(from.id);
+      if (sent + m.amount > limits.daily) {
+        return refuse(422, 'daily_limit', `daily limit ${formatAmount(limits.daily, m.currency)} ${m.currency}: ${formatAmount(sent, m.currency)} already sent today, so ${formatAmount(m.amount, m.currency)} more would pass it`);
+      }
     } else if (this.#issued(m.currency) + m.amount > MAX_MINOR) {
       return refuse(422, 'limit_exceeded', `deposit would take the ${m.currency} held by all accounts past ${formatAmount(MAX_MINOR, m.currency)}`);
     }
@@ -208,8 +242,8 @@ export class Ledger {
       const fromId = m.from ?? fundingId;
       const toId = m.to ?? fundingId;
       const created_at = this.#now();
-      const transfer = this.#sql('INSERT INTO transfers (kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(m.kind, fromId, toId, m.amount, m.currency, created_at);
+      const transfer = this.#sql('INSERT INTO transfers (kind, from_account_id, to_account_id, amount, currency, created_at, reference) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(m.kind, fromId, toId, m.amount, m.currency, created_at, m.reference ?? null);
       const transferId = id(transfer.lastInsertRowid);
       const entry = this.#sql('INSERT INTO ledger_entries (transfer_id, account_id, amount, currency) VALUES (?, ?, ?, ?)');
       entry.run(transferId, fromId, -m.amount, m.currency);
@@ -218,7 +252,7 @@ export class Ledger {
         const linked = this.#sql('UPDATE idempotency_keys SET transfer_id = ? WHERE key = ? AND transfer_id IS NULL').run(transferId, key);
         if (Number(linked.changes) !== 1) throw new Error(`idempotency key ${key} is no longer claimed`);
       }
-      return { ok: true as const, value: { id: transferId, kind: m.kind, from_account_id: m.from, to_account_id: m.to, amount: m.amount, currency: m.currency, created_at } };
+      return { ok: true as const, value: { id: transferId, kind: m.kind, from_account_id: m.from, to_account_id: m.to, amount: m.amount, currency: m.currency, reference: m.reference ?? null, created_at } };
     });
   }
 
@@ -247,7 +281,7 @@ export class Ledger {
 
   getTransfer(transferId: number): (Transfer & { entries: { account_id: number | null; amount: bigint }[] }) | null {
     const row = this.#sql(`
-      SELECT t.id, t.kind, t.amount, t.currency, t.created_at,
+      SELECT t.id, t.kind, t.amount, t.currency, t.created_at, t.reference,
              CASE WHEN f.kind = 'funding' THEN NULL ELSE t.from_account_id END AS from_account_id,
              CASE WHEN o.kind = 'funding' THEN NULL ELSE t.to_account_id END AS to_account_id
       FROM transfers t
@@ -262,7 +296,7 @@ export class Ledger {
     return {
       id: id(row.id), kind: row.kind as Kind,
       from_account_id: optionalId(row.from_account_id), to_account_id: optionalId(row.to_account_id),
-      amount: row.amount as bigint, currency: row.currency as Currency, created_at: row.created_at as string,
+      amount: row.amount as bigint, currency: row.currency as Currency, reference: (row.reference as string | null) ?? null, created_at: row.created_at as string,
       entries: entries.map((e: Row) => ({ account_id: optionalId(e.account_id), amount: e.amount as bigint })),
     };
   }

@@ -37,18 +37,18 @@ const DEFECTS: { name: string; rule: string; sql: string; expect: string[] }[] =
   { name: 'an account\'s currency changed after it was used', rule: 'BK-R26', sql: "UPDATE accounts SET currency = 'USD' WHERE id = 4;", expect: ['currency_mismatch'] },
   {
     name: 'a withdrawal from an empty account', rule: 'BK-R27',
-    sql: "INSERT INTO transfers VALUES (10, 'withdrawal', 6, 8, 1, 'USD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 6, -1, 'USD'), (20, 10, 8, 1, 'USD');",
+    sql: "INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (10, 'withdrawal', 6, 8, 1, 'USD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 6, -1, 'USD'), (20, 10, 8, 1, 'USD');",
     expect: ['negative_balance', 'overdrawn_in_history'],
   },
   {
     name: 'an overdraft refilled a second later', rule: 'BK-R27',
-    sql: `INSERT INTO transfers VALUES (10, 'withdrawal', 6, 8, 1, 'USD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 6, -1, 'USD'), (20, 10, 8, 1, 'USD');
-          INSERT INTO transfers VALUES (11, 'deposit', 8, 6, 1, 'USD', '2026-10-20T12:01:01.000Z'); INSERT INTO ledger_entries VALUES (21, 11, 8, -1, 'USD'), (22, 11, 6, 1, 'USD');`,
+    sql: `INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (10, 'withdrawal', 6, 8, 1, 'USD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 6, -1, 'USD'), (20, 10, 8, 1, 'USD');
+          INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (11, 'deposit', 8, 6, 1, 'USD', '2026-10-20T12:01:01.000Z'); INSERT INTO ledger_entries VALUES (21, 11, 8, -1, 'USD'), (22, 11, 6, 1, 'USD');`,
     expect: ['overdrawn_in_history'],
   },
   {
     name: 'one fils past the currency limit', rule: 'BK-R27',
-    sql: "INSERT INTO transfers VALUES (10, 'deposit', 10, 9, 1, 'KWD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 10, -1, 'KWD'), (20, 10, 9, 1, 'KWD');",
+    sql: "INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (10, 'deposit', 10, 9, 1, 'KWD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 10, -1, 'KWD'), (20, 10, 9, 1, 'KWD');",
     expect: ['currency_limit'],
   },
   { name: 'a transfer recorded as a deposit', rule: 'BK-R27', sql: "UPDATE transfers SET kind = 'deposit' WHERE id = 2;", expect: ['wrong_account_kind'] },
@@ -203,7 +203,7 @@ describe('the runner', () => {
   test('BK-R30 sums past 2^53 are shown exactly', () => {
     const ledger = buildSample();
     try {
-      inject(ledger.db, "INSERT INTO transfers VALUES (10, 'deposit', 10, 9, 1, 'KWD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 10, -1, 'KWD'), (20, 10, 9, 1, 'KWD');");
+      inject(ledger.db, "INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (10, 'deposit', 10, 9, 1, 'KWD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 10, -1, 'KWD'), (20, 10, 9, 1, 'KWD');");
       const limit = runChecks(ledger.db, checks, { now: SAMPLE_NOW }).find((r) => r.id === 'currency_limit')!;
       assert.deepEqual(limit.rows.map((r) => ({ ...r })), [{ currency: 'KWD', issued: MAX_MINOR + 1n }]);
       assert.match(formatText([limit]), /FAIL  currency_limit +1 row\(s\)\n +currency=KWD, issued=100000000000000000\n/);

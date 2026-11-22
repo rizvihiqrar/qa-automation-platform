@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS transfers (
   amount          INTEGER NOT NULL CHECK (amount > 0),
   currency        TEXT    NOT NULL,
   created_at      TEXT    NOT NULL,
+  reference       TEXT    CHECK (reference IS NULL OR length(reference) BETWEEN 1 AND 35),  -- BK-R38
   CHECK (from_account_id <> to_account_id)
 );
 

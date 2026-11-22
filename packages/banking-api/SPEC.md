@@ -38,7 +38,7 @@ The rules the API must follow. Every test names the rules it checks (`BK-R05`), 
 
 | Rule | What must hold |
 |---|---|
-| BK-R16 | Refusals have a JSON body `{ "error", "code" }`, and the status says what kind: `400` for a request that can't be read (body, currency, amount, ids, owner, idempotency key), `404` for an unknown account, transfer or route, `405` for the wrong method (with `Allow`), `409` for a key whose first request is still running, `413` for a body over 16 KB, `415` for a POST that isn't JSON, `422` for a key reused for another request or a rule of the bank (`same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`), `503` for a database busy too long. Checks run in that order: the request first, then the idempotency key, then whether the accounts exist, then the bank's rules. Nothing a client sends gets a `500`. |
+| BK-R16 | Refusals have a JSON body `{ "error", "code" }`, and the status says what kind: `400` for a request that can't be read (body, currency, amount, ids, owner, reference, idempotency key), `404` for an unknown account, transfer or route, `405` for the wrong method (with `Allow`), `409` for a key whose first request is still running, `413` for a body over 16 KB, `415` for a POST that isn't JSON, `422` for a key reused for another request or a rule of the bank (`same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`, `payment_limit`, `daily_limit`), `503` for a database busy too long. Checks run in that order: the request first, then the idempotency key, then whether the accounts exist, then the bank's rules. Nothing a client sends gets a `500`. |
 | BK-R17 | Ids in paths are positive whole numbers; any other path is `404`. Ids in a body are JSON whole numbers of 1 or more (`400 invalid_account_id` otherwise). |
 | BK-R18 | Every API response is `application/json`, with `Cache-Control: no-store` (balances must not be cached) and `X-Content-Type-Options: nosniff`. The UI's three files (BK-R32) have their own types and the same two headers. |
 
@@ -47,7 +47,7 @@ The rules the API must follow. Every test names the rules it checks (`BK-R05`), 
 | Rule | What must hold |
 |---|---|
 | BK-R19 | A deposit, withdrawal or transfer may carry an `Idempotency-Key` header of 1 to 255 visible ASCII characters (`400 invalid_idempotency_key` otherwise). Keys are global, not per account. Without a key, every request is a new movement; other routes ignore the header. |
-| BK-R20 | A key that completed a movement replays it: the same request with the same key answers `201` with the same body as the first time and `Idempotent-Replayed: true`, and writes nothing. The same request means the same route, accounts, amount and currency, with amounts compared in minor units (`"5"` and `"5.00"` CAD are the same). |
+| BK-R20 | A key that completed a movement replays it: the same request with the same key answers `201` with the same body as the first time and `Idempotent-Replayed: true`, and writes nothing. The same request means the same route, accounts, amount, currency and reference, with amounts compared in minor units (`"5"` and `"5.00"` CAD are the same). |
 | BK-R21 | A key reused for a different request is `422 idempotency_key_mismatch`. A key whose first request is still running, in this process or another, is `409 idempotency_key_in_use`. Neither writes anything. |
 | BK-R22 | Only a written movement keeps its key: a refused or failed request leaves no key, so the same key can be tried again. A key is linked to its transfer in the transaction that writes the transfer, so no key points at a transfer that wasn't written and no transfer answers for two keys. |
 | BK-R23 | A key is kept for 24 hours from its first use. From then on it is forgotten, and a request with it is a new movement. |
@@ -79,6 +79,24 @@ A small banking UI served by the API's own server (plain HTML and JavaScript, no
 | BK-R35 | One movement per filled form. The page makes one `Idempotency-Key` when a form is first sent and keeps it until a final answer (`201` or a refusal). With no answer, `409`, `502`, `503` or `504`, it tries again up to 3 times with the same key; still unconfirmed, it says so and keeps the key, so sending again replays instead of moving the money twice. While a request runs, a second click or Enter is ignored. A confirmed or refused form gets a new key, so the same amount twice on purpose is two movements. |
 | BK-R36 | Balances and statements on the page are always the API's: the page reads the account again after every answer, success or refusal, and never works a balance out itself. A page left open while another tab moves money shows the fresh balance at its next answer, and its own movement is checked against the real balance, not the one on screen. |
 | BK-R37 | The UI has no WCAG 2.2 A or AA violation that axe-core finds, on every screen and state, in the light and dark themes and at 375 px wide with no sideways scrolling. Every field has a visible label, everything works by keyboard, a skip link comes first, focus moves to the heading when a page opens, and the theme switch is a labelled button that says what it will do. |
+
+## Payment scheme rules
+
+What a payment scheme asks of every payment, however the bank is built: a reference in a fixed alphabet, a ceiling on one payment, and a ceiling on a day. The limits are the table in [`src/money.ts`](src/money.ts); the tests are in [`test/scheme.test.ts`](test/scheme.test.ts).
+
+| Rule | What must hold |
+|---|---|
+| BK-R38 | A deposit, withdrawal or transfer may carry a `reference`: 1 to 35 characters from letters, digits, space and `/ - ? : ( ) . , ' +`, with no space at the start or end. Anything else (a longer one, an empty one, accented letters, emoji, line breaks, `# & % ; _`, or a value that isn't text) is `400 invalid_reference`, read with the request before the key, and nothing is written. A kept reference comes back as `reference` on the transfer and when it is read again; without one it is `null`. A key repeats its reference like the rest of the request (BK-R20, BK-R21). A ledger file made before this rule gets the column added when it is opened, and keeps its rows. |
+| BK-R39 | One payment out, a withdrawal or a transfer, may not be more than the currency's limit: CAD and USD 10,000.00, JPY 1,000,000, KWD 3,000.000. One more minor unit is `422 payment_limit`, and nothing is written. Funds are checked first (`insufficient_funds`). A deposit is not a payment out and has no such limit. |
+| BK-R40 | One account may send no more than the currency's daily limit in one UTC day, withdrawals and transfers together: CAD and USD 25,000.00, JPY 2,500,000, KWD 7,500.000. Exactly the limit may be sent; one minor unit more is `422 daily_limit`. Only written payments count: refused ones, replays (BK-R20), deposits and money received do not. Each account has its own allowance. The limit is checked again inside the transaction that writes (BK-R24), so payments at the same time can't pass it together. |
+
+## On the wire
+
+What a proxy between a client and the server sees, checked by [`test-proxy`](test-proxy) with mitmproxy in Docker (`npm run test:proxy`, [how](TECHNICAL.md#network-inspection-with-a-proxy)).
+
+| Rule | What must hold |
+|---|---|
+| BK-R41 | Nothing a person would not want kept sits in a URL, which proxies, servers and browsers log: a URL is a route and ids, with no query string. Amounts, owners and references travel in the JSON body (amounts as strings, BK-R01) and the key in a header. A reply sets no cookie and names no server software (`Server`, `X-Powered-By`). |
 
 ## Out of scope today
 

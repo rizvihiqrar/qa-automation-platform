@@ -172,6 +172,9 @@ jobs:
           # The banking UI in Cypress, in Chrome and then Firefox; each run starts the server
           # on a fresh ui.db and ends with the SQL ledger checks on it
           - { package: banking-api, name: banking-api-ui, browsers: false, cypress: true, command: npm run test:ui -- --browser chrome && npm run test:ui -- --browser firefox }
+          # Network inspection with a proxy: mitmproxy in Docker between the client and the server,
+          # recording what is on the wire and changing a request in flight (test-proxy/)
+          - { package: banking-api, name: banking-api-proxy, browsers: false, proxy: true, command: npm run test:proxy }
           # Testing money in software: the course checks (the model answer against six planted bugs)
           # and the quiz page in Chromium and Firefox
           - { package: money-course,             browsers: true,  browserList: chromium firefox, command: npm test }
@@ -247,6 +250,11 @@ jobs:
         run: |
           bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet postgres:17-alpine
           bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet ghcr.io/shopify/toxiproxy:2.12.0
+
+      # Same for mitmproxy; the tag must match PROXY_IMAGE in packages/banking-api/test-proxy/proxy.ts.
+      - name: Pull mitmproxy image
+        if: matrix.proxy
+        run: bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet mitmproxy/mitmproxy:12.3.1
 
       # Same for the Collector and Jaeger; the tags must match COLLECTOR_IMAGE and
       # JAEGER_IMAGE in packages/qa-practice-api/scripts/with-collector.ts.
