@@ -1,0 +1,16 @@
+{
+  "version": "1.4.0",
+  "date": "2026-11-20",
+  "summary": "Adds order discounts and a new filter on the product list. The team asked for a go or no-go before it reaches staging.",
+  "changes": [
+    "Order discounts: a percentage off an order, capped at 50 percent.",
+    "Product list: filter by category and by price range."
+  ],
+  "risks": [
+    "The discount code path has only the smoke checks so far, not the full regression suite."
+  ],
+  "readyWhen": [
+    "The two responses that no longer match the published API description are fixed or the description is updated, and the contract check passes again."
+  ],
+  "signOff": ["Release manager", "QA lead", "Product owner"]
+}
