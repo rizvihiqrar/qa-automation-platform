@@ -26,8 +26,10 @@ export function validateRelease(input) {
   return r;
 }
 
-const bullets = (items) => items.map((i) => `- ${i}`);
+const bullets = (items) => items.map((i) => `- ${oneLine(i)}`);
 // A pipe or a line break inside a table cell would split the row.
+// Free text goes in on one line, so a line break cannot start a heading or a table of its own.
+const oneLine = (text) => String(text).replace(/\s*\n\s*/g, ' ').trim();
 const cell = (text) => String(text).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
 
 /**
@@ -46,7 +48,7 @@ export function formatMemo(outcome, releaseInput) {
     '',
     '## Summary',
     '',
-    r.summary,
+    oneLine(r.summary),
     '',
     '## What changed',
     '',
@@ -64,7 +66,7 @@ export function formatMemo(outcome, releaseInput) {
     lines.push('## Why it is not ready', '', ...bullets(outcome.reasons), '');
     if (r.readyWhen?.length) lines.push('## What has to happen first', '', ...bullets(r.readyWhen), '');
   } else if (r.madeReady) {
-    lines.push('## What made it ready', '', r.madeReady, '');
+    lines.push('## What made it ready', '', oneLine(r.madeReady), '');
   }
 
   lines.push(

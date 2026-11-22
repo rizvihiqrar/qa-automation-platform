@@ -194,3 +194,14 @@ test('a run with failures cannot start a history', () => {
   assert.throws(() => run({ history: path.join(dir, 'h.json'), playwright: file, k6: null, json: null, record: true, label: 'x' }), /cannot start a history/);
   assert.equal(fs.existsSync(path.join(dir, 'h.json')), false);
 });
+
+test('a history of Playwright runs checked with k6 numbers is a start, not a crash', () => {
+  const dir = tmpDir();
+  const history = path.join(dir, 'h.json');
+  fs.writeFileSync(history, JSON.stringify({ runs: runs(NOISY.concat(NOISY)) }));
+  const k6 = path.join(dir, 'k6.json');
+  fs.writeFileSync(k6, fs.readFileSync(fx('k6-load.json')));
+  const result = run({ history, playwright: null, k6, json: null, record: false, label: null });
+  assert.deepEqual(result.alerts, []);
+  assert.match(result.markdown, /nothing to compare with yet/);
+});

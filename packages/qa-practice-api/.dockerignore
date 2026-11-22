@@ -1,0 +1,10 @@
+node_modules
+tests
+playwright-report
+test-results
+reports
+scoreboard
+scripts
+collector
+zap
+*.md

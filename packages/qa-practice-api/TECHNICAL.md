@@ -308,6 +308,17 @@ The expired certificate needs `openssl ca` with `-startdate` and `-enddate`: `op
 
 **Deliberate break:** EX-02 fixed for one run (`parseInt(v, 10)` in `src/routes/query.ts`): its test failed with "Expected to fail, but passed", then the fix was removed. The suite ran five times green first.
 
+## The Docker image
+
+`Dockerfile` builds the API on `node:24-slim` with production dependencies and `src` only; `.dockerignore` leaves out the tests, reports and tooling. It runs as the `node` user and has a health check on `/health`. Port, admin account and database come from the environment when the container starts:
+
+```bash
+docker build -t qa-practice-api packages/qa-practice-api
+docker run --rm -p 4100:4000 -e ADMIN_EMAIL=admin@qa-practice.test -e ADMIN_PASSWORD=... qa-practice-api
+```
+
+The image is built and smoke-tested by [release-gate's build promotion](../release-gate/README.md#build-promotion-gated-on-smoke) (the `release-gate-promotion` CI job).
+
 ## Deliberate breaks
 
 Each was put in, shown to fail, and taken out:
