@@ -1,6 +1,7 @@
 // Review findings for the three checkout feature files. See docs/requirement-review.
 import { test, expect } from '@playwright/test';
 import { PRODUCTS, BASE_URL, defect, loginAndWait, addToCart, openOverview, seedSession, dollars } from './helpers.js';
+import { gotoWithRetry } from './gotoRetry.js';
 
 const [backpack, bikeLight] = PRODUCTS;
 const TAX_RATE = 0.08;
@@ -74,7 +75,7 @@ test.describe('Checkout overview: review findings', () => {
     for (let mask = 1; mask < 1 << PRODUCTS.length; mask++) {
       const chosen = PRODUCTS.filter((_, i) => mask & (1 << i));
       await page.evaluate((ids) => localStorage.setItem('cart-contents', JSON.stringify(ids)), chosen.map((p) => p.id));
-      await page.goto(`${BASE_URL}/checkout-step-two.html`);
+      await gotoWithRetry(page, `${BASE_URL}/checkout-step-two.html`);
       await expect(page.locator('[data-test="total-label"]')).toBeVisible();
       carts.push({
         names: chosen.map((p) => p.name),
@@ -112,7 +113,7 @@ test.describe('Checkout overview: review findings', () => {
   // The empty-cart overview exists because of RV-09. Its item total drops the cents.
   defect('RV-12: an empty cart\'s item total is written with cents like every other amount', async ({ page }) => {
     await seedSession(page, []);
-    await page.goto(`${BASE_URL}/checkout-step-two.html`);
+    await gotoWithRetry(page, `${BASE_URL}/checkout-step-two.html`);
     await expect(page.locator('[data-test="subtotal-label"]')).toHaveText('Item total: $0.00');
   });
 });
@@ -137,7 +138,7 @@ test.describe('Checkout complete: review findings', () => {
   // Nothing was ordered, yet the confirmation page opens from its address.
   defect('RV-05: the confirmation page is not shown when no order was placed', async ({ page }) => {
     await seedSession(page, [backpack.id]);
-    await page.goto(`${BASE_URL}/checkout-complete.html`);
+    await gotoWithRetry(page, `${BASE_URL}/checkout-complete.html`);
     await expect(page.locator('[data-test="complete-header"]')).toHaveCount(0);
   });
 });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithRetry } from './gotoRetry.js';
 
 export const BASE_URL = 'https://www.saucedemo.com';
 // Public saucedemo test account (published on the site's login page); override with SAUCEDEMO_PASSWORD.
@@ -29,7 +30,7 @@ export function defect(title, body) {
 }
 
 export async function login(page, username = 'standard_user', password = PASSWORD) {
-  await page.goto(BASE_URL);
+  await gotoWithRetry(page, BASE_URL);
   await page.fill('[data-test="username"]', username);
   await page.fill('[data-test="password"]', password);
   await page.click('[data-test="login-button"]');
@@ -65,7 +66,7 @@ export async function openOverview(page) {
 // and the product ids it keeps in localStorage. Used where only the rule under
 // test matters (tax on 63 carts), never to replace the UI path itself.
 export async function seedSession(page, ids = [], username = 'standard_user') {
-  await page.goto(BASE_URL);
+  await gotoWithRetry(page, BASE_URL);
   await page.context().addCookies([{ name: 'session-username', value: username, url: BASE_URL }]);
   await page.evaluate((cart) => localStorage.setItem('cart-contents', JSON.stringify(cart)), ids);
 }

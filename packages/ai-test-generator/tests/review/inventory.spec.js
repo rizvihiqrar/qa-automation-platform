@@ -2,6 +2,7 @@
 // See docs/requirement-review.
 import { test, expect } from '@playwright/test';
 import { PRODUCTS, BASE_URL, loginAndWait, dollars } from './helpers.js';
+import { gotoWithRetry } from './gotoRetry.js';
 
 const byName = [...PRODUCTS].sort((a, b) => (a.name < b.name ? -1 : 1));
 
@@ -46,7 +47,7 @@ test.describe('Product details: review findings', () => {
     expect(cards.map((c) => c.name).sort()).toEqual(PRODUCTS.map((p) => p.name).sort());
 
     for (const p of PRODUCTS) {
-      await page.goto(`${BASE_URL}/inventory-item.html?id=${p.id}`);
+      await gotoWithRetry(page, `${BASE_URL}/inventory-item.html?id=${p.id}`);
       await expect(page.locator('[data-test="back-to-products"]')).toBeVisible();
       const card = cards.find((c) => c.name === p.name);
       await expect(page.locator('[data-test="inventory-item-name"]')).toHaveText(p.name);
@@ -58,7 +59,7 @@ test.describe('Product details: review findings', () => {
 
   test('RV-26: an unknown product id shows an item-not-found page with a way back @regression', async ({ page }) => {
     await loginAndWait(page);
-    await page.goto(`${BASE_URL}/inventory-item.html?id=99`);
+    await gotoWithRetry(page, `${BASE_URL}/inventory-item.html?id=99`);
     await expect(page.getByText('ITEM NOT FOUND')).toBeVisible();
     await page.click('[data-test="back-to-products"]');
     await expect(page.locator('[data-test="title"]')).toHaveText('Products');
