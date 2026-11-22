@@ -206,19 +206,63 @@ cy.intercept('POST', `/accounts/${id}/withdrawals`, async (req) => {
 
 Two real browser contexts at once are shown with Playwright in [multi-user-flow-patterns](../multi-user-flow-patterns/README.md).
 
+### Payment scheme rules
+
+Day S9 added the three rules a payment scheme asks of every payment (BK-R38 to BK-R40 in [SPEC.md](SPEC.md#payment-scheme-rules)). They sit after the funds check, so a payment over the limit and over the balance is still `insufficient_funds`.
+
+| Currency | One payment out (`payment_limit`) | One account, one UTC day (`daily_limit`) |
+|---|---:|---:|
+| CAD, USD | 10,000.00 | 25,000.00 |
+| JPY | 1,000,000 | 2,500,000 |
+| KWD | 3,000.000 | 7,500.000 |
+
+- **Which payments count.** Withdrawals and transfers out. Deposits have no limit, and money received does not use the receiver's allowance. A refused payment and a replay (same `Idempotency-Key`) write nothing, so they use nothing up.
+- **The day.** The UTC calendar day of the ledger's clock: `23:59:59.999Z` still belongs to today, `00:00:00.000Z` starts a new allowance. The clock is the ledger's injectable `now`, which is how the boundary test sets it.
+- **Atomic.** The daily total is read inside the same `BEGIN IMMEDIATE` transaction that writes (BK-R24), so payments at the same time can't pass it together: three of 10,000.00 held in a 100 ms screening give two `201` and one `422 daily_limit`.
+- **The reference.** An optional `reference` on any movement: 1 to 35 characters from letters, digits, space and `/ - ? : ( ) . , ' +`, with no space at either end, in the style of a scheme message field. It is read with the request (before the key), stored in `transfers.reference` with a `CHECK` on its length, returned as `reference` (`null` without one) and repeated by the key: the same key with another reference is `422 idempotency_key_mismatch`.
+
+Tests: [`test/scheme.test.ts`](test/scheme.test.ts), 40 cases (every boundary at limit minus one, the limit and limit plus one in all four currencies; seventeen kinds of bad reference; and a ledger file made before the reference existed, which gets the column added when it is opened). The model test now knows the limits and runs on a fixed clock.
+
+### Network inspection with a proxy
+
+Day S9 put a real proxy between the client and the server, so the tests can look at what is on the wire instead of trusting what the code says it sends. [mitmproxy](https://mitmproxy.org) runs in Docker in reverse mode, in front of a real `banking-api` server; a small add-on ([`proxy/record.py`](proxy/record.py)) writes every request and reply to a file and can change one field of a request in flight.
+
+```text
+test client --> mitmproxy (Docker, port 8080) --> banking-api (this machine)
+                      |
+                      +--> /out/flows.jsonl   one line per request and reply
+                      +--> /out/control.json  "change this field to this value" (written by the test)
+```
+
+| What the tests do | Rules | How |
+|---|---|---|
+| Run a whole session through the proxy and check that each reply was recorded exactly as the client got it | none (proves the tool) | Compare the recording with the client's own copy, call by call |
+| Check every URL, header and reply on the wire | BK-R41, BK-R18, BK-R32 | No query string, no amount, name or reference in a URL, every URL a known route, no cookie, no `Server` or `X-Powered-By`, `no-store` and `nosniff` on every reply, the page policy on the three UI files, no reply that repeats the key |
+| Read the amount, owner, reference and key out of the recorded requests | BK-R41 | Amounts are JSON strings in the body, the key is a header, never in the body |
+| Replay a captured transfer straight at the server | BK-R20 | Same headers and body from the recording: `201`, `Idempotent-Replayed: true`, the same reply, money moved once |
+| Replay it with one field edited (amount, receiver, reference, no reference, currency) or on another route | BK-R21 | `422 idempotency_key_mismatch`, nothing moves |
+| Change a request in flight | BK-R21, BK-R20, BK-R38, BK-R39 | The proxy raises the amount: the server pays what reached it and says so in the reply, and the key then refuses the 10.00 the client meant. Raised past the limit: `422 payment_limit`. A reference changed to `x#<script>`: `400 invalid_reference` |
+| Try the wire checks on recordings made to break them | BK-R41 | [`wire-rules.test.ts`](test-proxy/wire-rules.test.ts), 14 cases, no Docker: each planted defect must be reported |
+
+What this shows and what it doesn't:
+
+- **The API can't tell a changed request from a real one.** There is no request signing, so a payment raised in flight is simply a payment of that amount. What protects a client is the reply (the amount comes back) and TLS between client and server. The proxy here speaks plain HTTP on this machine, so TLS is not tested. The test says so instead of hiding it: the key, not the server, is what stops the client's retry from paying twice.
+- **The client is a script, not a browser.** The session sends what the UI's forms send, with `fetch`. Cypress or Playwright through a proxy would also catch a page that calls another origin; the policy in BK-R32 and the three files' contents are checked instead.
+- **Needs Docker.** `npm run test:proxy` pulls `mitmproxy/mitmproxy:12.3.1` and fails if Docker isn't running; it never skips. The `banking-api-proxy` job in CI pulls the same tag through `retry.sh`, and [`scripts/proxy-ci.test.mjs`](../../scripts/proxy-ci.test.mjs) fails if the two tags drift apart.
+
 ### Refusals
 
 Every refusal is `{ "error", "code" }`, checked in a fixed order: the request first, then the idempotency key, then whether the accounts exist, then the bank's rules.
 
 | Status | Codes |
 |---|---|
-| `400` | `invalid_json`, `invalid_body`, `invalid_currency`, `invalid_amount`, `invalid_owner`, `invalid_account_id`, `invalid_idempotency_key` |
+| `400` | `invalid_json`, `invalid_body`, `invalid_currency`, `invalid_amount`, `invalid_owner`, `invalid_account_id`, `invalid_reference`, `invalid_idempotency_key` |
 | `404` | `not_found` (account, transfer or route; funding accounts too) |
 | `405` | `method_not_allowed`, with `Allow` |
 | `409` | `idempotency_key_in_use` (the first request with this key is still running) |
 | `413` | `body_too_large` (over 16 KB) |
 | `415` | `unsupported_media_type` (a POST that isn't `application/json`) |
-| `422` | `idempotency_key_mismatch`, `same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded` |
+| `422` | `idempotency_key_mismatch`, `same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`, `payment_limit`, `daily_limit` |
 | `503` | `busy`, with `Retry-After: 1` (another process held the database for over 5 seconds) |
 
 ### Endpoints
@@ -229,9 +273,9 @@ Every refusal is `{ "error", "code" }`, checked in a fixed order: the request fi
 | `POST` | `/accounts` | `owner`, `currency` | `201` the account, balance zero |
 | `GET` | `/accounts/:id` | | the account and its balance |
 | `GET` | `/accounts/:id/entries` | | the account and its entries, oldest first, each with `balance_after` |
-| `POST` | `/accounts/:id/deposits` | `amount`, `currency` | `201` the transfer |
-| `POST` | `/accounts/:id/withdrawals` | `amount`, `currency` | `201` the transfer, or `422 insufficient_funds` |
-| `POST` | `/transfers` | `from_account_id`, `to_account_id`, `amount`, `currency` | `201` the transfer |
+| `POST` | `/accounts/:id/deposits` | `amount`, `currency`, optional `reference` | `201` the transfer |
+| `POST` | `/accounts/:id/withdrawals` | `amount`, `currency`, optional `reference` | `201` the transfer, or `422 insufficient_funds`, `payment_limit` or `daily_limit` |
+| `POST` | `/transfers` | `from_account_id`, `to_account_id`, `amount`, `currency`, optional `reference` | `201` the transfer |
 | `GET` | `/transfers/:id` | | the transfer and its two entries |
 | `GET` | `/health` | | `{ "status": "ok" }` |
 | `GET` | `/`, `/app.js`, `/app.css` | | The banking UI's three files, with the page policy |
@@ -262,6 +306,12 @@ The UI has a job of its own, `banking-api-ui`, so a UI failure never reads as an
 - { package: banking-api, name: banking-api-ui, browsers: false, cypress: true, command: npm run test:ui -- --browser chrome && npm run test:ui -- --browser firefox }
 ```
 
+The wire tests have a job of their own too, `banking-api-proxy`, which pulls the mitmproxy image first (through `scripts/retry.sh`, because Docker Hub answers `502` now and then):
+
+```yaml
+- { package: banking-api, name: banking-api-proxy, browsers: false, proxy: true, command: npm run test:proxy }
+```
+
 Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cypress binary (`CYPRESS_INSTALL_BINARY=0`) in every job, so the other jobs and the type-check don't download it; this job restores it from a cache keyed on the lockfile, or installs it. Each browser's run starts its own fresh `ui.db` and ends with the SQL checks on it. Screenshots of failing tests, and videos of failing specs only, go to `reports/cypress/` and are uploaded as the job's artifact. No retries: a flaky UI test should fail, not pass on a second try. The tests reach the server only over HTTP, so Day 49 can put Postgres behind it without changing them.
 
 ## Results
@@ -281,12 +331,14 @@ Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cy
 | [`ledger.property.test.ts`](test/ledger.property.test.ts) | 1 | A model of the bank: 300 random sequences of up to 40 moves across six accounts in three currencies. After every move each balance matches the model; at the end, all 14 SQL ledger checks pass |
 | [`ui.test.ts`](test/ui.test.ts) | 17 | The UI files as served (types, the page policy, `405` and `404`), what a browser test can't see in the code (no inline script, no HTML strings, no amount turned into a number or added up, text fields for amounts), and `GET /accounts` |
 | [`launch-retry.test.ts`](test/launch-retry.test.ts) | 14 | The Cypress runner starts a run again only when the browser could not be started or restarted (never connected, or the relaunch crash): a run with a failed test is never run twice, and a second launch failure fails the run |
+| [`scheme.test.ts`](test/scheme.test.ts) | 40 | Payment scheme rules: the reference alphabet and length, each limit at minus one, exactly, and plus one in four currencies, the daily total across withdrawals and transfers, what does not count, the UTC midnight boundary, replays, and three payments at once |
 | [`spec.test.ts`](test/spec.test.ts) | 3 | Every rule in [SPEC.md](SPEC.md) has a test (Node or Cypress), and every rule a test names exists |
+| [`test-proxy`](test-proxy) | 30 | Through mitmproxy in Docker (`npm run test:proxy`): 16 on the wire, 14 checks of the wire checks. See [network inspection](#network-inspection-with-a-proxy) |
 | [`cypress/e2e`](cypress/e2e) | 69 per browser | The UI in Chrome and Firefox: see [the banking UI](#the-banking-ui-tested-with-cypress) |
 
 ### Deliberate breaks
 
-Each mistake was put into the code, the tests run, and the code restored. All 78 were caught. B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
+Each mistake was put into the code, the tests run, and the code restored. All 91 were caught. B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
 
 | # | Mistake | Caught by |
 |---|---|---:|
@@ -368,8 +420,26 @@ Each mistake was put into the code, the tests run, and the code restored. All 78
 | B76 | Focus left behind when a page opens | 2 |
 | B77 | The key kept after a refusal | 1 |
 | B78 | The amount field as `type="number"` | 6 |
+| B79 | `>=` for `>` in the single-payment limit: the limit itself is refused | 11 |
+| B80 | The daily total counts transfers only, not withdrawals | 1 |
+| B81 | `>=` for `>` in the daily limit: the last cent of the day is refused | 6 |
+| B82 | The daily total counts every day, not just today | 1 |
+| B83 | A reference may end with a space | 1 |
+| B84 | A key ignores the reference: another reference replays | 3 |
+| B85 | A reference of 36 characters accepted | 1 |
+| B86 | The daily total not read again inside the writing transaction: payments at once all pass | 1 |
+| B87 | A `Server` header on every reply (found only on the wire) | 2 |
+| B88 | The UI files cacheable instead of `no-store` (found only on the wire) | 4 |
+| B89 | The reference not checked | 21 |
+| B90 | The single-payment limit switched off | 8 |
+| B91 | An old ledger file not given the new `reference` column when opened | 1 |
 
 ### What building it found
+
+- **A new rule broke old tests in three places.** The model test sent huge withdrawals, so it needed the limits, and a fixed clock, or a run near midnight UTC would depend on the day. Four SQL-check tests and the demo defects inserted into `transfers` by position, with seven values, and failed the moment the table gained a column. They now name their columns.
+- **An old ledger file had no `reference` column.** `CREATE TABLE IF NOT EXISTS` leaves an existing table as it was, so a file kept from before today failed on its first deposit. The code review found it. The ledger now adds the column when it opens a file without it, and a test opens a file made with the old schema (B91 takes the step out).
+- **Two things only the wire shows.** B87 and B88 change nothing a unit test reads: a `Server` header and a cacheable UI file are visible only on the wire. Only the proxy tests catch them, which is the reason to have a proxy in the stack.
+- **A tampered request is a different request, not an attack the server sees.** Raising an amount in flight is accepted, because nothing signs the request. The test records what happens and what does protect the client.
 
 - **Random amounts don't find boundaries.** The first version of the ledger model generated random amounts, and with it B07 (`<=` for `<`) and B12 (the limit switched off) passed the property test; only designed cases caught them. Random amounts almost never equal a balance exactly, and fast-check's default size kept sequences too short to reach the limit. The model now also generates "the whole balance", "what's left under the limit", and one more than each, worked out when the move runs, and longer sequences. It catches both.
 - **A break can be caught for the wrong reason.** The first "no transaction" break removed `BEGIN` and `COMMIT` but not `ROLLBACK`, so refusals crashed and six tests failed, none of them about atomicity. With every transaction statement removed, exactly one test fails: the one that makes the database refuse the credit after the debit is written. No ordinary request can show a half-written transfer, because nothing fails between the two inserts; only an injected failure proves the transaction is there.
@@ -442,6 +512,14 @@ To show both. Cypress runs inside the browser next to the page, so `cy.intercept
 
 The API is the one place the rules live. If the page also checked amounts, the two copies could drift, and a page that refuses `"1.230"` itself would hide whether the API refuses it. The page sends what was typed and shows the API's answer, and the hint under each amount field says what the currency allows.
 
+### Why mitmproxy, and not the browser's own network tab?
+
+The network tab shows one browser's view and goes away with the page. A proxy sits outside both ends, keeps a file of everything, works the same for a script, a phone or a browser, and can change a request on the way, which the network tab can't. It is the tool a tester reaches for when the question is "what actually went over the wire?".
+
+### Why does the proxy test open a server on every network interface?
+
+The proxy runs in a container and reaches the server as `host.docker.internal`, which is not `127.0.0.1`. The test server therefore listens on `0.0.0.0` for the length of the run, with an empty in-memory ledger. `npm start` still listens on localhost only.
+
 ### Is there any sign-in?
 
 No: anyone can move money between any accounts. Access control is tested on [qa-practice-api](../qa-practice-api/README.md); here the subject is the money. [SPEC.md](SPEC.md#out-of-scope-today) lists what is out of scope.
@@ -464,13 +542,16 @@ No: anyone can move money between any accounts. Access control is tested on [qa-
 | `npx cypress run` fails at once: `Cypress.exe: bad option: --smoke-test` | `ELECTRON_RUN_AS_NODE=1` is set (VS Code's terminal sets it), so Cypress's Electron starts as plain Node | Use `npm run test:ui`, which unsets it, or `env -u ELECTRON_RUN_AS_NODE npx cypress run` |
 | `Browser: firefox was not found` | Firefox isn't installed | Install it, or run `npm run test:ui -- --browser chrome` |
 | `The browser never connected`, or a `Cannot read properties of undefined (reading 'browsingContextGetTree')` crash at `relaunchBrowser`, in the log, then `Starting the run again` | The runner couldn't start or restart the browser; `npm run test:ui` runs Cypress once more | Nothing, unless it fails twice: then look at the runner's memory and the browser version |
+| `npm run test:proxy` fails at once with `docker: ...` or `the proxy did not come up` | Docker isn't running, or the mitmproxy image can't be pulled | Start Docker Desktop and run `docker pull mitmproxy/mitmproxy:12.3.1`; the test logs show the container's own output |
+| `422 payment_limit` or `422 daily_limit` on a payment that should pass | One payment is over the currency's limit, or the account has already sent its day's total (UTC) | Split the payment, or send it after 00:00 UTC. The message says which limit and how much was already sent |
+| `400 invalid_reference` | The reference is longer than 35 characters, has a space at either end, or uses a character outside letters, digits, space and `/ - ? : ( ) . , ' +` | Shorten it or take the character out |
 | The Cypress binary is missing after `npm ci` | `CYPRESS_INSTALL_BINARY=0` was set, as CI does for jobs that don't need it | `npx cypress install` |
 
 ## Development
 
 ```bash
 npm ci
-npm test                          # 258 tests, about three seconds
+npm test                          # 298 tests, about three seconds
 npm run demo                      # the requests in the screenshot above
 npm run check -- --demo           # the SQL ledger checks on a ledger with defects put in
 npm run race -- raced.db          # race two servers on one file, then:
@@ -479,6 +560,7 @@ npm start                         # the API and the UI on PORT: http://localhost
 npm run test:ui                   # the Cypress tests (Electron), then the SQL checks on ui.db
 npm run test:ui -- --browser firefox
 npm run cy:open                   # Cypress's own window, to watch or debug a spec
+npm run test:proxy                # mitmproxy in Docker between client and server (needs Docker running)
 ```
 
 The README images are real output: terminal shots with `npm run terminal` ([`terminal.mjs`](../../scripts/screenshots/terminal.mjs)) and the UI with `npm run ui` ([`ui.mjs`](../../scripts/screenshots/ui.mjs)), both in `scripts/screenshots`.

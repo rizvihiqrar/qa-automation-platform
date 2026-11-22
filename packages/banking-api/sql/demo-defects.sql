@@ -7,9 +7,9 @@
 UPDATE ledger_entries SET amount = 1001 WHERE id = 8;
 
 -- An overdraft, refilled a second later: the balance is fine now, the history isn't.
-INSERT INTO transfers VALUES (10, 'withdrawal', 6, 8, 500, 'USD', '2026-10-20T12:01:00.000Z');
+INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (10, 'withdrawal', 6, 8, 500, 'USD', '2026-10-20T12:01:00.000Z');
 INSERT INTO ledger_entries VALUES (19, 10, 6, -500, 'USD'), (20, 10, 8, 500, 'USD');
-INSERT INTO transfers VALUES (11, 'deposit', 8, 6, 500, 'USD', '2026-10-20T12:01:01.000Z');
+INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (11, 'deposit', 8, 6, 500, 'USD', '2026-10-20T12:01:01.000Z');
 INSERT INTO ledger_entries VALUES (21, 11, 8, -500, 'USD'), (22, 11, 6, 500, 'USD');
 
 -- A deposit recorded as a transfer.

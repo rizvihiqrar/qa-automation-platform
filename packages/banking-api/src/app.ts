@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { Ledger, type Account, type Entry, type Movement, type Result, type Transfer } from './ledger.ts';
-import { CURRENCIES, formatAmount, isCurrency, parseAmount, type Currency } from './money.ts';
+import { CURRENCIES, REFERENCE_MAX, formatAmount, isCurrency, isReference, parseAmount, type Currency } from './money.ts';
 
 // A plain node:http server: no framework, no runtime dependencies. Every response is
 // JSON, and every refusal is { error, code } (BK-R16).
@@ -158,6 +158,16 @@ function accountIdOf(body: Body, field: string): number {
   return value;
 }
 
+// Optional; 1 to 35 characters of the restricted set, read before the key (BK-R38).
+function referenceOf(body: Body): string | null {
+  const value = body.reference;
+  if (value === undefined || value === null) return null;
+  if (!isReference(value)) {
+    throw new HttpError(400, 'invalid_reference', `reference must be 1 to ${REFERENCE_MAX} characters: letters, digits, space and / - ? : ( ) . , ' + (no space at either end)`);
+  }
+  return value;
+}
+
 // Optional; 1 to 255 visible ASCII characters (BK-R19).
 function idempotencyKeyOf(req: IncomingMessage): string | null {
   const value = req.headers['idempotency-key'];
@@ -203,12 +213,12 @@ function getEntries({ ledger, params: [accountId] }: Context): Reply {
 // Currency first: it decides how many decimals the amount may have.
 function postDeposit(ctx: Context): Promise<Reply> {
   const currency = currencyOf(ctx.body);
-  return move(ctx, { kind: 'deposit', from: null, to: ctx.params[0]!, amount: amountOf(ctx.body, currency), currency });
+  return move(ctx, { kind: 'deposit', from: null, to: ctx.params[0]!, amount: amountOf(ctx.body, currency), currency, reference: referenceOf(ctx.body) });
 }
 
 function postWithdrawal(ctx: Context): Promise<Reply> {
   const currency = currencyOf(ctx.body);
-  return move(ctx, { kind: 'withdrawal', from: ctx.params[0]!, to: null, amount: amountOf(ctx.body, currency), currency });
+  return move(ctx, { kind: 'withdrawal', from: ctx.params[0]!, to: null, amount: amountOf(ctx.body, currency), currency, reference: referenceOf(ctx.body) });
 }
 
 function postTransfer(ctx: Context): Promise<Reply> {
@@ -216,13 +226,13 @@ function postTransfer(ctx: Context): Promise<Reply> {
   const amount = amountOf(ctx.body, currency);
   const from = accountIdOf(ctx.body, 'from_account_id');
   const to = accountIdOf(ctx.body, 'to_account_id');
-  return move(ctx, { kind: 'transfer', from, to, amount, currency });
+  return move(ctx, { kind: 'transfer', from, to, amount, currency, reference: referenceOf(ctx.body) });
 }
 
 // What a key promises to repeat: the route, the accounts, the amount in minor units
 // and the currency, so "5" and "5.00" CAD are the same request (BK-R20).
 const fingerprint = (m: Movement): string =>
-  createHash('sha256').update(JSON.stringify([m.kind, m.from, m.to, m.amount.toString(), m.currency])).digest('hex');
+  createHash('sha256').update(JSON.stringify([m.kind, m.from, m.to, m.amount.toString(), m.currency, m.reference ?? null])).digest('hex');
 
 // Refusal order (BK-R16): the request (already read), then the key, then the
 // accounts and the bank's rules. A claimed key is given up unless the movement is
@@ -268,7 +278,7 @@ const account = (a: Account) => ({ id: a.id, owner: a.owner, currency: a.currenc
 
 const transfer = (t: Transfer) => ({
   id: t.id, kind: t.kind, from_account_id: t.from_account_id, to_account_id: t.to_account_id,
-  amount: formatAmount(t.amount, t.currency), currency: t.currency, created_at: t.created_at,
+  amount: formatAmount(t.amount, t.currency), currency: t.currency, reference: t.reference, created_at: t.created_at,
 });
 
 const entry = (e: Entry, currency: Currency) => ({

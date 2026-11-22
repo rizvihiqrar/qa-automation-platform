@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fc from 'fast-check';
 import { Ledger } from '../src/ledger.ts';
-import { MAX_MINOR, type Currency } from '../src/money.ts';
+import { MAX_MINOR, PAYMENT_LIMITS, type Currency } from '../src/money.ts';
 import { failed, loadChecks, runChecks } from '../src/checks.ts';
 
 // A model of the bank: random sequences of deposits, withdrawals and transfers between
@@ -42,15 +42,17 @@ const checks = loadChecks();
 
 const otherCurrency = (c: Currency): Currency => (c === 'CAD' ? 'JPY' : 'CAD');
 
-test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK-R27 BK-R28 any sequence of moves: the ledger matches the model and holds together', () => {
+test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK-R27 BK-R28 BK-R39 BK-R40 any sequence of moves: the ledger matches the model and holds together', () => {
   // size 'max': fast-check's default keeps arrays short, and short sequences rarely
   // reach the limit.
   fc.assert(fc.property(fc.array(move, { minLength: 1, maxLength: 40, size: 'max' }), (moves) => {
-    const ledger = new Ledger();
+    // A fixed clock, so a run never crosses midnight UTC in the middle of the daily limit (BK-R40).
+    const ledger = new Ledger(':memory:', () => '2026-11-22T12:00:00.000Z');
     try {
       const ids = ACCOUNTS.map((c, i) => ledger.openAccount(`Owner ${i}`, c).id);
       const balances = ACCOUNTS.map(() => 0n);
       const issued: Record<string, bigint> = { CAD: 0n, JPY: 0n, KWD: 0n };
+      const sent = ACCOUNTS.map(() => 0n); // what each account has sent today
       let moved = 0;
 
       // A boundary amount, from the model; at least 1, since 0 is not an amount.
@@ -74,8 +76,10 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
           const c = ACCOUNTS[m.account]!;
           const amount = resolve(m.amount, m.account);
           if (balances[m.account]! < amount) expected = 'insufficient_funds';
+          else if (amount > PAYMENT_LIMITS[c].single) expected = 'payment_limit';
+          else if (sent[m.account]! + amount > PAYMENT_LIMITS[c].daily) expected = 'daily_limit';
           result = ledger.withdraw(ids[m.account]!, amount, c);
-          if (!expected) { balances[m.account]! -= amount; issued[c]! -= amount; }
+          if (!expected) { balances[m.account]! -= amount; issued[c]! -= amount; sent[m.account]! += amount; }
         } else {
           const from = ACCOUNTS[m.from]!;
           const currency = m.currency === 'own' ? from : otherCurrency(from);
@@ -83,8 +87,10 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
           if (m.from === m.to) expected = 'same_account';
           else if (from !== currency || ACCOUNTS[m.to] !== currency) expected = 'currency_mismatch';
           else if (balances[m.from]! < amount) expected = 'insufficient_funds';
+          else if (amount > PAYMENT_LIMITS[currency].single) expected = 'payment_limit';
+          else if (sent[m.from]! + amount > PAYMENT_LIMITS[currency].daily) expected = 'daily_limit';
           result = ledger.transfer(ids[m.from]!, ids[m.to]!, amount, currency);
-          if (!expected) { balances[m.from]! -= amount; balances[m.to]! += amount; }
+          if (!expected) { balances[m.from]! -= amount; balances[m.to]! += amount; sent[m.from]! += amount; }
         }
         assert.equal(result.ok ? null : result.code, expected, JSON.stringify(m, (_, v) => (typeof v === 'bigint' ? `${v}n` : v)));
         if (result.ok) moved += 1;

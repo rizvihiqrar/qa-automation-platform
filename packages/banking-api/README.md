@@ -2,7 +2,7 @@
 
 # banking-api
 
-A small banking API and UI built to be tested: accounts in four currencies, deposits, withdrawals and transfers, on a double-entry ledger in SQLite. Money never touches floating point. Amounts arrive and leave as decimal strings and are held as whole minor units (cents, yen, fils) in BigInt and SQL integers, so amounts no JavaScript number can hold stay exact. A retried request moves money once (idempotency keys), and requests sent at the same time, even through two server processes on one database file, can't overdraw an account. 14 SQL checks then read the database itself and prove that every transfer balances, whatever wrote to it. A small UI served by the same server keeps those rules on screen, and 69 Cypress tests drive it in Chrome and Firefox: money typed as text, double clicks and lost replies that move money once, a second tab spending the same money, and accessibility. 37 written [rules](SPEC.md) are checked by 233 designed cases, 8 property-based tests and the Cypress tests, and 78 mistakes were put back on purpose to prove the tests catch each one. It is the base for Day 49's Postgres.
+A small banking API and UI built to be tested: accounts in four currencies, deposits, withdrawals and transfers, on a double-entry ledger in SQLite. Money never touches floating point. Amounts arrive and leave as decimal strings and are held as whole minor units (cents, yen, fils) in BigInt and SQL integers, so amounts no JavaScript number can hold stay exact. A retried request moves money once (idempotency keys), and requests sent at the same time, even through two server processes on one database file, can't overdraw an account. 14 SQL checks then read the database itself and prove that every transfer balances, whatever wrote to it. A small UI served by the same server keeps those rules on screen, and 69 Cypress tests drive it in Chrome and Firefox: money typed as text, double clicks and lost replies that move money once, a second tab spending the same money, and accessibility. 41 written [rules](SPEC.md), among them payment scheme limits and a reference alphabet, are checked by 273 designed cases, 8 property-based tests, 30 tests through a real proxy on the wire and the Cypress tests, and 91 mistakes were put back on purpose to prove the tests catch each one. It is the base for Day 49's Postgres.
 
 **In plain English:** computers store most numbers in a way that can't hold 0.10 exactly, so adding ten cents three times gives 0.30000000000000004. A bank can't round its way out of that. This API counts whole cents instead, and every movement of money is written twice, once out of one account and once into another, so the books always balance. When a phone on a bad connection sends "pay rent" twice, or two payments leave the same account in the same instant, the rent is paid once and the account never goes below zero. A set of checks reads the books directly, the way an auditor would. And the web page on top does the same: click Pay twice, or lose the connection just after paying, and the money still moves once.
 
@@ -49,18 +49,21 @@ curl -s -X POST localhost:4100/accounts/1/deposits -H 'Content-Type: application
 - Balances on screen are always re-read from the API, so a second tab can't leave the page showing stale money
 - 69 Cypress tests in Chrome and Firefox, each run ending with the SQL checks on the database it left
 - axe-core finds no WCAG 2.2 AA issue on any screen, in light and dark, or at phone width
-- 37 numbered [rules](SPEC.md); a test fails if any rule has no test
-- 78 deliberate mistakes, each caught
+- Payment scheme rules: a reference in a fixed alphabet, a limit on one payment, and a limit on what one account sends in a UTC day, kept exact at the boundary and when payments arrive at once
+- A real proxy on the wire: mitmproxy in Docker records every request and reply, so tests check URLs, headers and replies as sent, replay captured requests, and change a request in flight
+- 41 numbered [rules](SPEC.md); a test fails if any rule has no test
+- 91 deliberate mistakes, each caught
 
 ## Results
 
 | Result | Number | Source |
 |---|---|---|
-| API tests (Node) | 258 in about three seconds: 233 designed cases, 14 runner checks, 8 properties, 3 spec checks | [Results](TECHNICAL.md#results) |
+| API tests (Node) | 298 in about three seconds: 273 designed cases, 14 runner checks, 8 properties, 3 spec checks | [Results](TECHNICAL.md#results) |
+| Wire tests (mitmproxy in Docker) | 30 in about five seconds: 16 on the wire, 14 checks of the wire checks | [Network inspection](TECHNICAL.md#network-inspection-with-a-proxy) |
 | UI tests (Cypress) | 69, in Chrome and in Firefox, about a minute each | [The banking UI](TECHNICAL.md#the-banking-ui-tested-with-cypress) |
 | SQL ledger checks | 14 of 14 pass on clean, raced, random and UI-made ledgers; each fires on its own planted defect | [SQL ledger checks](TECHNICAL.md#sql-ledger-checks) |
 | Races | 20 transfers of 10.00 at once from 100.00: 10 pass, balance 0.00 (without the fix: 20 pass, −100.00) | [Requests at the same time](TECHNICAL.md#requests-at-the-same-time) |
-| Deliberate mistakes caught | 78 of 78 | [Deliberate breaks](TECHNICAL.md#deliberate-breaks) |
+| Deliberate mistakes caught | 91 of 91 | [Deliberate breaks](TECHNICAL.md#deliberate-breaks) |
 | Accessibility | 0 axe-core violations (WCAG 2.2 A and AA) on every screen and state | [a11y.cy.ts](cypress/e2e/a11y.cy.ts) |
 
 ## License
