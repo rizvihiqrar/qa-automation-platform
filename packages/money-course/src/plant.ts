@@ -21,7 +21,7 @@ export const BUGS: Bug[] = [
   { id: 'O1', title: 'One decimal too many is accepted', file: 'src/money.ts', find: '{1,${decimals}}', replace: '{1,${decimals + 1}}' },
   { id: 'O2', title: 'Yen is given two decimals', file: 'src/money.ts', find: 'JPY: 0', replace: 'JPY: 2' },
   { id: 'O3', title: 'The debit is one minor unit short of the credit', file: 'src/ledger.ts', find: 'entry.run(transferId, fromId, -m.amount, m.currency);', replace: 'entry.run(transferId, fromId, -(m.amount > 1n ? m.amount - 1n : m.amount), m.currency);' },
-  { id: 'O4', title: 'The amount is left out of the idempotency key fingerprint', file: 'src/app.ts', find: 'JSON.stringify([m.kind, m.from, m.to, m.amount.toString(), m.currency])', replace: 'JSON.stringify([m.kind, m.from, m.to, m.currency])' },
+  { id: 'O4', title: 'The amount is left out of the idempotency key fingerprint', file: 'src/app.ts', find: 'JSON.stringify([m.kind, m.from, m.to, m.amount.toString(), m.currency, m.reference ?? null])', replace: 'JSON.stringify([m.kind, m.from, m.to, m.currency, m.reference ?? null])' },
   { id: 'O5', title: 'Funds are not checked again when the money is written', file: 'src/ledger.ts', find: 'const refusal = this.check(m);', replace: 'const refusal: Refusal | null = null;' },
   { id: 'O6', title: 'A transfer to the same account fails with a 500', file: 'src/ledger.ts', find: "if (from && to && from.id === to.id) return refuse(422, 'same_account', 'cannot transfer from an account to itself');", replace: '' },
 ];
