@@ -1,6 +1,6 @@
 # release-gate
 
-Decides whether a release can go out. It reads the results of earlier checks (smoke tests, the API contract check, the k6 performance run), applies a policy, and returns **GO** or **NO-GO** with the reasons. The [Release workflow](../../.github/workflows/release.yml) only runs its deploy job on GO. It also writes a one-page [go / no-go memo](#the-go--no-go-memo) for a reader who does not read test reports, a [drift check](#the-release-drift-check) flags a release whose numbers moved more than normal noise, and [build promotion](#build-promotion-gated-on-smoke) only points the release tag at an image that passed smoke. A release can also carry an [ITIL change type](#itil-change-types) (standard, normal or emergency), and a [readiness page](#the-release-readiness-page) shows the whole picture in one place.
+Decides whether a release can go out. It reads the results of earlier checks (smoke tests, the API contract check, the k6 performance run), applies a policy, and returns **GO** or **NO-GO** with the reasons. The [Release workflow](../../.github/workflows/release.yml) only runs its deploy job on GO. It also writes a one-page [go / no-go memo](#the-go--no-go-memo) for a reader who does not read test reports, a [drift check](#the-release-drift-check) flags a release whose numbers moved more than normal noise, and [build promotion](#build-promotion-gated-on-smoke) only points the release tag at an image that passed smoke. A release can also carry an [ITIL change type](#itil-change-types) (standard, normal or emergency), a [readiness page](#the-release-readiness-page) shows the whole picture in one place, and a [plan check](#the-release-plan-check) finds the holes in the release plan.
 
 **[Technical guide →](TECHNICAL.md)**
 
@@ -159,6 +159,32 @@ The page is one file with no scripts or outside links, readable on a phone, and 
 
 ---
 
+## The Release Plan Check
+
+A release needs a plan, and a plan can have holes that nobody sees until release day. One file per release holds the whole plan: the tasks and what each depends on (the dependency map), a RACI letter per role for each task, a risk register, the decision points with a success measure, and a change log that says which tests each change touches. The check reads it and names what is missing. It is one more check in the gate, called `release-plan`, so a plan with a hole blocks the release.
+
+| What it finds | Example |
+|---|---|
+| A dependency that is missing, unknown or circular | A task nothing waits for; two tasks that wait for each other (the path is shown) |
+| A task due before the task it needs | T2 due 19 November, but it needs T1 which is due 20 November |
+| No one accountable, or two (RACI) | Exactly one A per task, at least one R, and every role is one of the plan's roles |
+| An open risk with no owner, or a high risk with no mitigation | A risk that links to a test or defect that does not exist is found when the readiness file is given |
+| A decision with nobody to decide it, no success measure, or a date after the release | |
+| A change that names no tests | So nothing says what to rerun for it |
+| A task that is not done before the decision, or is late | Late needs today's date (`--today`) |
+
+A **seeded set** measures it: 23 faults are put into a good plan one at a time (a missing dependency, a circle, two accountable roles, an unowned risk and so on) and the check found all 23, with no problem reported on the good plan itself.
+
+The status report is for a reader who has not seen the plan: what is late and what waits for it, the open risks worst first, the problems, the tests to rerun, and the dependency map as a diagram that GitHub draws. [The example](examples/plans/status-1.4.1.md) is the plan for release 1.4.1.
+
+```bash
+node src/cli.js --policy examples/policy-readiness.json --version 1.4.1 \
+  --check api-contract=contract.json --plan examples/plan-1.4.1.json --status status.md \
+  --readiness examples/readiness-1.4.1.json --today 2026-11-22
+```
+
+---
+
 ## The Release Drift Check
 
 A release can pass every rule and still be slower or shakier than the last ones. The drift check compares one run with the history of past runs and flags a metric that moved more than normal run-to-run noise. The limit is not a number picked by hand: it is the median of the past runs plus six typical spreads, and a metric that never moved gets a 15 percent floor.
@@ -204,8 +230,8 @@ Exit 0 when promoted, 1 when smoke failed, 2 on bad arguments. The registry in C
 ## Tests
 
 ```bash
-npm test                  # 116 tests, no Docker needed
+npm test                  # 165 tests, no Docker needed
 npm run test:promotion    # 2 tests with a real registry, image and smoke run (Docker must be running)
 ```
 
-The adapter tests use a real Playwright smoke report and a real k6 summary. Each policy rule is tested in both directions, including a policy that allows a failure. The memo and drift tests each had a deliberate break put back once to show a test fails; the change type and readiness page code had 31 (for example a wait that is one hour short, an emergency that overrides a failed check, a page that ignores the gate, an unescaped title), and each failed a test.
+The adapter tests use a real Playwright smoke report and a real k6 summary. Each policy rule is tested in both directions, including a policy that allows a failure. The memo and drift tests each had a deliberate break put back once to show a test fails; the change type, readiness page and plan code had 65 (for example a wait that is one hour short, an emergency that overrides a failed check, a page that ignores the gate, an unescaped title), and each failed a test.

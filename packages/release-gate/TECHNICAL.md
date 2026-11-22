@@ -2,7 +2,7 @@
 
 [← Back to overview](README.md)
 
-**Contents:** [Memo](#memo) · [Change types](#change-types) · [Readiness page](#readiness-page) · [Drift check](#drift-check) · [Build promotion](#build-promotion) · [How the noise limit was chosen](#how-the-noise-limit-was-chosen) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
+**Contents:** [Memo](#memo) · [Change types](#change-types) · [Readiness page](#readiness-page) · [Plan check](#plan-check) · [Drift check](#drift-check) · [Build promotion](#build-promotion) · [How the noise limit was chosen](#how-the-noise-limit-was-chosen) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
 ## Memo
 
@@ -80,6 +80,33 @@ Test status is `pass`, `fail` or `quarantined`; severity is `critical`, `high`, 
 
 The page has no data of its own to keep up to date: `examples/build-memos.js` builds both example pages and both memos, and the tests fail when a committed file differs from what the code builds.
 
+## Plan check
+
+`src/plan.js` has four parts. `validatePlan` checks the shape of the plan file and names the field that is wrong. `checkPlan` returns the problems, each with a code a test can pin (for example `cycle`, `raci-many-accountable`, `risk-no-owner`). `fromPlan` turns the problems into the `release-plan` check for the gate. `formatPlanReport` writes the status report, and `testsToRerun` lists the tests the changes touch, once each.
+
+```json
+{
+  "release": "1.4.1", "releaseTask": "T6", "roles": ["Developer", "QA lead", "Release manager"],
+  "tasks": [{ "id": "T1", "name": "...", "dueDate": "2026-11-20", "status": "done", "dependsOn": [], "raci": { "Developer": "R", "Release manager": "A" } }],
+  "decisionPoints": [{ "id": "D1", "name": "Go or no-go", "date": "2026-11-22", "decidedBy": "Release manager", "successMeasure": "..." }],
+  "risks": [{ "id": "K1", "text": "...", "severity": "high", "status": "open", "owner": "QA lead", "mitigation": "...", "linkedTests": ["DS-01"] }],
+  "changes": [{ "id": "C1", "name": "...", "tests": ["DS-01"], "features": ["orders"] }]
+}
+```
+
+| Rule | Why |
+|---|---|
+| Every task but the release must be upstream of the release task | A task nothing waits for usually means a dependency was forgotten |
+| Exactly one accountable role per task | Two means nobody is; none means nobody is |
+| Closed risks are not checked | A closed risk is history, so it does not need an owner |
+| The release task may be open | It is the decision being made; every other task must be done |
+| `late` needs `--today` | Without a date an open task is only `not-done`; a test passes the date in, so it never depends on the clock |
+| Risk links are checked only when the readiness file is given | The test and defect ids come from it; with no list there is nothing to compare |
+| A bad or missing plan file is a failed `release-plan` check | The decision is still made and says why; no report is written |
+| A quote or a line break in a name cannot break the diagram, a pipe cannot break the risk table | Names are free text from the file |
+
+The seeded set is in `test/plan.test.js`: each of the 23 faults is a small function that changes the good plan once, and the test names the code that has to appear. `examples/plans/status-1.4.1.md` is built by `examples/build-memos.js` and a test fails when it differs from what the code builds.
+
 ## Drift check
 
 `src/drift.js` turns a Playwright JSON report (or a k6 summary) into a few numbers, builds a baseline from the history, and compares one run with it.
@@ -149,7 +176,7 @@ The qa-practice-api [Dockerfile](../qa-practice-api/Dockerfile) has production d
 
 ## CI integration
 
-The `release-gate` job runs `npm test` (116 tests) and the `release-gate-promotion` job runs `npm run test:promotion` (2 tests, about a minute and a half) in the [CI workflow](../../.github/workflows/ci.yml). The Release workflow still runs the gate on every manual release; it does not build images.
+The `release-gate` job runs `npm test` (165 tests) and the `release-gate-promotion` job runs `npm run test:promotion` (2 tests, about a minute and a half) in the [CI workflow](../../.github/workflows/ci.yml). The Release workflow still runs the gate on every manual release; it does not build images.
 
 ## FAQ
 
@@ -170,15 +197,16 @@ The portfolio has no product releases. The inputs are real (a Playwright smoke r
 | `at least 10 are needed to know what normal is` | The history is too short | Add real runs with `--record` |
 | Drift alerts on a slow machine | The history came from a faster one | Record runs from the same kind of machine |
 | `docker run` cannot start the image or health never answers | The admin account or port settings are missing from `--container-env` | Pass the same `ADMIN_EMAIL` and `ADMIN_PASSWORD` the smoke tests sign in with |
-| A committed memo or page test fails | The memo or page code or an example input changed | `node examples/build-memos.js` and commit the new files |
+| A committed memo, page or report test fails | The memo, page or plan code or an example input changed | `node examples/build-memos.js` and commit the new files |
 | `release file: change.plannedFor must be a date and time` | The time has no zone or no time of day | Write it as `2026-11-20T09:00Z` |
+| `release-plan: ... has nobody accountable` | A task has no A in its RACI row, or two | Give the task exactly one accountable role |
 | `change-control: a normal change waits 24 hours` | The release is planned too soon after the request | Move `plannedFor` later, or make it an emergency change with an approver and a reason |
 
 ## Development
 
 ```bash
-npm test                                 # 116 tests
+npm test                                 # 165 tests
 npm run test:promotion                   # 2 tests: real registry, image and smoke run
-node examples/build-memos.js             # rewrite the two example memos and the two example pages
+node examples/build-memos.js             # rewrite the example memos, pages and plan report
 node src/drift-cli.js --history drift/history.json --playwright smoke.json --label run-21 --record
 ```

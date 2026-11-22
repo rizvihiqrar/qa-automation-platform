@@ -1,0 +1,67 @@
+{
+  "release": "1.4.1",
+  "releaseTask": "T6",
+  "roles": ["Developer", "QA lead", "Release manager", "Product owner"],
+  "tasks": [
+    {
+      "id": "T1", "name": "Fix the two responses that did not match the API description",
+      "dueDate": "2026-11-20", "status": "done", "dependsOn": [],
+      "raci": { "Developer": "R", "QA lead": "C", "Release manager": "A", "Product owner": "I" }
+    },
+    {
+      "id": "T2", "name": "Run the API contract check again",
+      "dueDate": "2026-11-21", "status": "done", "dependsOn": ["T1"],
+      "raci": { "QA lead": "R", "Developer": "C", "Release manager": "A", "Product owner": "I" }
+    },
+    {
+      "id": "T3", "name": "Run the smoke and performance checks",
+      "dueDate": "2026-11-21", "status": "done", "dependsOn": ["T1"],
+      "raci": { "QA lead": "R", "Developer": "C", "Release manager": "A" }
+    },
+    {
+      "id": "T4", "name": "Close the open high defect and review the rest",
+      "dueDate": "2026-11-21", "status": "done", "dependsOn": ["T1"],
+      "raci": { "Developer": "R", "QA lead": "C", "Release manager": "A", "Product owner": "I" }
+    },
+    {
+      "id": "T5", "name": "Walk the product owner through the known risks",
+      "dueDate": "2026-11-22", "status": "done", "dependsOn": ["T2", "T4"],
+      "raci": { "Release manager": "R", "Product owner": "A", "QA lead": "C" }
+    },
+    {
+      "id": "T6", "name": "Release gate decision",
+      "dueDate": "2026-11-22", "status": "open", "dependsOn": ["T2", "T3", "T5"],
+      "raci": { "QA lead": "R", "Release manager": "A", "Product owner": "C", "Developer": "I" }
+    }
+  ],
+  "decisionPoints": [
+    {
+      "id": "D1", "name": "Go or no-go", "date": "2026-11-22", "decidedBy": "Release manager", "taskId": "T6",
+      "successMeasure": "Every check passes, every task before the decision is done, and no open risk is without an owner."
+    }
+  ],
+  "risks": [
+    {
+      "id": "K1", "text": "The discount code path has only the smoke checks so far, not the full regression suite.",
+      "severity": "medium", "status": "open", "owner": "QA lead",
+      "mitigation": "Run the discount tests again on staging after the release.",
+      "linkedTests": ["DS-01", "DS-02"]
+    },
+    {
+      "id": "K2", "text": "A partner integration goes live the same day, so there is no waiting period.",
+      "severity": "high", "status": "open", "owner": "Release manager",
+      "mitigation": "Release it as an emergency change with a review owed within 5 days.",
+      "linkedDefects": ["DEF-14"]
+    },
+    {
+      "id": "K3", "text": "Two responses did not match the published API description.",
+      "severity": "high", "status": "closed", "owner": "Developer",
+      "mitigation": "Fixed in T1 and checked in T2."
+    }
+  ],
+  "changes": [
+    { "id": "C1", "name": "Order discounts", "tests": ["DS-01", "DS-02", "DS-03"], "features": ["orders"] },
+    { "id": "C2", "name": "Product list filter by category and price", "tests": ["PF-01", "PF-02", "PL-01", "PL-02"], "features": ["products"] },
+    { "id": "C3", "name": "Responses match the published API description", "tests": ["DS-03", "PF-02"], "features": ["orders", "products"] }
+  ]
+}
