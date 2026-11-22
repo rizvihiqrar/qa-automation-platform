@@ -2,6 +2,7 @@
 // feature-reset-app-state.txt. See docs/requirement-review.
 import { test, expect } from '@playwright/test';
 import { PRODUCTS, BASE_URL, PASSWORD, defect, login, loginAndWait, logout, addToCart } from './helpers.js';
+import { gotoWithRetry } from './gotoRetry.js';
 
 const [backpack, bikeLight] = PRODUCTS;
 const error = (page) => page.locator('[data-test="error"]');
@@ -37,14 +38,14 @@ test.describe('Login: review findings', () => {
   });
 
   test('RV-19: a username without a password asks for the password @regression', async ({ page }) => {
-    await page.goto(BASE_URL);
+    await gotoWithRetry(page, BASE_URL);
     await page.fill('[data-test="username"]', 'standard_user');
     await page.click('[data-test="login-button"]');
     await expect(error(page)).toContainText('Password is required');
   });
 
   test('RV-19: a password without a username asks for the username @regression', async ({ page }) => {
-    await page.goto(BASE_URL);
+    await gotoWithRetry(page, BASE_URL);
     await page.fill('[data-test="password"]', PASSWORD);
     await page.click('[data-test="login-button"]');
     await expect(error(page)).toContainText('Username is required');
@@ -71,7 +72,7 @@ test.describe('Logout: review findings', () => {
   // Only /inventory.html is named. Every other page needs the login too.
   for (const path of ['/cart.html', '/checkout-step-one.html', '/checkout-step-two.html', '/checkout-complete.html', '/inventory-item.html?id=1']) {
     test(`RV-22: ${path} is blocked when logged out @regression`, async ({ page }) => {
-      await page.goto(BASE_URL + path);
+      await gotoWithRetry(page, BASE_URL + path);
       const name = path.split('?')[0];
       await expect(error(page)).toContainText(`You can only access '${name}' when you are logged in`);
       await expect(page.locator('[data-test="login-button"]')).toBeVisible();
