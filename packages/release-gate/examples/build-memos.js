@@ -1,6 +1,7 @@
 // Builds the example memos (same gate policy as the Release workflow) and the example
 // readiness pages (the same policy plus the readiness checks) from the example inputs.
-// `node examples/build-memos.js` rewrites examples/memos/ and examples/pages/;
+// The release plan status report is built from the example plan. `node examples/build-memos.js` rewrites
+// examples/memos/, examples/pages/ and examples/plans/;
 // test/memo.test.js and test/readiness.test.js fail when a committed file no longer matches.
 import fs from 'fs';
 import path from 'path';
@@ -55,8 +56,23 @@ export function buildPages() {
   return out;
 }
 
+export function buildPlanReports() {
+  const { status } = run({
+    policy: path.join(here, 'policy-readiness.json'),
+    version: '1.4.1',
+    plan: path.join(here, 'plan-1.4.1.json'),
+    status: 'unused',
+    readiness: path.join(here, 'readiness-1.4.1.json'),
+    today: PAGE_DAY,
+    inputs: [{ adapter: '--check', name: 'api-contract', file: path.join(here, 'contract-1.4.1.json') }],
+  });
+  return { 'status-1.4.1.md': status };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   for (const [file, text] of Object.entries(buildExamples())) fs.writeFileSync(path.join(here, 'memos', file), text);
   fs.mkdirSync(path.join(here, 'pages'), { recursive: true });
   for (const [file, text] of Object.entries(buildPages())) fs.writeFileSync(path.join(here, 'pages', file), text);
+  fs.mkdirSync(path.join(here, 'plans'), { recursive: true });
+  for (const [file, text] of Object.entries(buildPlanReports())) fs.writeFileSync(path.join(here, 'plans', file), text);
 }
