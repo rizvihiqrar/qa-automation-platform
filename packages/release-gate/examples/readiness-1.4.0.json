@@ -1,0 +1,90 @@
+{
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "title": "A customer can list products",
+      "tests": [
+        {
+          "id": "PL-01",
+          "status": "pass"
+        },
+        {
+          "id": "PL-02",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "title": "A customer can filter products by category and price",
+      "tests": [
+        {
+          "id": "PF-01",
+          "status": "pass"
+        },
+        {
+          "id": "PF-02",
+          "status": "quarantined"
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "title": "An order can carry a percentage discount, capped at 50 percent",
+      "tests": [
+        {
+          "id": "DS-01",
+          "status": "pass"
+        },
+        {
+          "id": "DS-02",
+          "status": "pass"
+        },
+        {
+          "id": "DS-03",
+          "status": "fail"
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "title": "An order total is exact to the cent",
+      "tests": [
+        {
+          "id": "TT-01",
+          "status": "pass"
+        }
+      ]
+    }
+  ],
+  "defects": [
+    {
+      "id": "DEF-12",
+      "title": "Discount over 50 percent is accepted by the list endpoint",
+      "severity": "high",
+      "status": "open"
+    },
+    {
+      "id": "DEF-14",
+      "title": "Price filter ignores the upper bound when it is zero",
+      "severity": "medium",
+      "status": "open"
+    },
+    {
+      "id": "DEF-9",
+      "title": "Category names are not trimmed",
+      "severity": "low",
+      "status": "open"
+    }
+  ],
+  "security": {
+    "audit": {
+      "status": "pass",
+      "detail": "0 vulnerabilities in 38 package folders"
+    },
+    "zap": {
+      "status": "pass",
+      "detail": "0 high alerts, 2 informational"
+    }
+  }
+}

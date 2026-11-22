@@ -2,6 +2,8 @@
 // The decision, the checks and the reasons come from the gate's outcome and are
 // never taken from the release file, so a memo cannot say GO when the gate said NO-GO.
 
+import { CHANGE_WORDS } from './change.js';
+
 const STATUS_WORDS = { pass: 'Passed', fail: 'Failed', missing: 'Did not run' };
 
 const isText = (v) => typeof v === 'string' && v.trim() !== '';
@@ -32,8 +34,26 @@ const bullets = (items) => items.map((i) => `- ${oneLine(i)}`);
 const oneLine = (text) => String(text).replace(/\s*\n\s*/g, ' ').trim();
 const cell = (text) => String(text).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
 
+// The change type in plain words, only when the release file named one.
+function changeSection(change) {
+  if (!change) return [];
+  const c = change.change;
+  return [
+    '## Change type',
+    '',
+    `**${change.type[0].toUpperCase()}${change.type.slice(1)} change.** ${CHANGE_WORDS[change.type]}`,
+    '',
+    `- Requested: ${c.requestedAt}`,
+    `- Planned for: ${c.plannedFor}`,
+    `- Approved by: ${c.approvedBy ? oneLine(c.approvedBy) : 'nobody named'}`,
+    ...(c.reason ? [`- Why it cannot wait: ${oneLine(c.reason)}`] : []),
+    ...change.obligations.map((o) => `- ${o}`),
+    '',
+  ];
+}
+
 /**
- * @param {{ decision: string, reasons: string[], checks: Array<{ name: string, status: string, detail: string }> }} outcome
+ * @param {{ decision: string, reasons: string[], checks: Array<{ name: string, status: string, detail: string }>, change?: any }} outcome
  * @param {Record<string, any>} releaseInput
  */
 export function formatMemo(outcome, releaseInput) {
@@ -54,6 +74,7 @@ export function formatMemo(outcome, releaseInput) {
     '',
     ...bullets(r.changes),
     '',
+    ...changeSection(outcome.change),
     '## What was tested',
     '',
     '| Check | Result | Detail |',

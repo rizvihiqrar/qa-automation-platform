@@ -1,6 +1,6 @@
 # release-gate
 
-Decides whether a release can go out. It reads the results of earlier checks (smoke tests, the API contract check, the k6 performance run), applies a policy, and returns **GO** or **NO-GO** with the reasons. The [Release workflow](../../.github/workflows/release.yml) only runs its deploy job on GO. It also writes a one-page [go / no-go memo](#the-go--no-go-memo) for a reader who does not read test reports, a [drift check](#the-release-drift-check) flags a release whose numbers moved more than normal noise, and [build promotion](#build-promotion-gated-on-smoke) only points the release tag at an image that passed smoke.
+Decides whether a release can go out. It reads the results of earlier checks (smoke tests, the API contract check, the k6 performance run), applies a policy, and returns **GO** or **NO-GO** with the reasons. The [Release workflow](../../.github/workflows/release.yml) only runs its deploy job on GO. It also writes a one-page [go / no-go memo](#the-go--no-go-memo) for a reader who does not read test reports, a [drift check](#the-release-drift-check) flags a release whose numbers moved more than normal noise, and [build promotion](#build-promotion-gated-on-smoke) only points the release tag at an image that passed smoke. A release can also carry an [ITIL change type](#itil-change-types) (standard, normal or emergency), and a [readiness page](#the-release-readiness-page) shows the whole picture in one place.
 
 **[Technical guide →](TECHNICAL.md)**
 
@@ -101,6 +101,64 @@ node src/cli.js --policy gate.policy.json --version 1.4.0 \
 
 ---
 
+## ITIL Change Types
+
+ITIL sorts changes by how much care they need. The gate now knows three:
+
+| Type | Approval | Wait before release | Owed afterwards |
+|---|---|---|---|
+| Standard | none (pre-approved, low risk) | none | nothing |
+| Normal | an approver is named | 24 hours after the request | nothing |
+| Emergency | an approver is named, and the reason it cannot wait | none | a review within 5 days |
+
+**An emergency change skips the wait, never the tests.** Every check still has to pass: a failed contract check is NO-GO whatever the change type. The change type only adds its own rules, and a broken one (no approver, a wait that is too short, no reason) blocks the release like a failed check, under the name `change-control`.
+
+Add a `change` block to the release file:
+
+```json
+"change": {
+  "type": "emergency",
+  "requestedAt": "2026-11-22T08:00Z",
+  "plannedFor": "2026-11-22T10:00Z",
+  "approvedBy": "Release manager",
+  "reason": "The partner integration goes live today, so the release cannot wait the usual day."
+}
+```
+
+The memo gets a "Change type" section in plain words, with who approved and what is owed. The waits and the review period are policy settings (`changeTypes` in `gate.policy.json`); without them the table above applies. A release file with no `change` block works exactly as before, unless the policy sets `"requireChange": true`: then a release with no change type is blocked. A `change` block that cannot be read (an unknown type, a date that does not exist) is a failed `change-control` check in the table, with the reason.
+
+---
+
+## The Release Readiness Page
+
+One generated page per release, built from files the repo already has, so it is a view and not another manual report. It shows the decision and the reasons, each check, every requirement with its tests, open defects by severity, quarantined tests, the dependency audit and ZAP results, and the change type with any review that is owed.
+
+The page cannot disagree with the gate. Three readiness checks go through the same gate as the smoke tests:
+
+| Check | Blocks when |
+|---|---|
+| `requirements` | A requirement has a failing test, or no passing test (a quarantined test is not evidence) |
+| `open-defects` | More open defects than the limit for a severity (default: no open critical or high; `maxOpenDefects` in the policy changes it) |
+| `security` | The dependency audit or the ZAP baseline failed or was not reported |
+
+A readiness file that is missing or has a wrong field fails the gate with its own `readiness` check, so nothing is quietly skipped.
+
+| Page | Decision | Why |
+|---|---|---|
+| [1.4.0](examples/pages/1.4.0.html) | NO-GO | the contract check, a failing requirement and one open high defect |
+| [1.4.1](examples/pages/1.4.1.html) | GO | the same release after the fixes, as an emergency change with a review owed |
+
+```bash
+node src/cli.js --policy examples/policy-readiness.json --version 1.4.1 \
+  --playwright smoke-tests=smoke.json --check api-contract=contract.json --k6 performance=performance.json \
+  --release examples/release-1.4.1.json --memo memo.md \
+  --readiness examples/readiness-1.4.1.json --page readiness.html
+```
+
+The page is one file with no scripts or outside links, readable on a phone, and every word from the input files is escaped. `--today 2026-11-22` makes it flag an owed review that is late; without it the page gives no verdict on that.
+
+---
+
 ## The Release Drift Check
 
 A release can pass every rule and still be slower or shakier than the last ones. The drift check compares one run with the history of past runs and flags a metric that moved more than normal run-to-run noise. The limit is not a number picked by hand: it is the median of the past runs plus six typical spreads, and a metric that never moved gets a 15 percent floor.
@@ -146,8 +204,8 @@ Exit 0 when promoted, 1 when smoke failed, 2 on bad arguments. The registry in C
 ## Tests
 
 ```bash
-npm test                  # 68 tests, no Docker needed
+npm test                  # 116 tests, no Docker needed
 npm run test:promotion    # 2 tests with a real registry, image and smoke run (Docker must be running)
 ```
 
-The adapter tests use a real Playwright smoke report and a real k6 summary. Each policy rule is tested in both directions, including a policy that allows a failure. The memo and drift tests each had a deliberate break put back once to show a test fails.
+The adapter tests use a real Playwright smoke report and a real k6 summary. Each policy rule is tested in both directions, including a policy that allows a failure. The memo and drift tests each had a deliberate break put back once to show a test fails; the change type and readiness page code had 31 (for example a wait that is one hour short, an emergency that overrides a failed check, a page that ignores the gate, an unescaped title), and each failed a test.
