@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release readiness 1.4.1</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#1b1f24;--muted:#57606a;--line:#d8dee4;--ok:#116329;--okbg:#dafbe1;--bad:#a40e26;--badbg:#ffebe9;--warn:#7d4e00;--warnbg:#fff1c2}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--text:#e6edf3;--muted:#9da7b3;--line:#30363d;--ok:#7ee787;--okbg:#12361c;--bad:#ff9492;--badbg:#4a1620;--warn:#f2cc60;--warnbg:#3d2f06}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif}
+main{max-width:56rem;margin:0 auto;padding:1rem}h1{font-size:1.5rem;margin:.5rem 0}h2{font-size:1.1rem;margin:1.5rem 0 .5rem}
+.banner{border-radius:8px;padding:1rem;font-weight:600;font-size:1.2rem}.banner.go{background:var(--okbg);color:var(--ok)}.banner.nogo{background:var(--badbg);color:var(--bad)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.5rem 1rem;overflow-x:auto}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:.4rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
+.chip{display:inline-block;border-radius:1rem;padding:0 .6rem;font-size:.85rem;font-weight:600}.chip.ok{background:var(--okbg);color:var(--ok)}.chip.bad{background:var(--badbg);color:var(--bad)}.chip.warn{background:var(--warnbg);color:var(--warn)}
+.muted{color:var(--muted)}ul{margin:.25rem 0;padding-left:1.25rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Release readiness: 1.4.1</h1>
+<p class="muted">Date: 2026-11-22</p>
+<div class="banner go">✅ GO, the release can go out</div>
+<h2>Checks</h2>
+<div class="card"><table><thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead><tbody><tr><td>smoke-tests</td><td><span class="chip ok">Passed</span></td><td>10/10 passed, 0 failed, 0 flaky</td></tr><tr><td>api-contract</td><td><span class="chip ok">Passed</span></td><td>20/20 responses match the spec</td></tr><tr><td>performance</td><td><span class="chip ok">Passed</span></td><td>6/6 thresholds met</td></tr><tr><td>requirements</td><td><span class="chip ok">Passed</span></td><td>4/4 requirements covered</td></tr><tr><td>open-defects</td><td><span class="chip ok">Passed</span></td><td>2 open, none over the limits</td></tr><tr><td>security</td><td><span class="chip ok">Passed</span></td><td>dependency audit and ZAP baseline both passed</td></tr><tr><td>change-control</td><td><span class="chip ok">Passed</span></td><td>emergency change, approved by Release manager</td></tr></tbody></table></div>
+<h2>Requirements and their tests</h2>
+<div class="card"><table><thead><tr><th>Requirement</th><th>Status</th><th>Tests</th></tr></thead><tbody><tr><td>REQ-1 A customer can list products</td><td><span class="chip ok">Covered</span></td><td>PL-01 (pass), PL-02 (pass)</td></tr><tr><td>REQ-2 A customer can filter products by category and price</td><td><span class="chip ok">Covered</span></td><td>PF-01 (pass), PF-02 (pass)</td></tr><tr><td>REQ-3 An order can carry a percentage discount, capped at 50 percent</td><td><span class="chip ok">Covered</span></td><td>DS-01 (pass), DS-02 (pass), DS-03 (pass)</td></tr><tr><td>REQ-4 An order total is exact to the cent</td><td><span class="chip ok">Covered</span></td><td>TT-01 (pass)</td></tr></tbody></table></div>
+<h2>Open defects by severity</h2>
+<div class="card"><table><thead><tr><th>Severity</th><th>Open</th></tr></thead><tbody><tr><td>critical</td><td>0</td></tr><tr><td>high</td><td>0</td></tr><tr><td>medium</td><td>1</td></tr><tr><td>low</td><td>1</td></tr></tbody></table></div>
+<div class="card"><ul><li>DEF-14 (medium): Price filter ignores the upper bound when it is zero</li><li>DEF-9 (low): Category names are not trimmed</li></ul></div>
+<h2>Quarantined tests</h2>
+<p class="muted">None.</p>
+<h2>Security</h2>
+<div class="card"><table><thead><tr><th>Scan</th><th>Result</th><th>Detail</th></tr></thead><tbody><tr><td>Dependency audit</td><td><span class="chip ok">Passed</span></td><td>0 vulnerabilities in 38 package folders</td></tr><tr><td>ZAP baseline</td><td><span class="chip ok">Passed</span></td><td>0 high alerts, 2 informational</td></tr></tbody></table></div>
+<h2>Change type</h2>
+<div class="card"><p><strong>emergency change.</strong> An emergency change skips the waiting period, but every check must still pass, and a review is owed afterwards.</p><ul><li>Planned for: 2026-11-22T10:00Z</li><li>Approved by: Release manager</li><li>A review of this change is owed by 2026-11-27.</li></ul></div>
+</main>
+</body>
+</html>

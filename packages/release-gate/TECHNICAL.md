@@ -2,7 +2,7 @@
 
 [← Back to overview](README.md)
 
-**Contents:** [Memo](#memo) · [Drift check](#drift-check) · [Build promotion](#build-promotion) · [How the noise limit was chosen](#how-the-noise-limit-was-chosen) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
+**Contents:** [Memo](#memo) · [Change types](#change-types) · [Readiness page](#readiness-page) · [Drift check](#drift-check) · [Build promotion](#build-promotion) · [How the noise limit was chosen](#how-the-noise-limit-was-chosen) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
 ## Memo
 
@@ -29,6 +29,56 @@
 | Status words are plain: Passed, Failed, Did not run | The reader is not an engineer |
 
 `examples/build-memos.js` builds the two example memos from the example inputs. `test/memo.test.js` fails when a committed memo no longer matches what the code builds, so the documentation cannot drift from the tool.
+
+## Change types
+
+`src/change.js` holds the rules. `validateChange` checks the `change` block of the release file and names the field that is wrong. `evaluateChange` applies the rules of the type and returns the problems and what is owed. `applyChange` adds the result to the gate outcome as a `change-control` check. `reviewStatus` says whether an owed review is due, late or done.
+
+| Type | Defaults (`DEFAULT_CHANGE_TYPES`) |
+|---|---|
+| standard | no approval, no wait, no reason, no review |
+| normal | approval, 24 hour wait |
+| emergency | approval, a reason, no wait, review within 5 days |
+
+`gate.policy.json` may set `changeTypes` per type (`needsApproval`, `waitHours`, `needsReason`, `reviewWithinDays`); a type that is not mentioned keeps its defaults.
+
+| Rule | Why |
+|---|---|
+| `applyChange` never touches the checks | A change type adds a rule; it can never turn a failed check into a pass, so an emergency is faster, not looser |
+| Times need a date, a time and a zone | "Nov 3" or a date with no zone would make the wait a guess; the wait is counted in real time across zones, and hours, minutes and offsets are range-checked |
+| `type` is looked up with `Object.hasOwn` | A type named `toString` or `__proto__` is refused, not found on the object |
+| The review is owed from the planned release time | The due day itself is not late; `reviewStatus` takes today's date as an argument so a test never depends on the clock |
+| A change block that cannot be read is a failed `change-control` check | The table and the memo say why and the exit code is 1; before this the error went only to stderr and the table looked clean |
+| Policy settings are checked | `waitHours: "24h"` or a misspelt setting is refused with its name, so a typo cannot switch a rule off without a sound |
+| `requireChange` | With `"requireChange": true` in the policy, a release file with no change block (or a run with no release file) is blocked; without it the gate leaves such a release alone |
+| A review dated before the release is a problem | `reviewDoneOn` cannot satisfy the owed review if it comes first |
+| A date that does not exist is refused | `2026-02-31` is not rolled over to March; the day is written back out and compared |
+
+## Readiness page
+
+`src/readiness.js` has three parts. `validateReadiness` checks the readiness file. `fromReadiness` turns it into the three checks `requirements`, `open-defects` and `security`, which `decide()` judges like any other check. `formatPage` writes the HTML from the gate outcome and the same file.
+
+```json
+{
+  "requirements": [{ "id": "REQ-1", "title": "...", "tests": [{ "id": "PL-01", "status": "pass" }] }],
+  "defects": [{ "id": "DEF-1", "title": "...", "severity": "high", "status": "open" }],
+  "security": { "audit": { "status": "pass", "detail": "..." }, "zap": { "status": "pass", "detail": "..." } }
+}
+```
+
+Test status is `pass`, `fail` or `quarantined`; severity is `critical`, `high`, `medium` or `low`.
+
+| Rule | Why |
+|---|---|
+| The banner comes from the gate outcome | The page is a view; a test builds a page for a failed smoke run with every readiness check clean and expects NO-GO |
+| A quarantined test is not evidence | A requirement covered only by a quarantined test counts as not tested |
+| A scan that was not reported fails | Silence must not read as a pass |
+| Every text from the files is escaped | A title with `<script>` is shown as text; one test covers the id, title, detail, version and date fields |
+| A bad or missing readiness file is a failed `readiness` check | The decision is still made and still says why; no page is written and the exit code is 2 |
+| Ids must be unique, `security` must be an object | Two defects named D-1 would print as one ambiguous line; an array would pass for a result |
+| `--today` is optional | Without it the page gives no verdict on a late review; the committed examples fix it at 2026-11-22 so they do not change with the clock |
+
+The page has no data of its own to keep up to date: `examples/build-memos.js` builds both example pages and both memos, and the tests fail when a committed file differs from what the code builds.
 
 ## Drift check
 
@@ -99,7 +149,7 @@ The qa-practice-api [Dockerfile](../qa-practice-api/Dockerfile) has production d
 
 ## CI integration
 
-The `release-gate` job runs `npm test` (68 tests) and the `release-gate-promotion` job runs `npm run test:promotion` (2 tests, about a minute and a half) in the [CI workflow](../../.github/workflows/ci.yml). The Release workflow still runs the gate on every manual release; it does not build images.
+The `release-gate` job runs `npm test` (116 tests) and the `release-gate-promotion` job runs `npm run test:promotion` (2 tests, about a minute and a half) in the [CI workflow](../../.github/workflows/ci.yml). The Release workflow still runs the gate on every manual release; it does not build images.
 
 ## FAQ
 
@@ -120,13 +170,15 @@ The portfolio has no product releases. The inputs are real (a Playwright smoke r
 | `at least 10 are needed to know what normal is` | The history is too short | Add real runs with `--record` |
 | Drift alerts on a slow machine | The history came from a faster one | Record runs from the same kind of machine |
 | `docker run` cannot start the image or health never answers | The admin account or port settings are missing from `--container-env` | Pass the same `ADMIN_EMAIL` and `ADMIN_PASSWORD` the smoke tests sign in with |
-| A committed memo test fails | The memo code or an example input changed | `node examples/build-memos.js` and commit the new memos |
+| A committed memo or page test fails | The memo or page code or an example input changed | `node examples/build-memos.js` and commit the new files |
+| `release file: change.plannedFor must be a date and time` | The time has no zone or no time of day | Write it as `2026-11-20T09:00Z` |
+| `change-control: a normal change waits 24 hours` | The release is planned too soon after the request | Move `plannedFor` later, or make it an emergency change with an approver and a reason |
 
 ## Development
 
 ```bash
-npm test                                 # 68 tests
+npm test                                 # 116 tests
 npm run test:promotion                   # 2 tests: real registry, image and smoke run
-node examples/build-memos.js             # rewrite the two example memos
+node examples/build-memos.js             # rewrite the two example memos and the two example pages
 node src/drift-cli.js --history drift/history.json --playwright smoke.json --label run-21 --record
 ```

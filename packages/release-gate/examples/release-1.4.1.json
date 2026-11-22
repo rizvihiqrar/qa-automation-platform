@@ -7,6 +7,13 @@
     "Product list: filter by category and by price range.",
     "Fix: the discount and filter responses now match the published API description."
   ],
+  "change": {
+    "type": "emergency",
+    "requestedAt": "2026-11-22T08:00Z",
+    "plannedFor": "2026-11-22T10:00Z",
+    "approvedBy": "Release manager",
+    "reason": "The partner integration that needs the discount fields goes live today, so the release cannot wait the usual day."
+  },
   "risks": [
     "The discount code path has only the smoke checks so far, not the full regression suite."
   ],
