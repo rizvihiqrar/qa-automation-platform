@@ -1,0 +1,224 @@
+{
+  "runs": [
+    {
+      "label": "run-01",
+      "metrics": {
+        "durationMs": 6317,
+        "slowestTestMs": 190,
+        "medianTestMs": 89,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-02",
+      "metrics": {
+        "durationMs": 9060,
+        "slowestTestMs": 299,
+        "medianTestMs": 192,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-03",
+      "metrics": {
+        "durationMs": 6890,
+        "slowestTestMs": 193,
+        "medianTestMs": 103,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-04",
+      "metrics": {
+        "durationMs": 7889,
+        "slowestTestMs": 296,
+        "medianTestMs": 112,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-05",
+      "metrics": {
+        "durationMs": 12252,
+        "slowestTestMs": 775,
+        "medianTestMs": 147,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-06",
+      "metrics": {
+        "durationMs": 6351,
+        "slowestTestMs": 203,
+        "medianTestMs": 98,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-07",
+      "metrics": {
+        "durationMs": 5397,
+        "slowestTestMs": 182,
+        "medianTestMs": 45,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-08",
+      "metrics": {
+        "durationMs": 5732,
+        "slowestTestMs": 218,
+        "medianTestMs": 67,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-09",
+      "metrics": {
+        "durationMs": 5595,
+        "slowestTestMs": 540,
+        "medianTestMs": 63,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-10",
+      "metrics": {
+        "durationMs": 9618,
+        "slowestTestMs": 549,
+        "medianTestMs": 127,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-11",
+      "metrics": {
+        "durationMs": 11089,
+        "slowestTestMs": 267,
+        "medianTestMs": 74,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-12",
+      "metrics": {
+        "durationMs": 7456,
+        "slowestTestMs": 223,
+        "medianTestMs": 134,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-13",
+      "metrics": {
+        "durationMs": 10364,
+        "slowestTestMs": 452,
+        "medianTestMs": 53,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-14",
+      "metrics": {
+        "durationMs": 7880,
+        "slowestTestMs": 172,
+        "medianTestMs": 53,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-15",
+      "metrics": {
+        "durationMs": 6746,
+        "slowestTestMs": 219,
+        "medianTestMs": 118,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-16",
+      "metrics": {
+        "durationMs": 5754,
+        "slowestTestMs": 219,
+        "medianTestMs": 62,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-17",
+      "metrics": {
+        "durationMs": 9932,
+        "slowestTestMs": 440,
+        "medianTestMs": 228,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-18",
+      "metrics": {
+        "durationMs": 10376,
+        "slowestTestMs": 300,
+        "medianTestMs": 150,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-19",
+      "metrics": {
+        "durationMs": 15813,
+        "slowestTestMs": 722,
+        "medianTestMs": 257,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "label": "run-20",
+      "metrics": {
+        "durationMs": 11912,
+        "slowestTestMs": 571,
+        "medianTestMs": 138,
+        "tests": 11,
+        "failed": 0,
+        "flaky": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "version": "1.4.1",
+  "date": "2026-11-22",
+  "summary": "The same release as 1.4.0 after the two mismatched responses were fixed. It asks for the go decision that 1.4.0 did not get.",
+  "changes": [
+    "Order discounts: a percentage off an order, capped at 50 percent.",
+    "Product list: filter by category and by price range.",
+    "Fix: the discount and filter responses now match the published API description."
+  ],
+  "risks": [
+    "The discount code path has only the smoke checks so far, not the full regression suite."
+  ],
+  "madeReady": "Release 1.4.0 was held back because 2 of 20 responses did not match the published API description. Both were fixed in 1.4.1, and the contract check now passes 20 of 20.",
+  "signOff": ["Release manager", "QA lead", "Product owner"]
+}
