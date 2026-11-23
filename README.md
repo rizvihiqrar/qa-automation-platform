@@ -12,7 +12,7 @@ One repository of test automation work, run by one CI pipeline: browser tests, A
 
 > **If you have five minutes**, open these three packages. Together they show the depth behind the list below:
 >
-> - [**banking-api**](packages/banking-api): exact money in whole minor units (cents, yen, fils), transfers that move money once even when sent twice, and 132 of 132 planted bugs caught
+> - [**banking-api**](packages/banking-api): exact money in whole minor units (cents, yen, fils), transfers that move money once even when sent twice, and 170 of 170 planted bugs caught
 > - [**qa-practice-api**](packages/qa-practice-api): 119 cases designed from a written [test strategy](docs/test-strategy/README.md), run in memory and on a real Postgres
 > - [**ai-test-generator**](packages/ai-test-generator): AI-written browser tests, reviewed before they count: 42 of 43 passed on their first run, and the review caught one that checked nothing
 >
@@ -35,7 +35,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 37 packages, about 2,920 automated tests and checks, all run by one CI workflow
+- 37 packages, about 3,020 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -72,7 +72,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 | Package | What it does | Checks |
 |---|---|---:|
 | [qa-practice-api](packages/qa-practice-api) | A small REST API built to be tested: 119 designed cases, run in memory and on a real Postgres in Docker, with race, fault-injection, tracing, logs joined to traces, a real OpenTelemetry Collector in Docker, head against tail sampling measured on a load run, migration, OWASP Top 10, form-data upload and HTTPS certificate tests, a live incident game day with a postmortem and a ZAP scan in CI. One OWASP test caught a real SQL injection hole put back on purpose | 490 + 4 on the Collector + 5 on sampling + 17 properties + ZAP scan |
-| [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, 14 SQL checks prove every transfer balances, and payment scheme limits and a reference alphabet are tested at every boundary, and so are anti-money-laundering rules (a cash report, the 24-hour rule, a sanctions list and an audit row for every decision). A real proxy (mitmproxy in Docker) records the traffic, so tests check what is on the wire, replay a captured request and change one in flight. A small banking UI on top is tested by Cypress in Chrome and Firefox | 330 + 7 runner checks + 8 properties + 69 Cypress + 30 proxy |
+| [banking-api](packages/banking-api) | A small banking API where every cent is exact: accounts in four currencies and transfers on a double-entry ledger, with no floating-point maths. Retried requests move money once, requests at the same time can't overdraw an account, 14 SQL checks prove every transfer balances, and payment scheme limits and a reference alphabet are tested at every boundary, and so are anti-money-laundering rules (a cash report, the 24-hour rule, a sanctions list and an audit row for every decision) and a role-by-action matrix checked for missing and excessive permissions. A real proxy (mitmproxy in Docker) records the traffic, so tests check what is on the wire, replay a captured request and change one in flight. A small banking UI on top is tested by Cypress in Chrome and Firefox | 429 + 7 runner checks + 8 properties + 69 Cypress + 30 proxy |
 | [api-drift-checker](packages/api-drift-checker) | Checks a live API against its written contract; its first run found two real bugs | 17 + 39-step live check |
 | [api-pytest](packages/api-pytest) | The same designed cases as the Playwright API suite, written again in Python with pytest and requests, under the same case IDs. A fixture starts the API, so one command runs it | 40 |
 | [repro-from-logs](packages/repro-from-logs) | Rebuilds customer-style failures from request logs: reads a log, replays it against qa-practice-api and says whether the same failure came back. Two fixes are replayed and verified, and one case honestly does not reproduce | 48 |
@@ -168,7 +168,7 @@ Each number links to where it comes from. The CI figures are as of 2026-11-09; t
 | Mutation score, shopping cart module | 89.2% (198 of 222 changes caught) | [mutation-testing-demo](packages/mutation-testing-demo/README.md) |
 | Mutation score, AI-written discount code | 93.9% of 412 changes caught by designed cases and properties together | [scoreboard](docs/ai-written-code/scoreboard.md#and-mutation-testing) |
 | Flaky-test tracking | Last 14 runs on main; catches a test failing 1 run in 5 about 96% of the time, 1 in 100 only 13% | [flaky-test-analyzer](packages/flaky-test-analyzer#how-sure-are-we-run-to-run-variance) |
-| Money, race, ledger-check and UI mistakes put back on purpose and caught, banking API | 132 of 132 | [banking-api](packages/banking-api/TECHNICAL.md#deliberate-breaks) |
+| Money, race, ledger-check and UI mistakes put back on purpose and caught, banking API | 170 of 170 | [banking-api](packages/banking-api/TECHNICAL.md#deliberate-breaks) |
 | Visual bugs planted in the banking UI and caught by the screenshot comparison (a button a few shades off, a 4 px shift, a missing button, a clipped amount, unreadable dark mode, a wrapped column) | 6 of 6 | [visual-regression-demo](packages/visual-regression-demo/TECHNICAL.md#planted-visual-bugs) |
 | Planted bugs in the course practical caught by the model answer, each by its own check only | 6 of 6 | [money-course](packages/money-course/TECHNICAL.md#the-model-answer-is-proven-against-each-bug) |
 | Requirements traced to passing tests | 18 of 18, 119 of 119 cases | [traceability matrix](https://rizvihiqrar.github.io/qa-automation-platform/reports/traceability/) |

@@ -254,6 +254,28 @@ The strongest decision wins and the weaker ones aren't looked for, so a listed o
 
 Tests: [`test/aml.test.ts`](test/aml.test.ts), 54 cases: each threshold at one unit below and exactly at it in four currencies; the 24-hour window at exactly 24 hours and a millisecond inside; deposits and withdrawals kept apart; eleven spellings of listed names blocked, three near misses held, six other names allowed; either side of a transfer; the same reply for a block and a hold; the audit row's fields; replays and refused keys; the table's `CHECK`; an old ledger file; two requests at once through a slow screening; and a real `node src/server.ts` process that answers a block as slowly as a payment.
 
+### Who may do what
+
+Day S10 added a role-by-action matrix (BK-R46 to BK-R49 in [SPEC.md](SPEC.md#who-may-do-what)). It is one committed file, [`src/entitlements.json`](src/entitlements.json), so a change to a permission is a change a person reads in a diff; [`src/entitlements.ts`](src/entitlements.ts) reads it (and refuses a file with an unknown action, an action twice, a role twice, no roles or a badly named role, with a message, when the server starts) and the server checks it before anything else about a request. The role is an `X-Role` header: a claim, not a sign-in.
+
+| Role | `view` | `open_account` | `deposit` | `withdraw` | `transfer` | `read_audit` |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| viewer | yes | no | no | no | no | no |
+| teller | yes | yes | yes | yes | no | no |
+| supervisor | yes | yes | yes | yes | yes | no |
+| auditor | yes | no | no | no | no | yes |
+
+`view` is every GET of an account, its entries or a transfer. A pair marked no is `403 forbidden`. A test keeps this table the same as the file.
+
+- **Checked first.** The role is read before the body, the key, the account or the screening. A viewer who deposits into an account that does not exist gets `403`, not `404` (which would say whether the account exists), a bad body is `403` and not `400`, the request does not claim its `Idempotency-Key`, and a payment it may not make is not screened, so there is no audit row. A route that does not exist is `404` and a wrong method `405`, for every role: those are about the route.
+- **No header.** No `X-Role` means no restriction, as before, so the UI, the other packages and the 69 Cypress tests are unchanged. The one exception is the audit record, which only the auditor reads, so it no longer shows list entries to anyone who asks (review finding 5 on the AML pull request). That is a fail-open default, written down in [Out of scope](SPEC.md#out-of-scope-today): the matrix tests the rules, not the proof.
+- **Unknown roles.** A role not in the matrix may do nothing, not even view. Capitals (`Teller`), an empty header, the same header twice (read as `teller, teller`) and names an object has anyway (`constructor`, `__proto__`, `toString`) are all unknown, and the reply says `an unknown role` without repeating what was sent.
+- **`npm run entitlements`** starts the API (or checks one that is already running, `-- --url <base>`), sends one real request for each of the 24 role and action pairs, prints the table and what came back, and exits 1 on a difference, and 2 if the matrix file, the arguments or the server can't be used, so a broken set-up is never read as a difference. `-- --matrix <file>` compares the server with a matrix you meant. A permission the matrix gives and the server refuses is `missing`; one the matrix withholds and the server lets through is `excessive`; a server error is `broken`.
+- **Measured on a seeded set.** Ten wrong matrices (a viewer who may deposit, a teller who may not open an account, a teller who may transfer, a supervisor who may not withdraw, an auditor who may withdraw, an auditor who may not read the audit record, a supervisor who may, a viewer who may not view, a missing teller role, and everyone allowed everything) each found exactly the pairs that differ, and no others: 10 of 10, with no false alarm on the committed matrix, through `createApp` and through a real `node src/server.ts` process.
+- **Approve and release are not here.** The idea names them, but the API has no step where a payment waits for an approver or a releaser, so the matrix covers the six actions that exist. That is a feature (states, endpoints, ledger rules), not a test.
+
+Tests: [`test/entitlements.test.ts`](test/entitlements.test.ts), 98 cases: the file and its validation, all 24 pairs through the API with nothing written when refused, every read route against `view`, the order of the checks, the role header's odd values, and the seeded set.
+
 ### Network inspection with a proxy
 
 Day S9 put a real proxy between the client and the server, so the tests can look at what is on the wire instead of trusting what the code says it sends. [mitmproxy](https://mitmproxy.org) runs in Docker in reverse mode, in front of a real `banking-api` server; a small add-on ([`proxy/record.py`](proxy/record.py)) writes every request and reply to a file and can change one field of a request in flight.
@@ -288,6 +310,7 @@ Every refusal is `{ "error", "code" }`, checked in a fixed order: the request fi
 | Status | Codes |
 |---|---|
 | `400` | `invalid_json`, `invalid_body`, `invalid_currency`, `invalid_amount`, `invalid_owner`, `invalid_account_id`, `invalid_reference`, `invalid_idempotency_key` |
+| `403` | `forbidden` (the `X-Role` may not do this, is not in the matrix, or there is none and the route is the audit record) |
 | `404` | `not_found` (account, transfer or route; funding accounts too) |
 | `405` | `method_not_allowed`, with `Allow` |
 | `409` | `idempotency_key_in_use` (the first request with this key is still running) |
@@ -308,11 +331,11 @@ Every refusal is `{ "error", "code" }`, checked in a fixed order: the request fi
 | `POST` | `/accounts/:id/withdrawals` | `amount`, `currency`, optional `reference` | `201` the transfer, or `422 insufficient_funds`, `payment_limit` or `daily_limit` |
 | `POST` | `/transfers` | `from_account_id`, `to_account_id`, `amount`, `currency`, optional `reference` | `201` the transfer |
 | `GET` | `/transfers/:id` | | the transfer and its two entries |
-| `GET` | `/screening-decisions` | | `{ "decisions": [...] }`, the audit row of every screened movement, oldest first |
+| `GET` | `/screening-decisions` | | `{ "decisions": [...] }`, the audit row of every screened movement, oldest first; needs `X-Role: auditor` |
 | `GET` | `/health` | | `{ "status": "ok" }` |
 | `GET` | `/`, `/app.js`, `/app.css` | | The banking UI's three files, with the page policy |
 
-The three `POST` routes that move money take an optional `Idempotency-Key` header (1 to 255 visible ASCII characters).
+The three `POST` routes that move money take an optional `Idempotency-Key` header (1 to 255 visible ASCII characters). Every route but `/health` takes an optional `X-Role` header (`viewer`, `teller`, `supervisor` or `auditor`, see [who may do what](#who-may-do-what)); `GET /screening-decisions` needs `auditor`.
 
 ## Configuration
 
@@ -365,13 +388,14 @@ Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cy
 | [`launch-retry.test.ts`](test/launch-retry.test.ts) | 14 | The Cypress runner starts a run again only when the browser could not be started or restarted (never connected, or the relaunch crash): a run with a failed test is never run twice, and a second launch failure fails the run |
 | [`scheme.test.ts`](test/scheme.test.ts) | 40 | Payment scheme rules: the reference alphabet and length, each limit at minus one, exactly, and plus one in four currencies, the daily total across withdrawals and transfers, what does not count, the UTC midnight boundary, replays, and three payments at once |
 | [`aml.test.ts`](test/aml.test.ts) | 54 | Anti-money-laundering rules: each cash threshold at one unit below and exactly at it in four currencies, the 24-hour window at exactly 24 hours and a millisecond inside, deposits and withdrawals kept apart, eleven spellings of listed names blocked, near misses held, other names allowed, either side of a transfer, one reply for a block and a hold, the audit row, replays, the table's `CHECK`, an old ledger file, and a real server process |
-| [`spec.test.ts`](test/spec.test.ts) | 3 | Every rule in [SPEC.md](SPEC.md) has a test (Node or Cypress), and every rule a test names exists |
+| [`entitlements.test.ts`](test/entitlements.test.ts) | 98 | Who may do what: the matrix file and its validation, all 24 role and action pairs through the API (nothing written when refused), every read route against `view`, the checks coming first (404, 400, 415, key, screening), odd role headers, the check on a server built from 10 wrong matrices, three stand-in servers, a real server process, and `npm run entitlements` (its own server, `--url`, `--matrix`) exits 0, 1 and 2 |
+| [`spec.test.ts`](test/spec.test.ts) | 4 | Every rule in [SPEC.md](SPEC.md) has a test (Node or Cypress), every rule a test names exists, and the README and the guide state the rule and mistake counts the spec and the table hold |
 | [`test-proxy`](test-proxy) | 30 | Through mitmproxy in Docker (`npm run test:proxy`): 16 on the wire, 14 checks of the wire checks. See [network inspection](#network-inspection-with-a-proxy) |
 | [`cypress/e2e`](cypress/e2e) | 69 per browser | The UI in Chrome and Firefox: see [the banking UI](#the-banking-ui-tested-with-cypress) |
 
 ### Deliberate breaks
 
-Each mistake was put into the code, the tests run, and the code restored. All 132 were caught. B92 to B132 break the anti-money-laundering rules and each ran `test/aml.test.ts`. B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
+Each mistake was put into the code, the tests run, and the code restored. All 170 were caught. B92 to B132 break the anti-money-laundering rules and each ran `test/aml.test.ts`; B133 to B170 break the role matrix and the check on it, and each ran `test/entitlements.test.ts` and `test/aml.test.ts` (the audit record now needs the auditor). B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
 
 | # | Mistake | Caught by |
 |---|---|---:|
@@ -507,6 +531,44 @@ Each mistake was put into the code, the tests run, and the code restored. All 13
 | B130 | The audit row written with the wrong amount | 1 |
 | B131 | Decisions listed newest first | 31 |
 | B132 | The report outweighs the list: a listed owner's large deposit is only reported | 1 |
+| B133 | The viewer may deposit | 8 |
+| B134 | The teller may not open an account | 5 |
+| B135 | The supervisor may read the audit record | 5 |
+| B136 | The auditor may not read the audit record | 51 |
+| B137 | A GET is never checked | 32 |
+| B138 | The role is checked after the body is read | 1 |
+| B139 | The audit record is open with no role | 1 |
+| B140 | A request with no role is refused everywhere | 49 |
+| B141 | A role is matched without regard to case | 2 |
+| B142 | An unknown role is told its own name | 10 |
+| B143 | A forbidden request is a 401 | 46 |
+| B144 | A forbidden request has another code | 45 |
+| B145 | /health needs the view role | 1 |
+| B146 | A transfer is the deposit action | 17 |
+| B147 | A deposit is the transfer action | 16 |
+| B148 | Reading a transfer is the audit action | 3 |
+| B149 | Reading statements is the audit action | 3 |
+| B150 | The audit record is a view | 20 |
+| B151 | Opening an account is the view action | 18 |
+| B152 | The matrix given to the app is ignored | 13 |
+| B153 | A role is looked up with in, so constructor is called a role in the reply | 1 |
+| B154 | An unknown action in the file is accepted | 2 |
+| B155 | An action listed twice is accepted | 1 |
+| B156 | A matrix with no roles is accepted | 1 |
+| B157 | A role name in capitals is accepted | 2 |
+| B158 | The table prints yes for every pair | 1 |
+| B159 | The check skips the first role | 11 |
+| B160 | The check never asks about the audit record | 10 |
+| B161 | The check counts only a 201 as let through | 6 |
+| B162 | The check calls a refused pair excessive | 5 |
+| B163 | The check ignores a server error | 1 |
+| B164 | The check takes any 403 as a refusal, whatever the code | 1 |
+| B165 | The report says nothing is wrong whatever it found | 2 |
+| B166 | The command always exits 0 | 2 |
+| B167 | A role written twice in the file is accepted | 2 |
+| B168 | Only the first underscore of an action is turned into a space | 1 |
+| B169 | A server that cannot be reached exits 1, like a difference | 1 |
+| B170 | The command ignores --url and checks its own server | 2 |
 
 ### What building it found
 
@@ -542,6 +604,10 @@ Each mistake was put into the code, the tests run, and the code restored. All 13
 - **A mistake in a rule nobody had written down was the one the first run missed.** The spec said the audit reason names accounts and list entries, never a person, but no test read it: B129 (the reason names the owner) was the only one of the first 35 breaks that got through, and a test now reads the reason. Writing the sentence in SPEC.md first is what showed the gap.
 - **A code review found five things the tests had agreed with.** The thresholds were round numbers, not the smallest amounts worth CAD 10,000 (tests written against the same wrong numbers passed); the first matching party decided, so a near match on the sender hid an exact match on the receiver; "Joseph" was a spelling of "Yusuf"; letters such as ł and ø became word breaks; and a block returned before the wait, so its timing told it from a payment. The fix for the last one also moved the 24-hour total next to the write. Six more breaks (41 in all) put each back.
 - **Where the rules plug in decided what could break.** `money-course` plants its bugs by matching exact lines of this package's source, and two other packages start `createApp` with the defaults, so the rules are on in `src/server.ts` and off in `createApp`, and no line those packages match was repeated. The search for them came before the first edit.
+
+- **Three checker breaks passed on the first run, and each was a gap in the checker's own tests.** Reading a server error as an excessive permission, taking any 403 as a refusal whatever its code, and a command that always exits 0 all passed, because the real server never does any of them. Stand-in servers that answer the way a broken one would, and a `--matrix <file>` option on the command so a difference can be seen and exit 1, closed them (B163, B164, B166 now fail a test).
+- **One break was not a mistake.** Looking a role up with `in` instead of `Object.hasOwn` inside `can()` changes nothing, because `constructor` and `toString` are functions with no `includes`. The difference shows only in the reply's words (`the role constructor` or `an unknown role`), so a test on a plain-object matrix now reads them, and the break is on that line (B153).
+- **`view` is four routes, and the first set of tests asked about one.** Mapping `GET /transfers/:id` or the statement route to another action passed until every read route was tested for every role (B148, B149).
 
 ## FAQ
 
@@ -603,7 +669,7 @@ A reply that says "your name is close to a listed name" tells a person who is hi
 
 ### Is there any sign-in?
 
-No: anyone can move money between any accounts. Access control is tested on [qa-practice-api](../qa-practice-api/README.md); here the subject is the money. [SPEC.md](SPEC.md#out-of-scope-today) lists what is out of scope.
+No sign-in. Since Day S10 a request can claim a role in an `X-Role` header and the server enforces a [matrix](#who-may-do-what) of what each role may do, but nothing proves who is asking, and a request with no role is unrestricted (except the audit record, which needs the auditor). Sign-in and tokens are tested on [qa-practice-api](../qa-practice-api/README.md); here the subject is the money. [SPEC.md](SPEC.md#out-of-scope-today) lists what is out of scope.
 
 ## Troubleshooting
 
@@ -637,6 +703,7 @@ npm run demo                      # the requests in the screenshot above
 npm run check -- --demo           # the SQL ledger checks on a ledger with defects put in
 npm run race -- raced.db          # race two servers on one file, then:
 npm run check -- --db raced.db    # check what they left
+npm run entitlements              # one real request for every role and action, compared with src/entitlements.json
 npm start                         # the API and the UI on PORT: http://localhost:4100
 npm run test:ui                   # the Cypress tests (Electron), then the SQL checks on ui.db
 npm run test:ui -- --browser firefox

@@ -1,0 +1,8 @@
+{
+  "roles": {
+    "viewer": ["view"],
+    "teller": ["view", "open_account", "deposit", "withdraw"],
+    "supervisor": ["view", "open_account", "deposit", "withdraw", "transfer"],
+    "auditor": ["view", "read_audit"]
+  }
+}
