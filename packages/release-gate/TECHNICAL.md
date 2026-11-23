@@ -107,6 +107,32 @@ The page has no data of its own to keep up to date: `examples/build-memos.js` bu
 
 The seeded set is in `test/plan.test.js`: each of the 23 faults is a small function that changes the good plan once, and the test names the code that has to appear. `examples/plans/status-1.4.1.md` is built by `examples/build-memos.js` and a test fails when it differs from what the code builds.
 
+## Release notes check
+
+`src/notes.js` has the same four parts as the plan check. `validateNotes` checks the shape of the notes file and names the field that is wrong. `checkNotes` returns the problems, each with a code a test can pin: `no-criteria`, `unknown-criterion`, `not-passing`, `figure-not-in-criteria`, `jargon`, `too-long` and `wrong-release`. `fromNotes` turns them into the `release-notes` check for the gate. `formatNotesReport` writes the report for the author and `formatReleaseNotes` writes what the customer reads. The evidence comes from `parseCriteria` (the rows of a spec file such as `| BK-R42 | the rule |`), and from `fromNodeTap` and `fromMochaJson`, which read the result of every criterion named in a test title. `mergeResults` joins several result sets.
+
+```json
+{
+  "release": "1.4.1",
+  "notes": [{ "id": "N1", "change": "Daily sending limit", "text": "You can send up to 25,000 a day in Canadian or US dollars.", "criteria": ["BK-R40"] }]
+}
+```
+
+| Rule | Why |
+|---|---|
+| A criterion counts as passing only when every test that names it passed | The worst result stands, so one failing test of three blocks the note |
+| Skipped, to do, flaky and no result are not a pass | A note must not rely on a test that did not run, or passed only on a retry (failOnFlakyTests treats that as a failure too) |
+| A figure in a note must appear in a criterion the note cites | Figures are compared as a customer reads them: commas and trailing zeros are ignored, so 25,000, 25000 and 25,000.00 are one figure. A figure in another rule does not count |
+| A status code is flagged only as a code | 422 and 429 are caught; 2,500 and $400 are amounts. After a word such as status or error it is always a code. A bare number the API answers with is allowed when a cited rule states it as a quantity ("up to 400 transfers a day"), but a number a rule writes only in backticks (`422 daily_limit`) is a status. A word such as JSON or API is caught as a word, not inside another word |
+| The customer notes are written only when the whole gate says go | A note that is not backed fails its own check, which blocks the gate, and so does any other failed check; an old copy is removed, so a blocked release never leaves last release's notes standing as this one's |
+| Notes for another release fail when `--version` is given | The notes file names its release; a stale file for 1.4.0 must not pass a 1.4.1 gate. With no `--version` there is nothing to compare |
+| The criteria file has two columns | `| BK-R42 | the rule |`, the way the banking spec writes it; a third column would become part of the rule's text |
+| The report is always written when asked for | A file that cannot be read gets a short report that says so |
+| A missing or unreadable file is a failed `release-notes` check | The decision is still made and says which file |
+| The criteria file is an excerpt in the example | `examples/criteria-banking.md` is copied word for word from the banking API, and a test fails when a row differs from `banking-api/SPEC.md` |
+
+The seeded set is in `test/notes.test.js`: each of the 16 faults is a small function that changes the good notes or the evidence once, and the test names the code that has to appear. 31 deliberate breaks of the code itself (a flaky result counted as a pass, figures compared with commas left in, the best result standing instead of the worst, customer notes written for a blocked release, an old copy left standing, the version never compared) were each put back once and each failed a test; the first run missed one (a missing result reported with the wrong words), so a test now pins the message. The code review found one real fault (the customer notes were written whenever the notes check passed, even when another check blocked the gate) and two the tests now pin (a quantity such as 400 flagged as a status code, and a report that repeated a problem code).
+
 ## Drift check
 
 `src/drift.js` turns a Playwright JSON report (or a k6 summary) into a few numbers, builds a baseline from the history, and compares one run with it.
@@ -176,7 +202,7 @@ The qa-practice-api [Dockerfile](../qa-practice-api/Dockerfile) has production d
 
 ## CI integration
 
-The `release-gate` job runs `npm test` (165 tests) and the `release-gate-promotion` job runs `npm run test:promotion` (2 tests, about a minute and a half) in the [CI workflow](../../.github/workflows/ci.yml). The Release workflow still runs the gate on every manual release; it does not build images.
+The `release-gate` job runs `npm test` (213 tests) and the `release-gate-promotion` job runs `npm run test:promotion` (2 tests, about a minute and a half) in the [CI workflow](../../.github/workflows/ci.yml). The Release workflow still runs the gate on every manual release; it does not build images.
 
 ## FAQ
 
@@ -205,7 +231,7 @@ The portfolio has no product releases. The inputs are real (a Playwright smoke r
 ## Development
 
 ```bash
-npm test                                 # 165 tests
+npm test                                 # 213 tests
 npm run test:promotion                   # 2 tests: real registry, image and smoke run
 node examples/build-memos.js             # rewrite the example memos, pages and plan report
 node src/drift-cli.js --history drift/history.json --playwright smoke.json --label run-21 --record

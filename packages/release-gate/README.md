@@ -185,6 +185,33 @@ node src/cli.js --policy examples/policy-readiness.json --version 1.4.1 \
 
 ---
 
+## Release Notes for Users
+
+Release notes that promise something the product does not do are worse than none. Each note here is one sentence a customer reads, and it names the acceptance criteria it relies on. The check reads the notes beside the criteria (the rules in a spec file) and the latest test results, and finds a note that promises more than a test backs. It is one more check in the gate, called `release-notes`, so a note that lies blocks the release. When the whole gate says go, the customer notes are written; when it does not (a note that is not backed, or any other failed check), no file is written and an old copy is removed, so nothing unchecked is published.
+
+| What it finds | Example |
+|---|---|
+| A note that names no criterion | So nothing says it was tested |
+| A criterion that is not in the spec | A mistyped or removed rule id |
+| A criterion whose latest result is not a pass | Failed, skipped, passed only on a retry, or no result at all |
+| A figure the criteria never state | A note says 30,000 a day; the rule says 25,000 (25,000, 25000 and 25,000.00 are the same figure) |
+| Wording a customer would not read | A rule id, an HTTP status such as 422, code in backticks, or a word such as JSON or API |
+| Notes for another release | The notes say 1.4.0 and the gate was given `--version 1.4.1` |
+| A note too long to read to the end | More than 280 characters |
+
+A **seeded set** measures it: 16 faults are put into good notes one at a time (no criterion, a wrong id, a failing test, a missing result, a bigger limit than the rule, a status code, notes for another release, and so on) and the check found all 16, with no problem reported on the good notes. The test results come from the tests' own output: a `node --test` run in TAP form (`--tap`) and a Mocha JSON report such as the one Cypress writes (`--mocha`), matched on the criterion id each test title starts with. When one criterion has several tests, the worst result stands.
+
+[The example](examples/notes-1.4.1.json) is four notes for the banking API at release 1.4.1; its [criteria](examples/criteria-banking.md) are word for word from the banking API's rules.
+
+```bash
+node src/cli.js --policy examples/policy-notes.json --version 1.4.1 \
+  --notes examples/notes-1.4.1.json --criteria examples/criteria-banking.md \
+  --tap examples/results-api.tap --mocha examples/results-ui.json \
+  --published whats-new.md --notes-report notes-check.md
+```
+
+---
+
 ## The Release Drift Check
 
 A release can pass every rule and still be slower or shakier than the last ones. The drift check compares one run with the history of past runs and flags a metric that moved more than normal run-to-run noise. The limit is not a number picked by hand: it is the median of the past runs plus six typical spreads, and a metric that never moved gets a 15 percent floor.
@@ -230,8 +257,8 @@ Exit 0 when promoted, 1 when smoke failed, 2 on bad arguments. The registry in C
 ## Tests
 
 ```bash
-npm test                  # 165 tests, no Docker needed
+npm test                  # 213 tests, no Docker needed
 npm run test:promotion    # 2 tests with a real registry, image and smoke run (Docker must be running)
 ```
 
-The adapter tests use a real Playwright smoke report and a real k6 summary. Each policy rule is tested in both directions, including a policy that allows a failure. The memo and drift tests each had a deliberate break put back once to show a test fails; the change type, readiness page and plan code had 65 (for example a wait that is one hour short, an emergency that overrides a failed check, a page that ignores the gate, an unescaped title), and each failed a test.
+The adapter tests use a real Playwright smoke report and a real k6 summary. Each policy rule is tested in both directions, including a policy that allows a failure. The memo and drift tests each had a deliberate break put back once to show a test fails; the change type, readiness page and plan code had 65, and the release notes check had 31 (for example a wait that is one hour short, an emergency that overrides a failed check, a page that ignores the gate, an unescaped title), and each failed a test.

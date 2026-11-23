@@ -1,0 +1,29 @@
+{
+  "release": "1.4.1",
+  "notes": [
+    {
+      "id": "N1",
+      "change": "Daily sending limit",
+      "text": "You can send up to 25,000 a day in Canadian or US dollars. A payment over that is turned down with a message that says why.",
+      "criteria": ["BK-R40"]
+    },
+    {
+      "id": "N2",
+      "change": "Large cash reported",
+      "text": "Cash deposits and withdrawals of CAD 10,000 or more are reported, and the money still moves.",
+      "criteria": ["BK-R42"]
+    },
+    {
+      "id": "N3",
+      "change": "Sanctions screening",
+      "text": "A payment to or from a person on a sanctions list is stopped. The message never says why.",
+      "criteria": ["BK-R44"]
+    },
+    {
+      "id": "N4",
+      "change": "Accessible screens and messages",
+      "text": "Every screen now meets the web accessibility standard WCAG 2.2 A and AA, in the light and dark themes, and an error shows beside the field that caused it.",
+      "criteria": ["BK-R34", "BK-R37"]
+    }
+  ]
+}

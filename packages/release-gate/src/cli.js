@@ -9,6 +9,7 @@
  *     [--release release.json --memo memo.md]
  *     [--readiness readiness.json --page readiness.html]
  *     [--plan plan.json --status status.md] [--today 2026-11-22]
+ *     [--notes notes.json --criteria SPEC.md --tap api.tap --mocha ui.json --published notes.md --notes-report report.md]
  *
  * Prints the decision, appends it to the GitHub Actions job summary when running
  * there, and exits 1 on NO-GO so the deploy job never starts.
@@ -22,11 +23,12 @@ import { formatMemo } from './memo.js';
 import { applyChange, isRealDate } from './change.js';
 import { fromReadiness, formatPage } from './readiness.js';
 import { fromPlan, formatPlanReport } from './plan.js';
+import { fromNotes, parseCriteria, fromNodeTap, fromMochaJson, mergeResults, formatReleaseNotes, formatNotesReport } from './notes.js';
 
 const ADAPTERS = { '--playwright': fromPlaywright, '--k6': fromK6, '--check': fromCheck };
 
 export function parseArgs(argv) {
-  const opts = { policy: null, version: null, release: null, memo: null, readiness: null, page: null, plan: null, status: null, today: null, inputs: [] };
+  const opts = { policy: null, version: null, release: null, memo: null, readiness: null, page: null, plan: null, status: null, today: null, notes: null, criteria: null, published: null, notesReport: null, tap: [], mocha: [], inputs: [] };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     const value = argv[i + 1];
@@ -35,6 +37,16 @@ export function parseArgs(argv) {
     else if (flag === '--release' || flag === '--memo' || flag === '--readiness' || flag === '--page' || flag === '--today' || flag === '--plan' || flag === '--status') {
       if (value === undefined || value.startsWith('--')) throw new Error(`${flag} needs a file path`);
       opts[flag.slice(2)] = value;
+      i++;
+    }
+    else if (flag === '--notes' || flag === '--criteria' || flag === '--published' || flag === '--notes-report') {
+      if (value === undefined || value.startsWith('--')) throw new Error(`${flag} needs a file path`);
+      opts[flag === '--notes-report' ? 'notesReport' : flag.slice(2)] = value;
+      i++;
+    }
+    else if (flag === '--tap' || flag === '--mocha') {
+      if (value === undefined || value.startsWith('--')) throw new Error(`${flag} needs a file path`);
+      opts[flag.slice(2)].push(value);
       i++;
     }
     else if (ADAPTERS[flag]) {
@@ -49,7 +61,10 @@ export function parseArgs(argv) {
   if (Boolean(opts.readiness) !== Boolean(opts.page)) throw new Error('--readiness and --page go together: the page needs the readiness file and a place to write to');
   if (Boolean(opts.status) && !opts.plan) throw new Error('--status needs --plan: the report is written from the plan file');
   if (opts.page && !opts.release) throw new Error('--page needs --release too: the page takes the version and date from the release file');
-  if (opts.inputs.length === 0 && !opts.readiness && !opts.plan) throw new Error('Give at least one result: --playwright, --k6 or --check');
+  if (opts.notes && !opts.criteria) throw new Error('--notes needs --criteria: the notes are checked against the acceptance criteria');
+  if (opts.notes && opts.tap.length + opts.mocha.length === 0) throw new Error('--notes needs test results: give --tap or --mocha, so a claim can be checked against a test');
+  if ((opts.criteria || opts.tap.length || opts.mocha.length || opts.published || opts.notesReport) && !opts.notes) throw new Error('--criteria, --tap, --mocha, --published and --notes-report need --notes: they belong to the release notes check');
+  if (opts.inputs.length === 0 && !opts.readiness && !opts.plan && !opts.notes) throw new Error('Give at least one result: --playwright, --k6 or --check');
   return opts;
 }
 
@@ -94,6 +109,30 @@ export function run(opts) {
       }
     }
   }
+  // The release notes are one more check: every claim has to be backed by a passing test.
+  let notesData = null;
+  let notesEvidence = null;
+  let notesError = null;
+  if (opts.notes) {
+    const missing = [opts.notes, opts.criteria, ...opts.tap, ...opts.mocha].find((file) => !fs.existsSync(file));
+    if (missing) { notesError = `file not found: ${missing}`; results.push({ name: 'release-notes', kind: 'check', passed: false, detail: notesError }); }
+    else {
+      try {
+        notesData = JSON.parse(fs.readFileSync(opts.notes, 'utf8'));
+        notesEvidence = {
+          criteria: parseCriteria(fs.readFileSync(opts.criteria, 'utf8')),
+          version: opts.version ?? undefined,
+          results: mergeResults([...opts.tap.map((file) => fromNodeTap(fs.readFileSync(file, 'utf8'))), ...opts.mocha.map((file) => fromMochaJson(JSON.parse(fs.readFileSync(file, 'utf8'))))]),
+        };
+        results.push(fromNotes(notesData, notesEvidence));
+      } catch (err) {
+        notesData = null;
+        notesEvidence = null;
+        notesError = err.message;
+        results.push({ name: 'release-notes', kind: 'check', passed: false, detail: err.message });
+      }
+    }
+  }
   let outcome = decide(policy, results);
   // A bad release file must not hide the decision: the gate table is still printed and the exit code says the memo failed.
   // Without a release file there is no change block; only a policy that requires one blocks.
@@ -115,16 +154,27 @@ export function run(opts) {
   // The report is always written when asked for: a plan that cannot be read gets a short report that says so, so an old one is never left standing.
   let status = null;
   if (opts.status) status = planData ? formatPlanReport(planData, planOptions) : `# Release plan status\n\nThe plan could not be read: ${planError}\n`;
-  return { outcome, markdown: formatMarkdown(outcome, { version: opts.version }), memo, page, status, memoError };
+  // The customer notes are written only when the whole gate says go. A note that is not backed fails its own check, which blocks the gate,
+  // so a note that lies, or the notes of a release that is blocked for another reason, are never published.
+  const published = opts.published && notesData && outcome.decision === 'go' ? formatReleaseNotes(notesData) : null;
+  let notesReport = null;
+  if (opts.notesReport) notesReport = notesData && notesEvidence ? formatNotesReport(notesData, notesEvidence) : `# Release notes check
+
+The notes could not be checked: ${notesError}
+`;
+  return { outcome, markdown: formatMarkdown(outcome, { version: opts.version }), memo, page, status, published, notesReport, memoError };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const opts = parseArgs(process.argv.slice(2));
-    const { outcome, markdown, memo, page, status, memoError } = run(opts);
+    const { outcome, markdown, memo, page, status, published, notesReport, memoError } = run(opts);
     console.log(markdown);
     if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
     if (status) fs.writeFileSync(opts.status, status);
+    if (notesReport) fs.writeFileSync(opts.notesReport, notesReport);
+    if (opts.published && fs.existsSync(opts.published) && !published) fs.rmSync(opts.published); // an old copy must never stand in for a blocked one
+    if (published) fs.writeFileSync(opts.published, published);
     if (memoError) throw memoError;
     if (memo) fs.writeFileSync(opts.memo, memo);
     if (page) fs.writeFileSync(opts.page, page);

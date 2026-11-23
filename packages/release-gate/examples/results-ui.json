@@ -1,0 +1,11 @@
+{
+  "stats": { "tests": 3, "passes": 3, "failures": 0, "pending": 0 },
+  "tests": [
+    { "title": "BK-R34 a refusal is shown in the form that caused it", "fullTitle": "accounts BK-R34 a refusal is shown in the form that caused it", "state": "passed" },
+    { "title": "BK-R37 no axe violation on any screen, in light and dark", "fullTitle": "a11y BK-R37 no axe violation on any screen, in light and dark", "state": "passed" },
+    { "title": "BK-R37 the page works by keyboard", "fullTitle": "a11y BK-R37 the page works by keyboard", "state": "passed" }
+  ],
+  "passes": [],
+  "failures": [],
+  "pending": []
+}

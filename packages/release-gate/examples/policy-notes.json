@@ -1,0 +1,5 @@
+{
+  "requiredChecks": ["release-notes"],
+  "maxFailedTests": 0,
+  "maxFlakyTests": 0
+}
