@@ -17,12 +17,28 @@ const tests = readdirSync(here).filter((f) => f.endsWith('.test.ts') && f !== 's
   .join('\n');
 const cited = new Set([...tests.matchAll(/BK-R\d\d/g)].map((m) => m[0]));
 
-test('SPEC.md has its 45 rules, numbered without gaps', () => {
-  assert.deepEqual([...rules], Array.from({ length: 45 }, (_, i) => `BK-R${String(i + 1).padStart(2, '0')}`));
+test('SPEC.md has its 49 rules, numbered without gaps', () => {
+  assert.deepEqual([...rules], Array.from({ length: 49 }, (_, i) => `BK-R${String(i + 1).padStart(2, '0')}`));
 });
 
 test('every rule in SPEC.md is checked by a test', () => {
   assert.deepEqual([...rules].filter((r) => !cited.has(r)), []);
+});
+
+test('the README and the guide state the rule count and the number of deliberate mistakes that SPEC.md and the table hold', () => {
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const guide = readFileSync(new URL('../TECHNICAL.md', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const numbers = [...guide.matchAll(/^\| B(\d+) \|/gm)].map((m) => Number(m[1]));
+  assert.deepEqual(numbers, Array.from({ length: numbers.length }, (_, i) => i + 1), 'the deliberate-break rows are numbered without gaps');
+  const breaks = numbers.length;
+  for (const sentence of [
+    `${rules.size} written [rules](SPEC.md)`,
+    `${breaks} mistakes were put back on purpose`,
+    `- ${rules.size} numbered [rules](SPEC.md)`,
+    `- ${breaks} deliberate mistakes, each caught`,
+    `| ${breaks} of ${breaks} |`,
+  ]) assert.ok(readme.includes(sentence), `README.md does not say "${sentence}"`);
+  assert.ok(guide.includes(`All ${breaks} were caught`), `TECHNICAL.md does not say "All ${breaks} were caught"`);
 });
 
 test('every rule a test names is in SPEC.md', () => {

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { MATRIX, can, words, type Action, type Matrix } from './entitlements.ts';
 import { Ledger, type Account, type Entry, type Movement, type Refusal, type Result, type ScreeningDecision, type Transfer } from './ledger.ts';
 import { CURRENCIES, REFERENCE_MAX, formatAmount, isCurrency, isReference, parseAmount, type Currency } from './money.ts';
 
@@ -27,7 +28,8 @@ type Body = Record<string, unknown>;
 type Reply = [status: number, payload: unknown, headers?: Record<string, string>];
 interface Context { ledger: Ledger; params: number[]; body: Body; req: IncomingMessage; screen: Screen }
 type Handler = (ctx: Context) => Reply | Promise<Reply>;
-interface Route { pattern: RegExp; methods: Record<string, Handler> }
+// `actions` names what each method is for, which the roles are checked against (BK-R46).
+interface Route { pattern: RegExp; methods: Record<string, Handler>; actions?: Record<string, Action> }
 
 // An outside check awaited before each movement (fraud, limits). The server's stands
 // in for a slow one (SCREENING_DELAY_MS); by default it returns at once. While it
@@ -35,26 +37,26 @@ interface Route { pattern: RegExp; methods: Record<string, Handler> }
 // writes (BK-R24).
 // It may answer with a refusal, which stops the movement (BK-R44).
 export type Screen = (movement: Movement) => Promise<Refusal | void>;
-export interface Options { screen?: Screen }
+export interface Options { screen?: Screen; entitlements?: Matrix }
 
 // Positive integer ids in paths; anything else isn't a route (404).
 const ID = '([1-9][0-9]{0,14})';
 
 const routes: Route[] = [
   { pattern: /^\/health$/, methods: { GET: () => [200, { status: 'ok' }] } },
-  { pattern: /^\/accounts$/, methods: { GET: listAccounts, POST: openAccount } },
-  { pattern: new RegExp(`^/accounts/${ID}$`), methods: { GET: getAccount } },
-  { pattern: new RegExp(`^/accounts/${ID}/entries$`), methods: { GET: getEntries } },
-  { pattern: new RegExp(`^/accounts/${ID}/deposits$`), methods: { POST: postDeposit } },
-  { pattern: new RegExp(`^/accounts/${ID}/withdrawals$`), methods: { POST: postWithdrawal } },
-  { pattern: /^\/transfers$/, methods: { POST: postTransfer } },
-  { pattern: new RegExp(`^/transfers/${ID}$`), methods: { GET: getTransfer } },
-  { pattern: /^\/screening-decisions$/, methods: { GET: listDecisions } },
+  { pattern: /^\/accounts$/, methods: { GET: listAccounts, POST: openAccount }, actions: { GET: 'view', POST: 'open_account' } },
+  { pattern: new RegExp(`^/accounts/${ID}$`), methods: { GET: getAccount }, actions: { GET: 'view' } },
+  { pattern: new RegExp(`^/accounts/${ID}/entries$`), methods: { GET: getEntries }, actions: { GET: 'view' } },
+  { pattern: new RegExp(`^/accounts/${ID}/deposits$`), methods: { POST: postDeposit }, actions: { POST: 'deposit' } },
+  { pattern: new RegExp(`^/accounts/${ID}/withdrawals$`), methods: { POST: postWithdrawal }, actions: { POST: 'withdraw' } },
+  { pattern: /^\/transfers$/, methods: { POST: postTransfer }, actions: { POST: 'transfer' } },
+  { pattern: new RegExp(`^/transfers/${ID}$`), methods: { GET: getTransfer }, actions: { GET: 'view' } },
+  { pattern: /^\/screening-decisions$/, methods: { GET: listDecisions }, actions: { GET: 'read_audit' } },
 ];
 
-export function createApp(ledger: Ledger = new Ledger(), { screen = async () => {} }: Options = {}): Server {
+export function createApp(ledger: Ledger = new Ledger(), { screen = async () => {}, entitlements = MATRIX }: Options = {}): Server {
   return createServer((req, res) => {
-    handle(ledger, screen, req, res).catch((err: unknown) => {
+    handle(ledger, screen, entitlements, req, res).catch((err: unknown) => {
       if (err instanceof HttpError) return send(res, err.status, { error: err.message, code: err.code }, err.headers);
       // Another process held the database past the busy timeout: a reason to retry,
       // not a server fault (BK-R25).
@@ -78,7 +80,7 @@ const UI_FILES: Record<string, [file: string, type: string]> = {
 };
 const UI_POLICY = "default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
 
-async function handle(ledger: Ledger, screen: Screen, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handle(ledger: Ledger, screen: Screen, matrix: Matrix, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { pathname } = new URL(req.url ?? '/', 'http://localhost');
   const file = UI_FILES[pathname];
   if (file) {
@@ -100,11 +102,27 @@ async function handle(ledger: Ledger, screen: Screen, req: IncomingMessage, res:
       const allow = Object.keys(route.methods).join(', ');
       throw new HttpError(405, 'method_not_allowed', `${req.method} is not allowed here; use ${allow}`, { Allow: allow });
     }
+    authorize(req, route.actions?.[req.method ?? ''], matrix);
     const body = req.method === 'POST' ? await readJson(req) : {};
     const [status, payload, headers] = await handler({ ledger, params: match.slice(1).map(Number), body, req, screen });
     return send(res, status, payload, headers);
   }
   throw new HttpError(404, 'not_found', `no route for ${pathname}`);
+}
+
+// Who may do this (BK-R46 to BK-R49), asked before anything else about the request is read, so a
+// role that may not do it learns nothing about the accounts, the body or the key. The role is the
+// X-Role header, a claim and not a proof. No header means no restriction, except for the audit
+// record, which only the auditor reads. Any role not in the matrix may do nothing.
+function authorize(req: IncomingMessage, action: Action | undefined, matrix: Matrix): void {
+  if (action === undefined) return;
+  const raw = req.headers['x-role'];
+  const role = Array.isArray(raw) ? raw.join(', ') : raw;
+  if (role === undefined && action !== 'read_audit') return;
+  if (role === undefined || !can(matrix, role, action)) {
+    const who = role === undefined ? 'a request with no role' : Object.hasOwn(matrix, role) ? `the role ${role}` : 'an unknown role';
+    throw new HttpError(403, 'forbidden', `${who} may not ${words(action)}`);
+  }
 }
 
 async function readJson(req: IncomingMessage): Promise<Body> {

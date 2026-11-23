@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { amlScreen } from '../src/aml.ts';
 import { createApp, type Screen } from '../src/app.ts';
+import type { Matrix } from '../src/entitlements.ts';
 import { Ledger } from '../src/ledger.ts';
 import { spawnServers, type Running } from '../src/servers.ts';
 
@@ -27,10 +28,10 @@ export interface Api {
 // A string body is sent as it is (for malformed JSON); anything else as JSON.
 // `now` sets the ledger's clock and `screen` the wait before each movement; `aml` adds the
 // anti-money-laundering rules (BK-R42 to BK-R45), as the real server has them, after it.
-export async function startApi({ now, screen, aml = false }: { now?: () => string; screen?: Screen; aml?: boolean } = {}): Promise<Api> {
+export async function startApi({ now, screen, aml = false, entitlements }: { now?: () => string; screen?: Screen; aml?: boolean; entitlements?: Matrix } = {}): Promise<Api> {
   const ledger = new Ledger(':memory:', now);
   const rules = aml ? amlScreen(ledger) : undefined;
-  const server = createApp(ledger, { screen: rules && screen ? async (m) => { await screen(m); return rules(m); } : rules ?? screen });
+  const server = createApp(ledger, { screen: rules && screen ? async (m) => { await screen(m); return rules(m); } : rules ?? screen, entitlements });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   after(() => new Promise<void>((resolve) => { server.close(() => resolve()); ledger.close(); }));
@@ -65,7 +66,7 @@ export interface Servers {
   dbPath: string;
   bases: string[];
   post(base: string, path: string, body: unknown, headers?: Record<string, string>): Promise<Reply>;
-  get(base: string, path: string): Promise<Reply>;
+  get(base: string, path: string, headers?: Record<string, string>): Promise<Reply>;
 }
 
 // Real server processes sharing one SQLite file in a fresh temp folder (see
@@ -96,6 +97,6 @@ export async function startServers(count: number, env: Record<string, string> = 
     dbPath,
     bases,
     post: (base, path, body, headers) => request(base, 'POST', path, body, headers),
-    get: (base, path) => request(base, 'GET', path),
+    get: (base, path, headers) => request(base, 'GET', path, undefined, headers),
   };
 }

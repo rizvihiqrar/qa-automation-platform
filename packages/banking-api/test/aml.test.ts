@@ -23,7 +23,9 @@ const deposit = (id: number, amount: string, currency = 'CAD', target: Api = api
 const withdraw = (id: number, amount: string, currency = 'CAD') => api.post(`/accounts/${id}/withdrawals`, { amount, currency });
 const transfer = (from: number, to: number, amount: string, currency = 'CAD') =>
   api.post('/transfers', { from_account_id: from, to_account_id: to, amount, currency });
-const rows = async () => (await api.get('/screening-decisions')).body.decisions as any[];
+const AUDITOR = { 'X-Role': 'auditor' }; // the audit record is read by the auditor (BK-R48)
+const audit = (target: Api) => target.request('GET', '/screening-decisions', undefined, AUDITOR);
+const rows = async () => (await audit(api)).body.decisions as any[];
 const last = async () => (await rows()).at(-1);
 const transfersCount = () => Number((api.ledger.db.prepare('SELECT COUNT(*) AS n FROM transfers').get() as { n: number }).n);
 
@@ -401,7 +403,7 @@ describe('the real server has the rules on', () => {
     const listed = await open('Viktor Ostrovsky');
     assert.equal((await servers.post(base, `/accounts/${clean}/deposits`, { amount: '10000.00', currency: 'CAD' })).status, 201);
     held(await servers.post(base, `/accounts/${listed}/deposits`, { amount: '1.00', currency: 'CAD' }));
-    const decisions = (await servers.get(base, '/screening-decisions')).body.decisions;
+    const decisions = (await servers.get(base, '/screening-decisions', AUDITOR)).body.decisions;
     assert.deepEqual(decisions.map((d: any) => d.decision), ['reported', 'blocked']);
   });
 
@@ -432,7 +434,7 @@ describe('requests at the same time, with a slow screening', () => {
     const id = await slow.openAccount('CAD');
     const replies = await Promise.all([deposit(id, '6000.00', 'CAD', slow), deposit(id, '6000.00', 'CAD', slow)]);
     assert.deepEqual(replies.map((r) => r.status), [201, 201]);
-    const rules = (await slow.get('/screening-decisions')).body.decisions.map((d: any) => d.rule as string | null);
+    const rules = (await audit(slow)).body.decisions.map((d: any) => d.rule as string | null);
     assert.deepEqual(rules.sort((a: string | null, b: string | null) => String(a).localeCompare(String(b))), ['24_hour', null]);
   });
 
@@ -443,7 +445,7 @@ describe('requests at the same time, with a slow screening', () => {
     const replies = await Promise.all([1, 2].map(() => slow.post(`/accounts/${id}/withdrawals`, { amount: '600.00', currency: 'CAD' })));
     assert.deepEqual(replies.map((r) => r.status).sort(), [201, 422]);
     assert.equal(replies.find((r) => r.status === 422)!.body.code, 'insufficient_funds');
-    const withdrawals = (await slow.get('/screening-decisions')).body.decisions.filter((d: any) => d.kind === 'withdrawal');
+    const withdrawals = (await audit(slow)).body.decisions.filter((d: any) => d.kind === 'withdrawal');
     assert.deepEqual(withdrawals.map((d: any) => d.decision), ['allowed', 'allowed']);
     assert.equal(Number((slow.ledger.db.prepare("SELECT COUNT(*) AS n FROM transfers WHERE kind = 'withdrawal'").get() as { n: number }).n), 1);
   });

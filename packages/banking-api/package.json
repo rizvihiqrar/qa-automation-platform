@@ -8,6 +8,7 @@
     "test": "node --test \"test/*.test.ts\"",
     "demo": "node src/demo.ts",
     "check": "node src/check.ts",
+    "entitlements": "node src/entitlement-report.ts",
     "race": "node src/race.ts",
     "test:ui": "node src/ui-test.ts",
     "cy:open": "cypress open",
