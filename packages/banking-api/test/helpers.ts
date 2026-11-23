@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after } from 'node:test';
+import { amlScreen } from '../src/aml.ts';
 import { createApp, type Screen } from '../src/app.ts';
 import { Ledger } from '../src/ledger.ts';
 import { spawnServers, type Running } from '../src/servers.ts';
@@ -24,10 +25,12 @@ export interface Api {
 
 // A fresh ledger in memory and a server on a free port, closed after the file's tests.
 // A string body is sent as it is (for malformed JSON); anything else as JSON.
-// `now` sets the ledger's clock and `screen` the wait before each movement.
-export async function startApi({ now, screen }: { now?: () => string; screen?: Screen } = {}): Promise<Api> {
+// `now` sets the ledger's clock and `screen` the wait before each movement; `aml` adds the
+// anti-money-laundering rules (BK-R42 to BK-R45), as the real server has them, after it.
+export async function startApi({ now, screen, aml = false }: { now?: () => string; screen?: Screen; aml?: boolean } = {}): Promise<Api> {
   const ledger = new Ledger(':memory:', now);
-  const server = createApp(ledger, { screen });
+  const rules = aml ? amlScreen(ledger) : undefined;
+  const server = createApp(ledger, { screen: rules && screen ? async (m) => { await screen(m); return rules(m); } : rules ?? screen });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   after(() => new Promise<void>((resolve) => { server.close(() => resolve()); ledger.close(); }));

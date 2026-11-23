@@ -25,6 +25,20 @@ export const PAYMENT_LIMITS: Record<Currency, { single: bigint; daily: bigint }>
   KWD: { single: 3_000_000n, daily: 7_500_000n }, // 3,000.000 and 7,500.000
 };
 
+// CAD per one unit of each currency, in ten-thousandths, fixed so that no rate is looked up
+// (USD 1.37, JPY 0.0092, KWD 4.45).
+export const DEMO_RATE_E4: Record<Currency, bigint> = { CAD: 10_000n, USD: 13_700n, JPY: 92n, KWD: 44_500n };
+
+// The cash amount that must be reported (BK-R42, BK-R43): CAD 10,000.00 or more, and in the
+// other currencies the smallest amount, in minor units, worth CAD 10,000 or more at those
+// rates (USD 7,299.28, JPY 1,086,957, KWD 2,247.192): 10,000 CAD / rate, rounded up.
+const ceilDiv = (a: bigint, b: bigint): bigint => (a + b - 1n) / b;
+export const CASH_REPORT_THRESHOLD = Object.fromEntries(
+  (Object.keys(CURRENCIES) as Currency[]).map((c) => [c, ceilDiv(10n ** 8n * 10n ** BigInt(CURRENCIES[c]), DEMO_RATE_E4[c])]),
+) as Record<Currency, bigint>;
+// The 24-hour rule looks back this far from the movement being screened (BK-R43).
+export const CASH_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 // The payment reference a scheme message carries (BK-R38): 1 to 35 characters from the
 // restricted set letters, digits, space and / - ? : ( ) . , ' +, with no space at either
 // end. Anything else (accented letters, emoji, line breaks, # & % ;) is refused.

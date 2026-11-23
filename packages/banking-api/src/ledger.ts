@@ -53,10 +53,28 @@ export interface Movement {
   reference?: string | null;
 }
 
+// What the screening decided about a movement (BK-R42 to BK-R45). `allowed` and `reported`
+// let the money move (a report is filed for the second); `held` and `blocked` stop it.
+export type Decision = 'allowed' | 'reported' | 'held' | 'blocked';
+
+export interface ScreeningDecision {
+  id: number;
+  decided_at: string;
+  kind: Kind;
+  from_account_id: number | null;
+  to_account_id: number | null;
+  amount: bigint;
+  currency: Currency;
+  decision: Decision;
+  // The rule that decided it; null when allowed
+  rule: string | null;
+  detail: string;
+}
+
 export interface Refusal {
   ok: false;
   status: 404 | 422;
-  code: 'not_found' | 'same_account' | 'currency_mismatch' | 'insufficient_funds' | 'limit_exceeded' | 'payment_limit' | 'daily_limit';
+  code: 'not_found' | 'same_account' | 'currency_mismatch' | 'insufficient_funds' | 'limit_exceeded' | 'payment_limit' | 'daily_limit' | 'screening_hold';
   error: string;
 }
 export type Result<T> = { ok: true; value: T } | Refusal;
@@ -277,6 +295,39 @@ export class Ledger {
   // Gives up a claim that never got its transfer, so the key can be tried again (BK-R22).
   releaseKey(key: string): void {
     this.#write(() => this.#sql('DELETE FROM idempotency_keys WHERE key = ? AND transfer_id IS NULL').run(key));
+  }
+
+  // The ledger's own clock, so the screening's windows use the same time as created_at.
+  now(): string {
+    return this.#now();
+  }
+
+  // What an account has taken in as deposits, or paid out as withdrawals, after `since`
+  // (BK-R43). Cash is deposits and withdrawals only: a transfer between customers isn't.
+  cashTotal(accountId: number, kind: 'deposit' | 'withdrawal', since: string): bigint {
+    const column = kind === 'deposit' ? 'to_account_id' : 'from_account_id';
+    const row = this.#sql(`SELECT COALESCE(SUM(amount), 0) AS total FROM transfers WHERE ${column} = ? AND kind = ? AND created_at > ?`).get(accountId, kind, since);
+    return row?.total as bigint;
+  }
+
+  // One audit row for one decision (BK-R45), written in its own transaction.
+  recordDecision(m: Movement, decision: Decision, rule: string | null, detail: string): ScreeningDecision {
+    const decided_at = this.#now();
+    const row = this.#write(() => this.#sql(`
+      INSERT INTO screening_decisions (decided_at, kind, from_account_id, to_account_id, amount, currency, decision, rule, detail)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(decided_at, m.kind, m.from, m.to, m.amount, m.currency, decision, rule, detail));
+    return { id: id(row.lastInsertRowid), decided_at, kind: m.kind, from_account_id: m.from, to_account_id: m.to, amount: m.amount, currency: m.currency, decision, rule, detail };
+  }
+
+  // Every decision, oldest first.
+  decisions(): ScreeningDecision[] {
+    const rows = this.#sql('SELECT * FROM screening_decisions ORDER BY id').all();
+    return rows.map((r: Row) => ({
+      id: id(r.id), decided_at: r.decided_at as string, kind: r.kind as Kind,
+      from_account_id: optionalId(r.from_account_id), to_account_id: optionalId(r.to_account_id),
+      amount: r.amount as bigint, currency: r.currency as Currency, decision: r.decision as Decision,
+      rule: (r.rule as string | null) ?? null, detail: r.detail as string,
+    }));
   }
 
   getTransfer(transferId: number): (Transfer & { entries: { account_id: number | null; amount: bigint }[] }) | null {
