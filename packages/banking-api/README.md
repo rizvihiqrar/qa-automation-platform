@@ -50,20 +50,21 @@ curl -s -X POST localhost:4100/accounts/1/deposits -H 'Content-Type: application
 - 69 Cypress tests in Chrome and Firefox, each run ending with the SQL checks on the database it left
 - axe-core finds no WCAG 2.2 AA issue on any screen, in light and dark, or at phone width
 - Payment scheme rules: a reference in a fixed alphabet, a limit on one payment, and a limit on what one account sends in a UTC day, kept exact at the boundary and when payments arrive at once
+- Anti-money-laundering rules on the screening step: a report for cash of CAD 10,000 or more (and its equivalent in three more currencies), the 24-hour rule, a sanctions list matched through accents, word order and spellings, and an audit row for every decision, with no name in any reply
 - A real proxy on the wire: mitmproxy in Docker records every request and reply, so tests check URLs, headers and replies as sent, replay captured requests, and change a request in flight
-- 41 numbered [rules](SPEC.md); a test fails if any rule has no test
-- 91 deliberate mistakes, each caught
+- 45 numbered [rules](SPEC.md); a test fails if any rule has no test
+- 132 deliberate mistakes, each caught
 
 ## Results
 
 | Result | Number | Source |
 |---|---|---|
-| API tests (Node) | 298 in about three seconds: 273 designed cases, 14 runner checks, 8 properties, 3 spec checks | [Results](TECHNICAL.md#results) |
+| API tests (Node) | 352 in about three seconds: 327 designed cases, 14 runner checks, 8 properties, 3 spec checks | [Results](TECHNICAL.md#results) |
 | Wire tests (mitmproxy in Docker) | 30 in about five seconds: 16 on the wire, 14 checks of the wire checks | [Network inspection](TECHNICAL.md#network-inspection-with-a-proxy) |
 | UI tests (Cypress) | 69, in Chrome and in Firefox, about a minute each | [The banking UI](TECHNICAL.md#the-banking-ui-tested-with-cypress) |
 | SQL ledger checks | 14 of 14 pass on clean, raced, random and UI-made ledgers; each fires on its own planted defect | [SQL ledger checks](TECHNICAL.md#sql-ledger-checks) |
 | Races | 20 transfers of 10.00 at once from 100.00: 10 pass, balance 0.00 (without the fix: 20 pass, −100.00) | [Requests at the same time](TECHNICAL.md#requests-at-the-same-time) |
-| Deliberate mistakes caught | 91 of 91 | [Deliberate breaks](TECHNICAL.md#deliberate-breaks) |
+| Deliberate mistakes caught | 132 of 132 | [Deliberate breaks](TECHNICAL.md#deliberate-breaks) |
 | Accessibility | 0 axe-core violations (WCAG 2.2 A and AA) on every screen and state | [a11y.cy.ts](cypress/e2e/a11y.cy.ts) |
 
 ## License

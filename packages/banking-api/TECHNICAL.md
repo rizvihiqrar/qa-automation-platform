@@ -223,6 +223,37 @@ Day S9 added the three rules a payment scheme asks of every payment (BK-R38 to B
 
 Tests: [`test/scheme.test.ts`](test/scheme.test.ts), 40 cases (every boundary at limit minus one, the limit and limit plus one in all four currencies; seventeen kinds of bad reference; and a ledger file made before the reference existed, which gets the column added when it is opened). The model test now knows the limits and runs on a fixed clock.
 
+### Anti-money-laundering rules
+
+Day S10 put four rules on the screening step, after the Canadian rules FINTRAC publishes (BK-R42 to BK-R45 in [SPEC.md](SPEC.md#anti-money-laundering-rules)): a report for large cash, the 24-hour rule, a sanctions list, and an audit row for every decision. The rules are in [`src/aml.ts`](src/aml.ts), the name matching in [`src/sanctions.ts`](src/sanctions.ts). `npm start` has them on; `createApp` has them off unless a screen is passed in, so the other packages that start it are unchanged.
+
+| What the screening finds | Decision | Rule | The movement |
+|---|---|---|---|
+| A party whose name is on the list | `blocked` | `sanctions_match` | refused, `422 screening_hold` |
+| A party whose name is one letter from a listed name | `held` | `sanctions_near_match` | refused, `422 screening_hold` |
+| Cash (a deposit or a withdrawal) at the threshold or more | `reported` | `large_cash` | written |
+| Cash that takes the account's 24 hours to the threshold or more | `reported` | `24_hour` | written |
+| None of these | `allowed` | none | written |
+
+The strongest decision wins and the weaker ones aren't looked for, so a listed owner who deposits 20,000.00 is blocked, not reported.
+
+| Currency | Cash report threshold |
+|---|---:|
+| CAD | 10,000.00 |
+| USD | 7,299.28 |
+| JPY | 1,086,957 |
+| KWD | 2,247.192 |
+
+- **The threshold.** CAD 10,000 is the rule; the other currencies use the smallest amount worth at least that at fixed demo rates (USD 1.37, JPY 0.0092, KWD 4.45 to the dollar), worked out in whole minor units (10,000 divided by the rate, rounded up), so no rate is looked up and the boundary tests stay exact. A test checks each threshold is worth CAD 10,000 and one minor unit less is not; the first version had round numbers (USD 7,300.00) that were not the smallest.
+- **The 24 hours.** The 24 hours before the movement on the ledger's clock, with the movement itself included, summed over the same account and the same direction (deposits with deposits, withdrawals with withdrawals). A movement exactly 24 hours old no longer counts; one a millisecond younger does. Only written movements count, so a refused deposit adds nothing. Once the total is at the threshold, every later movement in the window is reported too. The total is read just before the write: the server waits (`SCREENING_DELAY_MS`) first and runs the rules after, with no timer between, so two deposits of 6,000.00 sent at once are added up one after the other.
+- **Names.** Accents, case, punctuation and word order are ignored, "al" and "el" are joined to the next word, and known spellings of a name are made one (Mohammed, Muhammad, Mohamed), so "AL-RAHIMI, Muhammad" and "Mohamed Al Rahimi" are the same listed name. The list also holds spellings (Victor Ostrovskiy for Viktor Ostrovsky). A name of at least 10 letters that is one letter away is a near match and is held; a shorter name must match exactly, because one wrong letter in "Ana Li" is another person. Every name on the list is invented.
+- **No tipping off.** A block and a hold give the same code and the same words, after the same wait as any movement, and neither names a person or a list entry. When both parties match, the stronger match decides. The audit row has the difference, and names accounts and list entries (S-001), never the owner.
+- **The audit record.** One row in `screening_decisions` for each movement that reaches the screening, written in its own transaction before the movement is, and read at `GET /screening-decisions`, oldest first. A table `CHECK` ties the rule to the decision (none when allowed, always one otherwise). A movement refused earlier for funds, an unknown account or a bad request leaves no row, a replay of a keyed request adds none, and a key refused by the screening is given up and can be used again. A ledger file from before the table gets it when it is opened, since the table is new and not a changed one.
+
+**Limits, written down:** the decision is recorded before the movement is, so a movement the ledger then refuses (two withdrawals at once for the same money) keeps an `allowed` row: the row is the decision, not the outcome, and a test shows it. Two server processes on one file can still read the same 24-hour total at the same moment. A report is a row, not a filing to anyone. The list is checked on the account owner's name only, not on the reference or the other bank. A name with no Latin letters matches nothing. `GET /screening-decisions` has no sign-in, like every route here, so anyone can read the reasons; restricting it needs roles (see the next day's entitlement matrix).
+
+Tests: [`test/aml.test.ts`](test/aml.test.ts), 54 cases: each threshold at one unit below and exactly at it in four currencies; the 24-hour window at exactly 24 hours and a millisecond inside; deposits and withdrawals kept apart; eleven spellings of listed names blocked, three near misses held, six other names allowed; either side of a transfer; the same reply for a block and a hold; the audit row's fields; replays and refused keys; the table's `CHECK`; an old ledger file; two requests at once through a slow screening; and a real `node src/server.ts` process that answers a block as slowly as a payment.
+
 ### Network inspection with a proxy
 
 Day S9 put a real proxy between the client and the server, so the tests can look at what is on the wire instead of trusting what the code says it sends. [mitmproxy](https://mitmproxy.org) runs in Docker in reverse mode, in front of a real `banking-api` server; a small add-on ([`proxy/record.py`](proxy/record.py)) writes every request and reply to a file and can change one field of a request in flight.
@@ -262,7 +293,7 @@ Every refusal is `{ "error", "code" }`, checked in a fixed order: the request fi
 | `409` | `idempotency_key_in_use` (the first request with this key is still running) |
 | `413` | `body_too_large` (over 16 KB) |
 | `415` | `unsupported_media_type` (a POST that isn't `application/json`) |
-| `422` | `idempotency_key_mismatch`, `same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`, `payment_limit`, `daily_limit` |
+| `422` | `idempotency_key_mismatch`, `same_account`, `currency_mismatch`, `insufficient_funds`, `limit_exceeded`, `payment_limit`, `daily_limit`, `screening_hold` (the anti-money-laundering screening held or blocked it) |
 | `503` | `busy`, with `Retry-After: 1` (another process held the database for over 5 seconds) |
 
 ### Endpoints
@@ -277,6 +308,7 @@ Every refusal is `{ "error", "code" }`, checked in a fixed order: the request fi
 | `POST` | `/accounts/:id/withdrawals` | `amount`, `currency`, optional `reference` | `201` the transfer, or `422 insufficient_funds`, `payment_limit` or `daily_limit` |
 | `POST` | `/transfers` | `from_account_id`, `to_account_id`, `amount`, `currency`, optional `reference` | `201` the transfer |
 | `GET` | `/transfers/:id` | | the transfer and its two entries |
+| `GET` | `/screening-decisions` | | `{ "decisions": [...] }`, the audit row of every screened movement, oldest first |
 | `GET` | `/health` | | `{ "status": "ok" }` |
 | `GET` | `/`, `/app.js`, `/app.css` | | The banking UI's three files, with the page policy |
 
@@ -332,13 +364,14 @@ Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cy
 | [`ui.test.ts`](test/ui.test.ts) | 17 | The UI files as served (types, the page policy, `405` and `404`), what a browser test can't see in the code (no inline script, no HTML strings, no amount turned into a number or added up, text fields for amounts), and `GET /accounts` |
 | [`launch-retry.test.ts`](test/launch-retry.test.ts) | 14 | The Cypress runner starts a run again only when the browser could not be started or restarted (never connected, or the relaunch crash): a run with a failed test is never run twice, and a second launch failure fails the run |
 | [`scheme.test.ts`](test/scheme.test.ts) | 40 | Payment scheme rules: the reference alphabet and length, each limit at minus one, exactly, and plus one in four currencies, the daily total across withdrawals and transfers, what does not count, the UTC midnight boundary, replays, and three payments at once |
+| [`aml.test.ts`](test/aml.test.ts) | 54 | Anti-money-laundering rules: each cash threshold at one unit below and exactly at it in four currencies, the 24-hour window at exactly 24 hours and a millisecond inside, deposits and withdrawals kept apart, eleven spellings of listed names blocked, near misses held, other names allowed, either side of a transfer, one reply for a block and a hold, the audit row, replays, the table's `CHECK`, an old ledger file, and a real server process |
 | [`spec.test.ts`](test/spec.test.ts) | 3 | Every rule in [SPEC.md](SPEC.md) has a test (Node or Cypress), and every rule a test names exists |
 | [`test-proxy`](test-proxy) | 30 | Through mitmproxy in Docker (`npm run test:proxy`): 16 on the wire, 14 checks of the wire checks. See [network inspection](#network-inspection-with-a-proxy) |
 | [`cypress/e2e`](cypress/e2e) | 69 per browser | The UI in Chrome and Firefox: see [the banking UI](#the-banking-ui-tested-with-cypress) |
 
 ### Deliberate breaks
 
-Each mistake was put into the code, the tests run, and the code restored. All 91 were caught. B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
+Each mistake was put into the code, the tests run, and the code restored. All 132 were caught. B92 to B132 break the anti-money-laundering rules and each ran `test/aml.test.ts`. B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
 
 | # | Mistake | Caught by |
 |---|---|---:|
@@ -433,6 +466,47 @@ Each mistake was put into the code, the tests run, and the code restored. All 91
 | B89 | The reference not checked | 21 |
 | B90 | The single-payment limit switched off | 8 |
 | B91 | An old ledger file not given the new `reference` column when opened | 1 |
+| B92 | Large cash needs more than the threshold, not the threshold | 7 |
+| B93 | The CAD rate one ten-thousandth off, so the CAD threshold is wrong | 11 |
+| B94 | The USD rate set so the threshold is 7,000.35 | 2 |
+| B95 | The JPY rate set so the threshold is a round million | 2 |
+| B96 | The KWD rate set so the threshold is 2,500.000 | 2 |
+| B97 | The threshold rounded down, so it is worth less than CAD 10,000 | 4 |
+| B98 | The 24-hour total needs more than the threshold | 3 |
+| B99 | The 24-hour window is 25 hours | 1 |
+| B100 | A deposit exactly 24 hours old still counts | 1 |
+| B101 | The 24-hour total leaves out the movement being screened | 5 |
+| B102 | Withdrawals added up on the deposit side | 1 |
+| B103 | The 24-hour total adds every account together | 18 |
+| B104 | A transfer between customers counted as cash | 1 |
+| B105 | The rules run before the wait: two deposits at once read the same 24-hour total | 1 |
+| B106 | Accents not removed from a name | 2 |
+| B107 | Case not ignored in a name | 5 |
+| B108 | Word order matters in a name | 3 |
+| B109 | "Al" not joined to the next word | 2 |
+| B110 | Known spellings of a name not made one | 3 |
+| B111 | Joseph counted as a spelling of Yusuf | 1 |
+| B112 | Letters such as ł and ø turned into word breaks | 1 |
+| B113 | A near match from one letter on, so short names match | 1 |
+| B114 | A near match up to two letters away | 1 |
+| B115 | A near match blocked, not held | 3 |
+| B116 | No near match at all | 5 |
+| B117 | An exact match on a later entry loses to a near match on an earlier one | 1 |
+| B118 | Only the receiving account checked | 2 |
+| B119 | Only the sending account checked | 22 |
+| B120 | The first matching account decides, not the stronger match | 1 |
+| B121 | The reply names the list entry and the person | 1 |
+| B122 | A hold has its own code, so the reply tells it from a block | 20 |
+| B123 | The app ignores the screening refusal: the money moves | 21 |
+| B124 | A blocked movement answered before the wait | 1 |
+| B125 | A large deposit refused instead of reported | 7 |
+| B126 | An allowed decision not written | 24 |
+| B127 | The server started without the rules | 2 |
+| B128 | The audit table lets an allowed decision carry a rule | 1 |
+| B129 | The audit reason names the owner | 2 |
+| B130 | The audit row written with the wrong amount | 1 |
+| B131 | Decisions listed newest first | 31 |
+| B132 | The report outweighs the list: a listed owner's large deposit is only reported | 1 |
 
 ### What building it found
 
@@ -465,6 +539,9 @@ Each mistake was put into the code, the tests run, and the code restored. All 91
 - **Firefox twice failed to start the browser on a CI runner, in one run.** All 69 Chrome tests passed, then in the Firefox run the first spec printed `The browser never connected` and ran no test, and the relaunch for the second spec crashed inside Cypress with `Cannot read properties of undefined (reading 'browsingContextGetTree')` (CI run 42467489172, 2026-11-08); a re-run passed. That is the runner, not the UI, so [`src/launch-retry.ts`](src/launch-retry.ts) starts `cypress run` once more for either one. The first fix (2026-11-08) looked only for the first message, so a run that died with the crash alone was not started again (found 2026-11-17). Each failure is an entry in `LAUNCH_FAILURES`, and [`launch-retry.test.ts`](test/launch-retry.test.ts) has a log excerpt and a retry test for every entry, so a new entry without a test fails. The crash must come with a Cypress relaunch frame, and a run in which a test already failed is never started again (the config keeps `retries: 0`), so a real flake still fails the run. Each rule was removed once to see its test fail.
 - **No `cypress-axe` for Cypress 16 yet.** Its peer range stops at 15. Loading axe-core into the page and calling `axe.run` is all it does, so the support file does that directly, with the WCAG 2.2 A and AA tags.
 - **Some checks can't fire alone, and that's correct.** A transfer missing its credit is also unbalanced, and so is its currency. A test lists the seven checks that only ever fire with others, with the reason, so a check that quietly copies another can't hide among them.
+- **A mistake in a rule nobody had written down was the one the first run missed.** The spec said the audit reason names accounts and list entries, never a person, but no test read it: B129 (the reason names the owner) was the only one of the first 35 breaks that got through, and a test now reads the reason. Writing the sentence in SPEC.md first is what showed the gap.
+- **A code review found five things the tests had agreed with.** The thresholds were round numbers, not the smallest amounts worth CAD 10,000 (tests written against the same wrong numbers passed); the first matching party decided, so a near match on the sender hid an exact match on the receiver; "Joseph" was a spelling of "Yusuf"; letters such as ł and ø became word breaks; and a block returned before the wait, so its timing told it from a payment. The fix for the last one also moved the 24-hour total next to the write. Six more breaks (41 in all) put each back.
+- **Where the rules plug in decided what could break.** `money-course` plants its bugs by matching exact lines of this package's source, and two other packages start `createApp` with the defaults, so the rules are on in `src/server.ts` and off in `createApp`, and no line those packages match was repeated. The search for them came before the first edit.
 
 ## FAQ
 
@@ -519,6 +596,10 @@ The network tab shows one browser's view and goes away with the page. A proxy si
 ### Why does the proxy test open a server on every network interface?
 
 The proxy runs in a container and reaches the server as `host.docker.internal`, which is not `127.0.0.1`. The test server therefore listens on `0.0.0.0` for the length of the run, with an empty in-memory ledger. `npm start` still listens on localhost only.
+
+### Why isn't a customer told why a movement was held?
+
+A reply that says "your name is close to a listed name" tells a person who is hiding something exactly how close it can get, and tells an innocent one something they can't act on. So a block and a hold answer the same words, and the reason lives in the audit row, which names accounts and list entries and never the owner.
 
 ### Is there any sign-in?
 

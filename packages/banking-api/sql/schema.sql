@@ -55,3 +55,20 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
 );
 
 CREATE INDEX IF NOT EXISTS idempotency_keys_by_age ON idempotency_keys (created_at);
+
+-- Screening decisions (BK-R42 to BK-R45): one row for every movement that reached the
+-- screening step, whatever the answer, so a reviewer can see what was decided and why.
+-- Parties are customer accounts (NULL: the funding side of a deposit or withdrawal).
+CREATE TABLE IF NOT EXISTS screening_decisions (
+  id              INTEGER PRIMARY KEY,
+  decided_at      TEXT    NOT NULL,
+  kind            TEXT    NOT NULL CHECK (kind IN ('deposit', 'withdrawal', 'transfer')),
+  from_account_id INTEGER REFERENCES accounts (id),
+  to_account_id   INTEGER REFERENCES accounts (id),
+  amount          INTEGER NOT NULL CHECK (amount > 0),
+  currency        TEXT    NOT NULL,
+  decision        TEXT    NOT NULL CHECK (decision IN ('allowed', 'reported', 'held', 'blocked')),
+  rule            TEXT,  -- NULL only when the decision is 'allowed'
+  detail          TEXT    NOT NULL,
+  CHECK ((decision = 'allowed') = (rule IS NULL))
+);

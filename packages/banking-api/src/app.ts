@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { Ledger, type Account, type Entry, type Movement, type Result, type Transfer } from './ledger.ts';
+import { Ledger, type Account, type Entry, type Movement, type Refusal, type Result, type ScreeningDecision, type Transfer } from './ledger.ts';
 import { CURRENCIES, REFERENCE_MAX, formatAmount, isCurrency, isReference, parseAmount, type Currency } from './money.ts';
 
 // A plain node:http server: no framework, no runtime dependencies. Every response is
@@ -33,7 +33,8 @@ interface Route { pattern: RegExp; methods: Record<string, Handler> }
 // in for a slow one (SCREENING_DELAY_MS); by default it returns at once. While it
 // runs, other requests run too, which is why the ledger checks funds again when it
 // writes (BK-R24).
-export type Screen = (movement: Movement) => Promise<void>;
+// It may answer with a refusal, which stops the movement (BK-R44).
+export type Screen = (movement: Movement) => Promise<Refusal | void>;
 export interface Options { screen?: Screen }
 
 // Positive integer ids in paths; anything else isn't a route (404).
@@ -48,6 +49,7 @@ const routes: Route[] = [
   { pattern: new RegExp(`^/accounts/${ID}/withdrawals$`), methods: { POST: postWithdrawal } },
   { pattern: /^\/transfers$/, methods: { POST: postTransfer } },
   { pattern: new RegExp(`^/transfers/${ID}$`), methods: { GET: getTransfer } },
+  { pattern: /^\/screening-decisions$/, methods: { GET: listDecisions } },
 ];
 
 export function createApp(ledger: Ledger = new Ledger(), { screen = async () => {} }: Options = {}): Server {
@@ -259,7 +261,8 @@ async function move(ctx: Context, m: Movement): Promise<Reply> {
 async function run({ ledger, screen }: Context, m: Movement, key?: string): Promise<Reply> {
   const refusal = ledger.check(m);
   if (refusal) unwrap(refusal);
-  await screen(m);
+  const held = await screen(m);
+  if (held) unwrap(held);
   return [201, transfer(unwrap(ledger.apply(m, key)))];
 }
 
@@ -272,9 +275,19 @@ function getTransfer({ ledger, params: [transferId] }: Context): Reply {
   }];
 }
 
+// The audit record of the screening (BK-R45), oldest first.
+function listDecisions({ ledger }: Context): Reply {
+  return [200, { decisions: ledger.decisions().map(decision) }];
+}
+
 // ---- Responses: every amount as a string with the currency's decimals (BK-R07) ---
 
 const account = (a: Account) => ({ id: a.id, owner: a.owner, currency: a.currency, balance: formatAmount(a.balance, a.currency), created_at: a.created_at });
+
+const decision = (d: ScreeningDecision) => ({
+  id: d.id, decided_at: d.decided_at, kind: d.kind, from_account_id: d.from_account_id, to_account_id: d.to_account_id,
+  amount: formatAmount(d.amount, d.currency), currency: d.currency, decision: d.decision, rule: d.rule, detail: d.detail,
+});
 
 const transfer = (t: Transfer) => ({
   id: t.id, kind: t.kind, from_account_id: t.from_account_id, to_account_id: t.to_account_id,
