@@ -375,6 +375,8 @@ jobs:
   # openpyxl). The mock API runs in-process, so the job needs Python only. After the tests,
   # mock cycles 1 to 3 run for real and must end with every check passed and no open
   # exception (exit code 1 otherwise); their exception workbooks are kept as a report.
+  # Then the payroll parallel (every pay line again, each difference proven) and a masked
+  # copy of the extract that must hide everyone and still break the same rules.
   hcm-conversion-validation:
     name: hcm-conversion-validation
     runs-on: ubuntu-latest
@@ -396,6 +398,13 @@ jobs:
         run: pytest
       - name: Conversion cycles 1 to 3
         run: python -m hcm_conv run
+      # Run 1 has unexplained differences on purpose; the step fails only if run 2 has one
+      - name: Payroll parallel runs 1 and 2
+        run: python -m hcm_conv parallel
+      # A new key on each run (the checks must pass whatever the key is), made from the run ID
+      # so a failure can be rebuilt locally with the same key; the data is fake, so it is no secret
+      - name: Masked copy of the legacy extract
+        run: HCM_MASK_KEY="ci-run-${{ github.run_id }}" python -m hcm_conv mask
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4

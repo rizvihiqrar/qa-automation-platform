@@ -1,0 +1,13 @@
+# The new system's payroll setup, as it was built for the payroll parallel (fake rules, not
+# real tax law). Each pay group says how many pay periods it has in a year and which earning
+# codes are attached to it; an earning that is not attached is not paid.
+rounding: half_up
+pay_groups:
+  Weekly:      {periods_per_year: 52, earnings: [REG]}
+  Biweekly:    {periods_per_year: 26, earnings: [REG, OT]}
+  Semimonthly: {periods_per_year: 26, earnings: [REG, OT]}
+  Monthly:     {periods_per_year: 12, earnings: [REG, OT]}
+deductions:
+  TAX: {rate: "0.22"}
+  PEN: {rate: "0.05"}
+  BEN: {amount: "42.50"}
