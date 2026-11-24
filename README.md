@@ -35,7 +35,7 @@ Each folder under `packages/` is a small project that either tests something (a 
 
 ## At a glance
 
-- 37 packages, about 3,100 automated tests and checks, all run by one CI workflow
+- 37 packages, about 3,120 automated tests and checks, all run by one CI workflow
 - One CI job per package, so one failure never hides another
 - A live [CI dashboard](https://rizvihiqrar.github.io/qa-automation-platform/) of pass rate, run time and flaky jobs, rebuilt after every run on main
 - [Published test reports](https://rizvihiqrar.github.io/qa-automation-platform/reports/) for every suite, with tokens redacted before publishing
@@ -88,7 +88,7 @@ Strongest first within each area. Counts are automated checks. The [full descrip
 
 | Package | What it does | Checks |
 |---|---|---:|
-| [hcm-conversion-validation](packages/hcm-conversion-validation) | HR and payroll data conversion checks in Python: a legacy extract with 20 seeded defects is mapped, validated, loaded through a Workday-style mock API's bulk load and reconciled by row counts, hash totals and a hash of every record. Three mock cycles take the exceptions from 22 to 0, with an Excel exception report. A payroll parallel pays 537 old payslips again and proves every cent of difference by a replay, and a keyed masked copy hides every person but still breaks the same rules | 127 |
+| [hcm-conversion-validation](packages/hcm-conversion-validation) | HR and payroll data conversion checks in Python: a legacy extract with 20 seeded defects is mapped, validated, loaded through a Workday-style mock API's bulk load and reconciled by row counts, hash totals and a hash of every record. Three mock cycles take the exceptions from 22 to 0, with an Excel exception report. A payroll parallel pays 537 old payslips again and proves every cent of difference by a replay, and a keyed masked copy hides every person but still breaks the same rules. The load also runs through Toxiproxy in Docker with a slow reply, a reset mid-upload, a silent line and a reply lost after the save, and still ends reconciled with nothing loaded twice | 140 + 6 fault tests |
 
 ### Performance
 

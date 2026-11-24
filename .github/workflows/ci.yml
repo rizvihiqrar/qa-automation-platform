@@ -414,6 +414,46 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # The same conversion loaded through a bad network line: Toxiproxy in Docker (started by
+  # testcontainers) sits between the loader and the mock API, and each test puts one fault on
+  # one call (a slow reply, a reset mid-upload, a silent line, a reply lost after the save).
+  # Cycle 3 must still pass every check. Its own job, so the main HCM job needs Python only.
+  hcm-conversion-validation-faults:
+    name: hcm-conversion-validation-faults
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # No Ryuk reaper: it is one more image pulled from Docker Hub with no retry, and the runner
+    # is thrown away after the job, containers and all (code review, 2026-11-24)
+    env:
+      TESTCONTAINERS_RYUK_DISABLED: 'true'
+    defaults:
+      run:
+        working-directory: packages/hcm-conversion-validation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: packages/hcm-conversion-validation/requirements.txt
+      - run: pip install -r requirements.txt
+      # Pulled through retry.sh (registries answer 502 now and then). The tag must match
+      # TOXIPROXY_IMAGE in packages/hcm-conversion-validation/tests_faults/toxiproxy.py
+      # (tests/test_client.py checks it).
+      - name: Pull Toxiproxy image
+        run: |
+          bash "$GITHUB_WORKSPACE/scripts/retry.sh" docker pull --quiet ghcr.io/shopify/toxiproxy:2.12.0
+      - name: Fault tests
+        run: pytest tests_faults --junitxml=reports/junit-faults.xml
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-hcm-conversion-validation-faults
+          path: packages/hcm-conversion-validation/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Pull requests only: every Playwright or Cypress spec the PR adds or changes runs
   # 3 times with no retries (Cypress in Chrome and Firefox), so a test that passes
   # only sometimes is caught before it merges. scripts/burn-in.mjs picks the specs.

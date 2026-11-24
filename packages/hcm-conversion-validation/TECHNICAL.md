@@ -4,7 +4,7 @@
 
 **Contents:** [Features](#features) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
-Stage 1 of three is the conversion itself (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds the [payroll parallel](#the-payroll-parallel) and [masking](#masking) (built), then integration faults that reuse the Toxiproxy setup from qa-practice-api (next). Stage 3 adds the test plan, a traceability matrix, a defect log and a go or no-go readiness report.
+Stage 1 of three is the conversion itself (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds the [payroll parallel](#the-payroll-parallel), [masking](#masking) and [integration faults](#integration-faults) that reuse the Toxiproxy setup from qa-practice-api. Stage 3 adds the test plan, a traceability matrix, a defect log and a go or no-go readiness report.
 
 ## Features
 
@@ -29,6 +29,8 @@ legacy/ (CSV + payroll.sql) ─ fixes/cycleN.yaml ─▶ extract ─▶ mapping.
 | [cycles.py](hcm_conv/cycles.py) | Runs cycles 1 to 3 and works out the deltas |
 | [report.py](hcm_conv/report.py) | Writes the exception workbook |
 | [parallel.py](hcm_conv/parallel.py) | The new payroll engine, the payroll parallel runs and their workbook |
+| [client.py](hcm_conv/client.py) | The loader's HTTP client: a timeout on every call, retries for the calls that are safe to repeat |
+| [tests_faults/](tests_faults) | The fault tests: the mock API on a real port, Toxiproxy in Docker in front of it |
 | [mask.py](hcm_conv/mask.py) | Writes a masked copy of the extract and checks it |
 
 ### The legacy extract
@@ -199,12 +201,42 @@ The command then checks its own copy, and exits with 1 if any check fails:
 
 Only cycle 1 is compared: the fixes for cycles 2 and 3 hold the corrected real values (a last name, a first name), so applying them to a masked copy would put real data back. Names come from fixed pools of fake fr_CA and en_CA names, so a common surname can show up again on another person; what the checks rule out is any worker keeping their own value.
 
+### Integration faults
+
+A real load crosses a network. The fault tests put [Toxiproxy](https://github.com/Shopify/toxiproxy) (the same pinned image as qa-practice-api, `ghcr.io/shopify/toxiproxy:2.12.0`, started by testcontainers) between the loader and the mock API. The API runs on a real port in the test process, and the container reaches it through `host.docker.internal` (on Linux, `extra_hosts` maps that to the host gateway). The loader talks only to Toxiproxy.
+
+The loader uses [client.py](hcm_conv/client.py):
+
+- every call has a timeout, so a silent line ends in a timeout instead of a hang
+- a call that got no answer at all (a connect error, a reset, a timeout, a cut reply) is tried up to 3 times, with a backoff that doubles (0.2 s, then 0.4 s)
+- an answer with an error status is an answer: it is never retried
+- only calls that are safe to send twice are retried: every read, the bulk load and the tenant reset. The bulk load updates rows by key, so the same file again adds and changes nothing. Any other call fails at its first error
+- each retry is recorded (call, try, error), and when the last try fails, `LoadError` names the call and every error
+
+Each test switches one fault on just before one chosen call, and off when the loader retries it. So each run has exactly one retry, on the call it was aimed at, and then the whole of cycle 3 must pass every check with no open exception:
+
+| Fault | Toxic | Aimed at | What has to happen |
+|---|---|---|---|
+| Slow reply | `latency` 3 s downstream, against a 1.5 s timeout | the error report of the first load (a small reply) | ReadTimeout, one retry, the report read again |
+| Reset mid-upload | `reset_peer` upstream | the bulk load | the file is sent again; the API never saw the first try, so it loads once |
+| Silent line | `timeout` 0 upstream (nothing through, no hang-up) | the pay results report | ReadTimeout, not a hang; the whole cycle well under 30 s |
+| Reply lost after the save | `limit_data` 1 byte downstream | the bulk load | the API saved the load and only its reply was cut; the retry loads the same file again (3 loads in all) and the counts, hash totals, row hashes and rerun check all still pass |
+| A fault that never clears | `timeout` 0 upstream, left on | a report read | `LoadError` after 3 tries, in about 3 timeouts |
+
+The reply lost after the save is the case that breaks naive loaders: the client can't tell whether the work was done. The test reads the API's own load list to prove the first try was saved, and the reconciliation proves the second one changed nothing. A test with no fault shows the clean line first: validate once, load once, and the reconciliation's own rerun.
+
+Why a small reply for the slow one: Toxiproxy cannot remove a latency toxic while a large reply is queued in it, and answers 503. Aimed at the 40 KB workers report, the slow-reply test failed 4 runs in 9 (found before the first push, 2026-11-24). The test helper now retries a 503 a few times and then names this cause.
+
+The loader's bulk load retry assumes the target handles loads of the same keys one after another. The mock API does; a real target that runs two loads of the same rows at once could clash when a timeout hits a load that is still running.
+
+`python -m hcm_conv run --api-url URL` uses the same client, and prints each retry.
+
 ## Configuration
 
 | Command | Option | Default | What it does |
 |---|---|---|---|
 | `python -m hcm_conv run` | `--cycle N` | 1 to 3 | Run cycles 1 to N and show cycle N (its deltas still compare with N-1) |
-| | `--api-url URL` | in-process | Use a mock API that is already running (`serve`) |
+| | `--api-url URL` | in-process | Use a mock API that is already running (`serve`), through the retrying client |
 | | `--out DIR` | `reports/` | Where the workbooks go |
 | `python -m hcm_conv exceptions` | `--cycle N`, `--all` | 1, errors only | Print a cycle's exceptions; `--all` adds the info rows |
 | `python -m hcm_conv parallel` | `--api-url URL`, `--out DIR` | in-process, `reports/` | Load cycles 1 to 3, then payroll parallel runs 1 and 2; exit 1 if run 2 has an unexplained difference |
@@ -213,6 +245,8 @@ Only cycle 1 is compared: the fixes for cycles 2 and 3 hold the corrected real v
 | `python -m hcm_conv generate` | | | Rewrite `legacy/` from seed 51 |
 
 ## CI integration
+
+The fault tests run in their own job, `hcm-conversion-validation-faults`: it pulls the Toxiproxy image through [scripts/retry.sh](../../scripts/retry.sh) (registries answer 502 now and then), then runs `pytest tests_faults`. Their own job keeps the main job Python only and quick. A test in [tests/test_client.py](tests/test_client.py) fails if the tag CI pulls is not the one the tests start.
 
 The `hcm-conversion-validation` job in [ci.yml](../../.github/workflows/ci.yml) installs the pinned requirements, runs `pip-audit`, runs pytest, then runs the three cycles, the payroll parallel and the masking for real (each must end with exit code 0), and keeps `reports/` (JUnit XML, the exception and parallel workbooks, the masked copy) for 7 days. The masking step uses a new key on every run, made from the run ID (`ci-run-<run id>`), so its checks must pass whatever the key is, and a failure can be rebuilt locally with the same key (the data is fake, so the key is no secret). Dependabot watches `requirements.txt` ([scripts/dependabot.test.mjs](../../scripts/dependabot.test.mjs) fails if any package with a `requirements.txt` is left out).
 
@@ -241,6 +275,9 @@ Totals catch missing and extra rows and changed amounts. They can't catch a chan
 ### Why not pass the parallel within a dollar a worker?
 A tolerance hides the mistakes a parallel is there to find: a setup error of a few cents on every payslip passes it, and adds up over a year. Matching to the cent and proving each gap by a replay means the sign-off lists exactly why each cent differs.
 
+### Why retry a bulk load at all, when a POST is usually not safe to repeat?
+Because this one is: the target updates each row by its key, so sending the same file twice leaves the same records. The lost-reply test proves it on a real broken line. A call without that property is not retried, and a test shows it fails at its first error.
+
 ### Why keep the employee IDs when masking?
 They are the keys every file joins on, and on their own they name no one. Masking them too would mean masking the pay history and the fixes the same way; the five masked columns are the ones that say who a person is.
 
@@ -255,6 +292,8 @@ No. It is a small mock shaped after public descriptions of such interfaces, with
 | `fix for D-xx matched 0 rows` | The extract changed and a fix no longer finds its row | Update the fix's `match` |
 | Accented names look wrong in the console | The Windows console is not UTF-8 | The command line switches its output to UTF-8; in other scripts set `PYTHONIOENCODING=utf-8` |
 | CSV from `/reports` shows `Ã©` in Excel | Excel guessed the encoding | Add `bom=true` to the report URL |
+| `pytest tests_faults` errors at setup with a Docker error | Docker is not running | Start Docker Desktop (or the Docker service), then run again |
+| The fault tests time out at the first call on Linux | The container can't reach the host | The fixture maps `host.docker.internal` to `host-gateway`; check a firewall is not blocking the test port |
 | `mask` prints `Set HCM_MASK_KEY` and exits 2 | No key in the environment | Set `HCM_MASK_KEY` to any secret; keep it to get the same copy again |
 | `payroll.yaml has no setting ...` | A setup change or explanation in fixes/parallel.yaml names a setting that does not exist | Fix the dotted path (for example `pay_groups.Weekly.earnings`) |
 | Run 2 shows an unexplained difference | A real pay gap, or a new explanation that does not replay | Read the Differences sheet of `reports/parallel_run2.xlsx`: each row names the worker, period and item |
@@ -268,4 +307,5 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m hcm_conv run
 .venv/bin/python -m hcm_conv parallel
 HCM_MASK_KEY=dev-key .venv/bin/python -m hcm_conv mask
+.venv/bin/python -m pytest tests_faults         # needs Docker
 ```
