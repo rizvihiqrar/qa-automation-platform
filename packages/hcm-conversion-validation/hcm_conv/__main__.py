@@ -66,8 +66,9 @@ def main(argv=None) -> int:
         print_exceptions(cycle, args.all)
         return 0
     if args.api_url:
-        import httpx2
-        client = httpx2.Client(base_url=args.api_url, timeout=30)
+        from .client import RetryingClient
+        client = RetryingClient(args.api_url, timeout=30,
+                                on_retry=lambda r: print(f"  retry: {r.call} try {r.attempt} failed ({r.error})"))
     else:
         from fastapi.testclient import TestClient
         from .mock_api import create_app

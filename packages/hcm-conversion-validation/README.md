@@ -2,9 +2,9 @@
 
 # hcm-conversion-validation
 
-A data conversion test kit for HR and payroll, in Python. A generated legacy extract (CSV files plus a SQLite payroll history, 200 workers, 20 seeded defects of 8 kinds) is mapped, validated, loaded through a Workday-style mock API's bulk load, and read back through its report export. Then the target is reconciled with the source by row counts, hash totals and a hash of every record. Three mock cycles show the exceptions going from 22 to 0 as the data is cleaned, with the deltas between cycles in an Excel exception report. Then a payroll parallel pays the last three pay periods again in the new system and proves every cent of difference, and a masked copy of the extract hides every person while still breaking the same rules. Fake data only. Not affiliated with any HR vendor.
+A data conversion test kit for HR and payroll, in Python. A generated legacy extract (CSV files plus a SQLite payroll history, 200 workers, 20 seeded defects of 8 kinds) is mapped, validated, loaded through a Workday-style mock API's bulk load, and read back through its report export. Then the target is reconciled with the source by row counts, hash totals and a hash of every record. Three mock cycles show the exceptions going from 22 to 0 as the data is cleaned, with the deltas between cycles in an Excel exception report. Then a payroll parallel pays the last three pay periods again in the new system and proves every cent of difference, and a masked copy of the extract hides every person while still breaking the same rules. Finally the load goes through a bad network line (Toxiproxy in Docker): a slow reply, a reset mid-upload, a silent line and a reply lost after the save, and it still ends reconciled. Fake data only. Not affiliated with any HR vendor.
 
-**In plain English:** moving a company's people and pay from an old system to a new one is like moving house. This kit counts the boxes before and after, adds up the numbers on them, opens every box to compare it with a photo taken before it left, and drives the truck a second time to make sure nothing gets delivered twice. Anything that can't move yet (a missing hire date, a duplicated employee ID, a name garbled by the wrong file encoding) goes on a list with the reason, and the list gets shorter each cycle. After the move, the new system pays three old pay runs again, and every cent that comes out different needs a signed-off reason that the kit checks by working the pay out again. The copy given to testers has made-up names, birth dates and ID numbers, so nobody real is in it.
+**In plain English:** moving a company's people and pay from an old system to a new one is like moving house. This kit counts the boxes before and after, adds up the numbers on them, opens every box to compare it with a photo taken before it left, and drives the truck a second time to make sure nothing gets delivered twice. Anything that can't move yet (a missing hire date, a duplicated employee ID, a name garbled by the wrong file encoding) goes on a list with the reason, and the list gets shorter each cycle. After the move, the new system pays three old pay runs again, and every cent that comes out different needs a signed-off reason that the kit checks by working the pay out again. The copy given to testers has made-up names, birth dates and ID numbers, so nobody real is in it. And when the truck breaks down halfway (the phone line drops, or the new office says nothing back), the kit sends the boxes again and proves nothing arrived twice.
 
 **[Technical guide →](TECHNICAL.md)**
 
@@ -20,12 +20,13 @@ python -m venv .venv
 .venv/bin/pip install -r requirements.txt      # Windows: .venv\Scripts\pip
 ```
 
-Python 3.12. Nothing else: the mock API runs inside the same process.
+Python 3.12. Nothing else for the main tests: the mock API runs inside the same process. The fault tests also need Docker.
 
 ## Quick start
 
 ```bash
-.venv/bin/python -m pytest                     # 127 tests
+.venv/bin/python -m pytest                     # 140 tests
+.venv/bin/python -m pytest tests_faults        # 6 fault tests (Docker must be running)
 .venv/bin/python -m hcm_conv run               # cycles 1 to 3, writes reports/exceptions_cycleN.xlsx
 .venv/bin/python -m hcm_conv exceptions --cycle 1
 .venv/bin/python -m hcm_conv parallel          # payroll parallel runs 1 and 2, writes reports/parallel_runN.xlsx
@@ -53,7 +54,10 @@ HCM_MASK_KEY=any-secret .venv/bin/python -m hcm_conv mask    # writes and checks
 - Run 1 finds the two seeded setup mistakes (semimonthly pay divided by 26, overtime missing from the weekly pay group) and nothing else; run 2 passes with 118 rounding differences, each one proven
 - Masking with a keyed hash (HMAC-SHA256): names, birth dates, emails and national IDs change, the same key gives the same copy, and blanks, accents and garbled names keep their shape
 - The masked copy is checked: nobody keeps their own value, no real national ID or email is anywhere in it, and the checks find the same 68 problems as in the original
-- 43 bugs were put back on purpose, one at a time, and the right tests failed each time (see [Results](#results))
+- Integration faults on a real line: Toxiproxy (in Docker, started by testcontainers) between the loader and the mock API puts one fault on one call, and cycle 3 must still pass every check
+- The loader times out every call and retries only what is safe to send twice (reads, the bulk load, the reset), up to 3 tries with a growing backoff; an error status is never retried
+- The dangerous case is tested: the API saves the load and the reply is lost, so the loader loads again, and the reconciliation proves nothing was duplicated or changed
+- 51 bugs were put back on purpose, one at a time, and the right tests failed each time (see [Results](#results))
 
 ## Results
 
@@ -73,6 +77,14 @@ HCM_MASK_KEY=any-secret .venv/bin/python -m hcm_conv mask    # writes and checks
 | Run 2, two setup changes | 0 | 118 | 0.00, 0.04 and 0.03 short | PASS |
 
 The masked copy passes all 5 of its checks with any key: CI uses a new key, made from the run ID, on every run.
+
+| Fault on the line | Aimed at | Retries | Cycle 3 |
+|---|---|---|---|
+| Slow reply (3 s, timeout 1.5 s) | a load's error report | 1 (ReadTimeout) | passes |
+| Reset in the middle of the upload | the bulk load | 1; the API never saw the first try | passes |
+| Silent line (no reply, no hang-up) | the pay results report | 1 (ReadTimeout), no hang | passes |
+| Reply lost after the save | the bulk load | 1; the file is loaded 3 times in all, no duplicates | passes |
+| A fault that never clears | a report read | 3 tries, then a clear error | stops |
 
 | Bug put back on purpose | Tests that failed |
 |---|---:|
@@ -119,6 +131,14 @@ The masked copy passes all 5 of its checks with any key: CI uses a new key, made
 | Masking: leftover files in the output folder fail the leak scan (code review) | 1 |
 | Parallel: a pay result the legacy system never paid crashes the run (code review) | 1 |
 | Parallel: a run listed twice in the plan is done twice (code review) | 1 |
+| Loader: no retries at all | 11 |
+| Loader: every POST is retried, not only the safe ones | 1 |
+| Loader: an error status is retried as if the line failed | 1 |
+| Loader: the backoff does not grow | 1 |
+| Loader: retries are not recorded | 7 |
+| Loader: the fault hook is not called on a retry | 7 |
+| Mock API: a second bulk load adds rows instead of updating them | 21 |
+| CI pulls another Toxiproxy tag than the tests start | 1 |
 
 The stage 1 suite passed 10 runs in a row with no retries (5 before the code review fixes, 5 after); the stage 2 suite passed 3 in a row before the code review fixes and 5 after.
 
