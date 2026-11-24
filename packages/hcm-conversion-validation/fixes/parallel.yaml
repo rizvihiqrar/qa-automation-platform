@@ -1,0 +1,17 @@
+# The payroll parallel: the new engine pays the last three legacy pay periods again, from the
+# converted compensation, and every pay line is compared with what the legacy system paid.
+#
+# Run 2 uses the setup changes the payroll team made after run 1. Each names the issue it closes.
+runs:
+  2:
+    - {issue: PP-01, setting: pay_groups.Semimonthly.periods_per_year, value: 24,
+       reason: "Semimonthly is 24 pay periods a year, not 26"}
+    - {issue: PP-02, setting: pay_groups.Weekly.earnings, value: [REG, OT],
+       reason: "Overtime was not attached to the Weekly pay group"}
+
+# Differences the payroll manager signed off. Each is a setting: a difference counts as
+# explained only if the engine, run again with that setting, gives exactly the legacy amount.
+# Anything else is unexplained, and one unexplained difference fails the run.
+explained:
+  - {id: EX-01, setting: rounding, value: half_even, signed_off_by: Payroll manager,
+     reason: "The new engine rounds half a cent up; the legacy system rounded it to the even cent"}

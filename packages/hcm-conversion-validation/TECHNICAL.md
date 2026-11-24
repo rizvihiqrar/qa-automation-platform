@@ -4,7 +4,7 @@
 
 **Contents:** [Features](#features) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
-This is stage 1 of three (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds integration faults (reusing the Toxiproxy setup from qa-practice-api), a payroll parallel and data masking. Stage 3 adds the test plan, a traceability matrix, a defect log and a go or no-go readiness report.
+Stage 1 of three is the conversion itself (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds the [payroll parallel](#the-payroll-parallel) and [masking](#masking) (built), then integration faults that reuse the Toxiproxy setup from qa-practice-api (next). Stage 3 adds the test plan, a traceability matrix, a defect log and a go or no-go readiness report.
 
 ## Features
 
@@ -28,6 +28,8 @@ legacy/ (CSV + payroll.sql) ─ fixes/cycleN.yaml ─▶ extract ─▶ mapping.
 | [reconcile.py](hcm_conv/reconcile.py) | Loads a cycle and reconciles the target with the source |
 | [cycles.py](hcm_conv/cycles.py) | Runs cycles 1 to 3 and works out the deltas |
 | [report.py](hcm_conv/report.py) | Writes the exception workbook |
+| [parallel.py](hcm_conv/parallel.py) | The new payroll engine, the payroll parallel runs and their workbook |
+| [mask.py](hcm_conv/mask.py) | Writes a masked copy of the extract and checks it |
 
 ### The legacy extract
 
@@ -143,6 +145,60 @@ Cycle 2 also brings a late change: a new hire keyed in without a position (N-01,
 | Exceptions | One row per finding: rule, severity, status, file, line, key, field, value, message (filtered and frozen header) |
 | Deltas | New, fixed, still open and accepted against the cycle before |
 
+### The payroll parallel
+
+After cycle 3, the new system pays the last three legacy pay periods again (P2026-19 to P2026-21), and each pay line is compared with what the legacy system paid. The new engine in [parallel.py](hcm_conv/parallel.py) reads the converted compensation from the target's compensation report, plus the overtime entered for each period (the time entries both systems got). It works out each payslip with its own setup in [payroll.yaml](payroll.yaml):
+
+| Item | New engine |
+|---|---|
+| REG | annual amount / pay periods in the year of the worker's pay group, rounded to the cent |
+| OT | the overtime entered, if OT is attached to the pay group |
+| TAX, PEN | 22% and 5% of gross, rounded to the cent |
+| BEN | 42.50 |
+| gross, deductions, net | sums of the lines |
+
+Each of the 537 loaded pay results gets a payslip, and every item (5 lines and 3 totals) is compared with the legacy pay lines and pay results, to the cent. A line on one side only (overtime the new engine did not pay) is a difference too.
+
+**Every difference must be explained.** An explanation in [fixes/parallel.yaml](fixes/parallel.yaml) is a setting the payroll manager signed off. It explains a difference only if the engine, run again with that setting, gives exactly the legacy amount. So each explained difference is proven by a replay, never assumed. EX-01 is the one explanation: the new engine rounds half a cent up, while the legacy one rounded to the even cent (Python's `Decimal` default). As a second guard, an explained difference may not be larger than a cent per rounded line in the item (REG, TAX, PEN and gross 0.01, deductions 0.02, net 0.03). So a setting that happens to replay a real gap still fails the run (a test signs off the semimonthly mistake as an "explanation" to show it).
+
+```yaml
+runs:
+  2:
+    - {issue: PP-01, setting: pay_groups.Semimonthly.periods_per_year, value: 24, reason: ...}
+    - {issue: PP-02, setting: pay_groups.Weekly.earnings, value: [REG, OT], reason: ...}
+explained:
+  - {id: EX-01, setting: rounding, value: half_even, signed_off_by: Payroll manager, reason: ...}
+```
+
+| Run | Setup | Unexplained | Explained (EX-01) | Net pay against legacy, per period | Result |
+|---|---|---:|---:|---|---|
+| 1 | as built | 690, on 44 workers | 94 | 8,007.26 to 8,066.48 short | FAIL |
+| 2 | PP-01 and PP-02 changed | 0 | 118 | 0.00, 0.04 and 0.03 short | PASS |
+
+Run 1 finds the two seeded setup mistakes and nothing else (a test works out the expected workers straight from the data): PP-01 pays every semimonthly worker 24/26 of their regular pay, and PP-02 drops the overtime of every weekly worker who had some. `reports/parallel_runN.xlsx` has a Summary sheet (the checks, net pay per period, the setup changes) and a Differences sheet (worker, period, item, legacy, new, gap, and the explanation or UNEXPLAINED, unexplained first).
+
+### Masking
+
+`python -m hcm_conv mask` writes a copy of `legacy/` for a test tenant that must not hold real people. In workers.csv, five columns are masked: first name, last name, birth date, personal email and national ID. Every other file is copied byte for byte. Each masked value comes from an HMAC-SHA256 of the employee ID and the column, under a key in `HCM_MASK_KEY`:
+
+- the same key gives the same bytes on every run, and both rows of a worker entered twice (D-07, D-08) still agree
+- another key gives other values, and without the key a value can't be traced back
+- employee IDs, dates of hire and termination, positions and pay are kept, because the conversion and the parallel need them
+
+The shape of every value is kept, so the checks still find the same problems: a blank stays blank (D-01, D-02), a name with accents gets a fake name with accents, a name garbled by the wrong encoding gets a fake name garbled the same way (D-17, D-18), a national ID stays 9 digits starting with 0, and a birth date moves 1 to 180 days inside the same year. A birth date the conversion would refuse (not YYYY-MM-DD, or a day that does not exist) gets other digits and stays invalid, so DATE_INVALID still fires on it. A blank made of spaces is kept as it is, because the conversion strips it and reports REQUIRED. Masked national IDs and emails are never anyone's real value and never shared: a worker whose hash lands on a taken value moves to the next one.
+
+The command then checks its own copy, and exits with 1 if any check fails:
+
+| Check | What it proves |
+|---|---|
+| Only the personal columns changed | Every other column of every row is as it was |
+| No personal value is kept on its row | All 5 columns changed on each row that had a value |
+| No national ID or email appears anywhere in the masked files | A scan of every file, not only workers.csv |
+| Masked national IDs stay unique | One worker per masked ID |
+| The checks find the same problems in the masked copy | Cycle 1's 68 findings (rule, file, key, field) on both sides |
+
+Only cycle 1 is compared: the fixes for cycles 2 and 3 hold the corrected real values (a last name, a first name), so applying them to a masked copy would put real data back. Names come from fixed pools of fake fr_CA and en_CA names, so a common surname can show up again on another person; what the checks rule out is any worker keeping their own value.
+
 ## Configuration
 
 | Command | Option | Default | What it does |
@@ -151,12 +207,14 @@ Cycle 2 also brings a late change: a new hire keyed in without a position (N-01,
 | | `--api-url URL` | in-process | Use a mock API that is already running (`serve`) |
 | | `--out DIR` | `reports/` | Where the workbooks go |
 | `python -m hcm_conv exceptions` | `--cycle N`, `--all` | 1, errors only | Print a cycle's exceptions; `--all` adds the info rows |
+| `python -m hcm_conv parallel` | `--api-url URL`, `--out DIR` | in-process, `reports/` | Load cycles 1 to 3, then payroll parallel runs 1 and 2; exit 1 if run 2 has an unexplained difference |
+| `python -m hcm_conv mask` | `--out DIR` | `reports/masked/` | Write and check a masked copy; needs `HCM_MASK_KEY` (exit 2 without it) |
 | `python -m hcm_conv serve` | `--port` | 8051 | Start the mock API on 127.0.0.1 |
 | `python -m hcm_conv generate` | | | Rewrite `legacy/` from seed 51 |
 
 ## CI integration
 
-The `hcm-conversion-validation` job in [ci.yml](../../.github/workflows/ci.yml) installs the pinned requirements, runs `pip-audit`, runs pytest, then runs the three cycles for real (which must end with exit code 0), and keeps `reports/` (JUnit XML and the three workbooks) for 7 days. Dependabot watches `requirements.txt` ([scripts/dependabot.test.mjs](../../scripts/dependabot.test.mjs) fails if any package with a `requirements.txt` is left out).
+The `hcm-conversion-validation` job in [ci.yml](../../.github/workflows/ci.yml) installs the pinned requirements, runs `pip-audit`, runs pytest, then runs the three cycles, the payroll parallel and the masking for real (each must end with exit code 0), and keeps `reports/` (JUnit XML, the exception and parallel workbooks, the masked copy) for 7 days. The masking step uses a new key on every run, made from the run ID (`ci-run-<run id>`), so its checks must pass whatever the key is, and a failure can be rebuilt locally with the same key (the data is fake, so the key is no secret). Dependabot watches `requirements.txt` ([scripts/dependabot.test.mjs](../../scripts/dependabot.test.mjs) fails if any package with a `requirements.txt` is left out).
 
 ```yaml
 - uses: actions/setup-python@v5
@@ -165,6 +223,8 @@ The `hcm-conversion-validation` job in [ci.yml](../../.github/workflows/ci.yml) 
 - run: pip-audit -r requirements.txt
 - run: pytest
 - run: python -m hcm_conv run
+- run: python -m hcm_conv parallel
+- run: HCM_MASK_KEY="ci-run-${{ github.run_id }}" python -m hcm_conv mask
 ```
 
 ## FAQ
@@ -178,6 +238,12 @@ Because the checks already know those rows are wrong, and a load full of refusal
 ### Why a hash of every row when the totals already match?
 Totals catch missing and extra rows and changed amounts. They can't catch a changed name or a swapped code. The row hash catches any changed field and names it.
 
+### Why not pass the parallel within a dollar a worker?
+A tolerance hides the mistakes a parallel is there to find: a setup error of a few cents on every payslip passes it, and adds up over a year. Matching to the cent and proving each gap by a replay means the sign-off lists exactly why each cent differs.
+
+### Why keep the employee IDs when masking?
+They are the keys every file joins on, and on their own they name no one. Masking them too would mean masking the pay history and the fixes the same way; the five masked columns are the ones that say who a person is.
+
 ### Is this the real Workday API?
 No. It is a small mock shaped after public descriptions of such interfaces, with its own names. No vendor code, documents or data are used.
 
@@ -189,6 +255,9 @@ No. It is a small mock shaped after public descriptions of such interfaces, with
 | `fix for D-xx matched 0 rows` | The extract changed and a fix no longer finds its row | Update the fix's `match` |
 | Accented names look wrong in the console | The Windows console is not UTF-8 | The command line switches its output to UTF-8; in other scripts set `PYTHONIOENCODING=utf-8` |
 | CSV from `/reports` shows `Ã©` in Excel | Excel guessed the encoding | Add `bom=true` to the report URL |
+| `mask` prints `Set HCM_MASK_KEY` and exits 2 | No key in the environment | Set `HCM_MASK_KEY` to any secret; keep it to get the same copy again |
+| `payroll.yaml has no setting ...` | A setup change or explanation in fixes/parallel.yaml names a setting that does not exist | Fix the dotted path (for example `pay_groups.Weekly.earnings`) |
+| Run 2 shows an unexplained difference | A real pay gap, or a new explanation that does not replay | Read the Differences sheet of `reports/parallel_run2.xlsx`: each row names the worker, period and item |
 
 ## Development
 
@@ -197,4 +266,6 @@ cd packages/hcm-conversion-validation
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m pytest
 .venv/bin/python -m hcm_conv run
+.venv/bin/python -m hcm_conv parallel
+HCM_MASK_KEY=dev-key .venv/bin/python -m hcm_conv mask
 ```
