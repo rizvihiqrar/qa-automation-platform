@@ -20,11 +20,13 @@ def three():
         return cycles.run(client)
 
 
+@pytest.mark.req("CY-01")
 def test_open_exceptions_go_down_each_cycle(three):
     assert [len(c.errors("Open")) for c in three] == [22, 12, 0]
     assert [len(c.errors("Accepted")) for c in three] == [0, 0, 2]
 
 
+@pytest.mark.req("CY-02")
 def test_the_deltas_follow_each_defect(three):
     d2, d3 = three[1].deltas, three[2].deltas
     assert (len(d2.new), len(d2.fixed), len(d2.still_open)) == (1, 10, 10)
@@ -35,11 +37,13 @@ def test_the_deltas_follow_each_defect(three):
     assert three[0].deltas is None
 
 
+@pytest.mark.req("CY-01")
 def test_only_the_last_cycle_passes_every_check(three):
     assert [c.passed for c in three] == [False, False, True]
     assert all(c.rejected == 0 for cyc in three for c in cyc.reconciliation.counts)
 
 
+@pytest.mark.req("CY-03")
 def test_every_seeded_defect_is_fixed_once_or_signed_off():
     fixed = {}
     for n in (2, 3):
@@ -52,6 +56,7 @@ def test_every_seeded_defect_is_fixed_once_or_signed_off():
         assert len(fixed.get(d["id"], {0})) == 1, f"{d['id']} is fixed in two cycles"
 
 
+@pytest.mark.req("CY-03")
 def test_each_fix_closes_the_defect_it_names(three):
     for n, cycle in ((2, three[1]), (3, three[2])):
         names = {f["defect"] for f in yaml.safe_load((extract.FIXES_DIR / f"cycle{n}.yaml").read_text(encoding="utf-8"))["fixes"]
@@ -62,12 +67,14 @@ def test_each_fix_closes_the_defect_it_names(three):
                 assert (d["rule"], d["file"], d["key"]) not in still, f"cycle {n}: {d['id']} is still there"
 
 
+@pytest.mark.req("CY-03")
 def test_a_fix_that_matches_no_row_stops_the_run():
     source = extract.read()
     with pytest.raises(ValueError, match="matched 0 rows"):
         extract.apply(source, [{"defect": "D-99", "file": "workers.csv", "match": {"employee_id": "000000"}, "set": {}}])
 
 
+@pytest.mark.req("CY-05")
 def test_the_exception_report_workbook(three, tmp_path):
     path = report.write(three[1], tmp_path / "cycle2.xlsx")
     book = load_workbook(path)
@@ -81,6 +88,7 @@ def test_the_exception_report_workbook(three, tmp_path):
     assert book["Deltas"]["A1"].value == "Against cycle 1: 1 new, 10 fixed, 10 still open"
 
 
+@pytest.mark.req("CY-05")
 def test_the_report_keeps_accents_and_leading_zeros(three, tmp_path):
     book = load_workbook(report.write(three[0], tmp_path / "cycle1.xlsx"))
     values = [r for r in book["Exceptions"].values]
@@ -88,6 +96,7 @@ def test_the_report_keeps_accents_and_leading_zeros(three, tmp_path):
     assert any(r[7] and "Ã" in r[7] for r in values)         # the garbled name is shown as it arrived
 
 
+@pytest.mark.req("CY-05")
 def test_the_exceptions_command_prints_one_line_per_exception(capsys):
     assert cli.main(["exceptions", "--cycle", "3"]) == 0
     lines = capsys.readouterr().out.splitlines()
@@ -97,6 +106,7 @@ def test_the_exceptions_command_prints_one_line_per_exception(capsys):
     assert len(capsys.readouterr().out.splitlines()) == 2 + 22 + 48   # title, header, errors, info rows
 
 
+@pytest.mark.req("CY-05")
 def test_the_command_line_writes_a_report_per_cycle_and_sets_the_exit_code(tmp_path, capsys):
     assert cli.main(["run", "--out", str(tmp_path)]) == 0
     assert sorted(p.name for p in tmp_path.iterdir()) == [f"exceptions_cycle{n}.xlsx" for n in (1, 2, 3)]

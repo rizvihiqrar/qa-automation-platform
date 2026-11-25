@@ -28,6 +28,7 @@ def make(transport, **kwargs):
     return RetryingClient("http://hcm.test", backoff=0, transport=transport, **kwargs)
 
 
+@pytest.mark.req("LD-01")
 def test_a_read_that_fails_twice_succeeds_on_the_third_try():
     transport, seen = line(httpx2.ConnectError("refused"), httpx2.ReadTimeout("slow"), 200)
     with make(transport) as c:
@@ -36,6 +37,7 @@ def test_a_read_that_fails_twice_succeeds_on_the_third_try():
     assert c.retries == [Retry("GET /workers", 1, "ConnectError"), Retry("GET /workers", 2, "ReadTimeout")]
 
 
+@pytest.mark.req("LD-01")
 def test_three_failures_raise_a_load_error_that_names_the_call_and_each_error():
     transport, seen = line(httpx2.ReadTimeout("slow"))
     with make(transport) as c, pytest.raises(LoadError) as error:
@@ -46,6 +48,7 @@ def test_three_failures_raise_a_load_error_that_names_the_call_and_each_error():
 
 
 @pytest.mark.parametrize("path", ["/bulk-loads", "/tenant/reset"])
+@pytest.mark.req("LD-02")
 def test_the_bulk_load_and_the_reset_are_retried_because_sending_them_twice_is_safe(path):
     transport, seen = line(httpx2.RemoteProtocolError("reply cut"), 201)
     with make(transport) as c:
@@ -53,6 +56,7 @@ def test_the_bulk_load_and_the_reset_are_retried_because_sending_them_twice_is_s
     assert len(seen) == 2
 
 
+@pytest.mark.req("LD-02")
 def test_any_other_post_fails_at_the_first_error():
     transport, seen = line(httpx2.ReadError("reset"), 201)
     with make(transport) as c, pytest.raises(LoadError, match=r"POST /workers failed after 1 try: try 1: ReadError \(reset\)$"):
@@ -61,6 +65,7 @@ def test_any_other_post_fails_at_the_first_error():
 
 
 @pytest.mark.parametrize("path", ["/bulk-loads/", "/bulk-loads?note=1", "/tenant/reset/"])
+@pytest.mark.req("LD-02")
 def test_a_safe_call_keeps_its_retries_with_a_trailing_slash_or_a_query(path):
     transport, seen = line(httpx2.ReadError("reset"), 201)
     with make(transport) as c:
@@ -68,6 +73,7 @@ def test_a_safe_call_keeps_its_retries_with_a_trailing_slash_or_a_query(path):
     assert len(seen) == 2
 
 
+@pytest.mark.req("LD-02")
 def test_an_error_that_would_fail_again_is_raised_at_once():
     transport, seen = line(httpx2.UnsupportedProtocol("no scheme"), 200)
     with make(transport) as c, pytest.raises(httpx2.UnsupportedProtocol):
@@ -75,6 +81,7 @@ def test_an_error_that_would_fail_again_is_raised_at_once():
     assert len(seen) == 1 and not c.retries
 
 
+@pytest.mark.req("LD-02")
 def test_an_error_status_is_an_answer_and_is_never_retried():
     transport, seen = line(500, 200)
     with make(transport) as c:
@@ -82,6 +89,7 @@ def test_an_error_status_is_an_answer_and_is_never_retried():
     assert len(seen) == 1 and not c.retries
 
 
+@pytest.mark.req("LD-01")
 def test_the_backoff_doubles_before_each_try(monkeypatch):
     waits = []
     monkeypatch.setattr(client_module.time, "sleep", waits.append)
@@ -91,6 +99,7 @@ def test_the_backoff_doubles_before_each_try(monkeypatch):
     assert waits == [0.2, 0.4, 0.8]
 
 
+@pytest.mark.req("LD-03")
 def test_the_hooks_see_every_try_and_every_retry():
     transport, _ = line(httpx2.ConnectError("refused"), 200)
     tries, retries = [], []
@@ -100,6 +109,7 @@ def test_the_hooks_see_every_try_and_every_retry():
     assert retries == [Retry("POST /bulk-loads", 1, "ConnectError")]
 
 
+@pytest.mark.req("FS-01")
 def test_ci_pulls_the_same_toxiproxy_image_the_fault_tests_start():
     from tests_faults.toxiproxy import TOXIPROXY_IMAGE
     ci = (ROOT.parents[1] / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")

@@ -8,6 +8,7 @@ from openpyxl import load_workbook
 from conftest import WORKER, one_of_each, upload
 
 
+@pytest.mark.req("TR-01")
 def test_a_good_template_loads_every_sheet(api):
     load = upload(api, one_of_each()).json()
     assert (load["status"], load["rows_total"], load["rows_loaded"], load["rows_failed"]) == ("Completed", 5, 5, 0)
@@ -18,12 +19,14 @@ def test_a_good_template_loads_every_sheet(api):
     assert api.get("/pay-results", params={"period": "P2026-19"}).json()["total"] == 1
 
 
+@pytest.mark.req("TR-01")
 def test_validate_only_reports_but_saves_nothing(api):
     load = upload(api, one_of_each(), mode="validate_only").json()
     assert load["status"] == "Completed"
     assert api.get("/workers").json()["total"] == 0
 
 
+@pytest.mark.req("TR-02")
 def test_a_bad_row_is_refused_and_the_good_rows_still_load(api):
     load = upload(api, one_of_each(Compensation={"frequency": "2W"})).json()
     assert (load["status"], load["rows_loaded"], load["rows_failed"]) == ("Completed with errors", 4, 1)
@@ -45,12 +48,14 @@ def test_a_bad_row_is_refused_and_the_good_rows_still_load(api):
     ("Compensation", {"annual_amount": "65000.005"}, "annual_amount", "'65000.005' must be zero or more, with at most 2 decimals"),
     ("Pay Results", {"net": "1757.50"}, "net", "is not gross minus deductions"),
 ])
+@pytest.mark.req("TR-02")
 def test_each_target_rule_refuses_its_row(api, sheet, change, field, message):
     load = upload(api, one_of_each(**{sheet: change})).json()
     errors = api.get(load["errors_url"]).json()
     assert [(e["sheet"], e["field"], e["message"]) for e in errors if e["sheet"] == sheet] == [(sheet, field, message)]
 
 
+@pytest.mark.req("TR-02")
 def test_rows_that_need_a_refused_row_are_refused_too(api):
     # The worker fails, so its compensation and pay result have no worker to belong to.
     load = upload(api, one_of_each(Workers={"country": "CAN "})).json()   # trailing space is trimmed: still good
@@ -61,6 +66,7 @@ def test_rows_that_need_a_refused_row_are_refused_too(api):
     assert sheets == ["Compensation", "Pay Results", "Workers"]
 
 
+@pytest.mark.req("TR-02")
 def test_the_same_key_twice_in_one_file_is_refused(api):
     rows = one_of_each()
     rows["Workers"].append(("Workers:2", dict(WORKER, given_name="Other")))
@@ -69,6 +75,7 @@ def test_the_same_key_twice_in_one_file_is_refused(api):
     assert [(e["row"], e["message"]) for e in errors] == [(3, "the same key is on an earlier row of this sheet")]
 
 
+@pytest.mark.req("TR-03")
 def test_loading_the_same_file_again_updates_instead_of_adding(api):
     upload(api, one_of_each())
     again = upload(api, one_of_each(Workers={"region": "ON"})).json()
@@ -77,6 +84,7 @@ def test_loading_the_same_file_again_updates_instead_of_adding(api):
     assert api.get("/workers/001234").json()["region"] == "ON"
 
 
+@pytest.mark.req("TR-04")
 def test_the_error_report_downloads_as_a_spreadsheet(api):
     load = upload(api, one_of_each(Workers={"family_name": ""})).json()
     response = api.get(load["errors_url"], params={"format": "xlsx"})
@@ -85,12 +93,14 @@ def test_the_error_report_downloads_as_a_spreadsheet(api):
     assert rows[1][:4] == ("Workers", 2, "Workers:1", "family_name")
 
 
+@pytest.mark.req("TR-02")
 def test_a_file_that_is_not_a_template_is_refused(api):
     response = api.post("/bulk-loads", files={"file": ("x.xlsx", b"not a workbook")}, data={"mode": "load"})
     assert response.status_code == 400
     assert api.post("/bulk-loads", files={"file": ("x.xlsx", b"x")}, data={"mode": "delete"}).status_code == 422
 
 
+@pytest.mark.req("TR-04")
 def test_lists_are_paged_up_to_100(api):
     rows = one_of_each()
     rows["Workers"] = [(f"Workers:{n}", dict(WORKER, id=f"{n:06d}")) for n in range(1, 131)]
@@ -102,6 +112,7 @@ def test_lists_are_paged_up_to_100(api):
     assert api.get("/workers", params={"limit": 101}).status_code == 422
 
 
+@pytest.mark.req("TR-04")
 def test_reports_export_as_json_or_csv(api):
     upload(api, one_of_each())
     assert api.get("/reports/workers").json()["Report_Entry"][0]["id"] == "001234"
@@ -113,6 +124,7 @@ def test_reports_export_as_json_or_csv(api):
     assert api.get("/reports/payroll").status_code == 404
 
 
+@pytest.mark.req("TR-04")
 def test_reset_empties_the_tenant(api):
     upload(api, one_of_each())
     assert api.post("/tenant/reset").status_code == 204

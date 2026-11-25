@@ -4,7 +4,7 @@
 
 **Contents:** [Features](#features) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
-Stage 1 of three is the conversion itself (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds the [payroll parallel](#the-payroll-parallel), [masking](#masking) and [integration faults](#integration-faults) that reuse the Toxiproxy setup from qa-practice-api. Stage 3 adds the test plan, a traceability matrix, a defect log and a go or no-go readiness report.
+Stage 1 of three is the conversion itself (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds the [payroll parallel](#the-payroll-parallel), [masking](#masking) and [integration faults](#integration-faults) that reuse the Toxiproxy setup from qa-practice-api. Stage 3 adds the [test plan and the traceability matrix](#test-plan-and-traceability), then a defect log and a go or no-go readiness report.
 
 ## Features
 
@@ -32,6 +32,8 @@ legacy/ (CSV + payroll.sql) ─ fixes/cycleN.yaml ─▶ extract ─▶ mapping.
 | [client.py](hcm_conv/client.py) | The loader's HTTP client: a timeout on every call, retries for the calls that are safe to repeat |
 | [tests_faults/](tests_faults) | The fault tests: the mock API on a real port, Toxiproxy in Docker in front of it |
 | [mask.py](hcm_conv/mask.py) | Writes a masked copy of the extract and checks it |
+| [trace.py](hcm_conv/trace.py) | Reads the test plan's requirements and the JUnit files, and builds the traceability matrix |
+| [conftest.py](conftest.py) | For both suites: every test names its requirements, and the IDs go into the JUnit XML |
 
 ### The legacy extract
 
@@ -231,6 +233,58 @@ The loader's bulk load retry assumes the target handles loads of the same keys o
 
 `python -m hcm_conv run --api-url URL` uses the same client, and prints each retry.
 
+### Test plan and traceability
+
+[docs/test-plan.md](docs/test-plan.md) is the test plan: scope, approach, environments, schedule, roles, entry and exit criteria, risks, and 61 requirements in 10 groups, each with an ID. Its third column names the rule or the check exactly as the code reports it (`REQUIRED`, `Row hashes match`).
+
+| Group | IDs | What they cover |
+|---|---|---|
+| Legacy extract | LX-01 to LX-03 | The generator, the answer key, fake data |
+| Mapping and validation rules | MR-01 to MR-16 | One per rule, plus the code mapping and nothing outside the key |
+| Target load rules | TR-01 to TR-04 | The mock API's bulk load and reports |
+| Reconciliation | RC-01 to RC-08 | One per check |
+| Cycles and exceptions | CY-01 to CY-05 | The three cycles, deltas, fixes and sign-offs |
+| Payroll parallel | PA-01 to PA-06 | The engine and its 4 checks |
+| Masking | MK-01 to MK-07 | Its 5 checks, the shapes and the key |
+| Loader | LD-01 to LD-03 | Timeouts and retries |
+| Integration faults | FS-01 to FS-06 | One per fault, plus the clean line |
+| Quality records | QR-01 to QR-03 | The plan and the matrix themselves |
+
+Each test names its requirements with a marker. A parametrized test can mark each case: the seeded defect cases take the requirement of the rule in the answer key, so D-04 is MR-03.
+
+```python
+@pytest.mark.req("RC-04", "RC-07")
+def test_a_target_that_rounds_salaries_fails_the_hash_total(api, monkeypatch): ...
+
+@pytest.mark.parametrize("defect", [pytest.param(d, id=d["id"], marks=pytest.mark.req(trace.requirement_for(d["rule"])))
+                                    for d in KEY])
+```
+
+[conftest.py](conftest.py) (in the package folder, so both suites use it) reads the plan at collection. A test with no marker, or with an ID the plan does not have, stops the run before any test starts (pytest exit code 4), naming each one. Each ID is added to the test's `user_properties`, so pytest writes it into the JUnit XML:
+
+```xml
+<testcase classname="tests.test_reconcile" name="test_a_target_that_rounds_salaries_fails_the_hash_total" time="0.9">
+  <properties><property name="req" value="RC-04"/><property name="req" value="RC-07"/></properties>
+</testcase>
+```
+
+[trace.py](hcm_conv/trace.py) then builds the matrix from the JUnit files alone. A requirement is:
+
+| Result | When |
+|---|---|
+| passing | It has tests and every one passed |
+| failing | One of its tests failed or errored |
+| incomplete | One of its tests was skipped |
+| no tests | No test names it |
+
+The matrix as a whole passes only when every requirement is passing, no result lacks a requirement and none names an ID outside the plan. `reports/traceability.md` and `reports/traceability.xlsx` (Summary, Matrix and Tests sheets) are written each time.
+
+[docs/traceability.md](docs/traceability.md) is the committed matrix: the requirements and their tests, with no results (results change with each run; the committed file should change only when the tests do). It is built from a collect-only run of both suites, so it needs no Docker, and a test fails when it is not what the suites collect.
+
+Four tests keep the plan honest: every requirement has a test; the check names in the RC, PA and MK groups are exactly the `Check(...)` names in reconcile.py, parallel.py and mask.py; the rule names in the MR group are exactly the rule names in convert.py; and the reconciliation's own findings (`TARGET_REJECTED`, `RECON_MISMATCH`, `RECON_MISSING`) are named in the text of their requirement.
+
+Building the matrix found two gaps. RC-03 (`Hash total: worker IDs`) was only ever seen passing: no test made it fail, so a break that made it always pass went unnoticed. A test now drops a worker in the target. And CY-04 asks that every accepted exception names its reason and who signed it off, which nothing checked: `convert.accept` now refuses one without either.
+
 ## Configuration
 
 | Command | Option | Default | What it does |
@@ -241,12 +295,15 @@ The loader's bulk load retry assumes the target handles loads of the same keys o
 | `python -m hcm_conv exceptions` | `--cycle N`, `--all` | 1, errors only | Print a cycle's exceptions; `--all` adds the info rows |
 | `python -m hcm_conv parallel` | `--api-url URL`, `--out DIR` | in-process, `reports/` | Load cycles 1 to 3, then payroll parallel runs 1 and 2; exit 1 if run 2 has an unexplained difference |
 | `python -m hcm_conv mask` | `--out DIR` | `reports/masked/` | Write and check a masked copy; needs `HCM_MASK_KEY` (exit 2 without it) |
+| `python -m hcm_conv trace` | `--junit FILE` (once per suite) | none | Build the matrix with results; exit 1 unless every requirement is passing |
+| | `--out DIR` | `reports/` | Where traceability.md and traceability.xlsx go |
+| | `--md FILE` | `docs/traceability.md` | Without `--junit`: the committed matrix, from a collect-only run |
 | `python -m hcm_conv serve` | `--port` | 8051 | Start the mock API on 127.0.0.1 |
 | `python -m hcm_conv generate` | | | Rewrite `legacy/` from seed 51 |
 
 ## CI integration
 
-The fault tests run in their own job, `hcm-conversion-validation-faults`: it pulls the Toxiproxy image through [scripts/retry.sh](../../scripts/retry.sh) (registries answer 502 now and then), then runs `pytest tests_faults`. Their own job keeps the main job Python only and quick. A test in [tests/test_client.py](tests/test_client.py) fails if the tag CI pulls is not the one the tests start.
+The fault tests run in their own job, `hcm-conversion-validation-faults`: it pulls the Toxiproxy image through [scripts/retry.sh](../../scripts/retry.sh) (registries answer 502 now and then), then runs `pytest tests_faults`. Their own job keeps the main job Python only and quick. A third job, `hcm-conversion-validation-traceability`, runs after both, whatever they ended with (`if: always()`), downloads their JUnit files and builds the matrix with results; it fails unless every requirement is passing, and a suite that never uploaded makes it exit 2 naming the missing file. So neither suite waits for the other, and a red run still gets a matrix that shows which requirement it broke. A test in [tests/test_client.py](tests/test_client.py) fails if the tag CI pulls is not the one the tests start.
 
 The `hcm-conversion-validation` job in [ci.yml](../../.github/workflows/ci.yml) installs the pinned requirements, runs `pip-audit`, runs pytest, then runs the three cycles, the payroll parallel and the masking for real (each must end with exit code 0), and keeps `reports/` (JUnit XML, the exception and parallel workbooks, the masked copy) for 7 days. The masking step uses a new key on every run, made from the run ID (`ci-run-<run id>`), so its checks must pass whatever the key is, and a failure can be rebuilt locally with the same key (the data is fake, so the key is no secret). Dependabot watches `requirements.txt` ([scripts/dependabot.test.mjs](../../scripts/dependabot.test.mjs) fails if any package with a `requirements.txt` is left out).
 
@@ -281,6 +338,12 @@ Because this one is: the target updates each row by its key, so sending the same
 ### Why keep the employee IDs when masking?
 They are the keys every file joins on, and on their own they name no one. Masking them too would mean masking the pay history and the fixes the same way; the five masked columns are the ones that say who a person is.
 
+### Why markers in the tests, and not a list of tests in the plan?
+A list in the plan goes stale the day someone adds a test. A marker lives on the test, the run refuses a test without one, and the matrix is built from what really ran. The plan keeps what people decide (the requirements); the tests say what checks them.
+
+### Why is the committed matrix without results?
+Results change with every run, and a committed file with results can only be checked by a run that already passed. So the committed file holds what changes with the code (the requirements and their tests) and a test keeps it current; the results go into the CI report.
+
 ### Is this the real Workday API?
 No. It is a small mock shaped after public descriptions of such interfaces, with its own names. No vendor code, documents or data are used.
 
@@ -296,6 +359,9 @@ No. It is a small mock shaped after public descriptions of such interfaces, with
 | The fault tests time out at the first call on Linux | The container can't reach the host | The fixture maps `host.docker.internal` to `host-gateway`; check a firewall is not blocking the test port |
 | `mask` prints `Set HCM_MASK_KEY` and exits 2 | No key in the environment | Set `HCM_MASK_KEY` to any secret; keep it to get the same copy again |
 | `payroll.yaml has no setting ...` | A setup change or explanation in fixes/parallel.yaml names a setting that does not exist | Fix the dotted path (for example `pay_groups.Weekly.earnings`) |
+| `Every test must name its test plan requirements` and exit code 4 | A test has no `req` marker, or names an ID that is not in docs/test-plan.md | Add the marker, or the requirement to the plan |
+| `docs/traceability.md is stale` | A test or a requirement was added, renamed or moved | Run `python -m hcm_conv trace` and commit the file |
+| The plan check names a check that is not in the code | A `Check(...)` name or a rule changed | Change the plan's third column to the name the code reports |
 | Run 2 shows an unexplained difference | A real pay gap, or a new explanation that does not replay | Read the Differences sheet of `reports/parallel_run2.xlsx`: each row names the worker, period and item |
 
 ## Development
@@ -307,5 +373,7 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m hcm_conv run
 .venv/bin/python -m hcm_conv parallel
 HCM_MASK_KEY=dev-key .venv/bin/python -m hcm_conv mask
-.venv/bin/python -m pytest tests_faults         # needs Docker
+.venv/bin/python -m pytest tests_faults --junitxml=reports/junit-faults.xml   # needs Docker
+.venv/bin/python -m hcm_conv trace --junit reports/junit.xml --junit reports/junit-faults.xml
+.venv/bin/python -m hcm_conv trace               # after adding a test: rebuild docs/traceability.md
 ```

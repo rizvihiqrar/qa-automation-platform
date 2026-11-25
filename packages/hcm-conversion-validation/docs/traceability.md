@@ -1,0 +1,118 @@
+# Traceability matrix: HR and payroll conversion
+
+[← Back to overview](../README.md) · [Test plan](../docs/test-plan.md)
+
+Each requirement of the [test plan](../docs/test-plan.md) and the tests that name it with a `req` marker, from a collect-only run of both suites (`python -m hcm_conv trace --md docs/traceability.md`). A test fails when this file is not what the suites collect. Results are not kept here: CI builds the same matrix with each test's latest result and keeps it as a report (`reports/traceability.md` and `.xlsx`).
+
+**61 requirements, 172 tests.**
+
+## Legacy extract
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| LX-01 | The extract is rebuilt byte for byte from seed 51, at the sizes the docs give |  | test_legacy: test_the_committed_extract_is_exactly_what_the_generator_writes<br>test_legacy: test_the_sizes_are_the_ones_the_readme_gives |
+| LX-02 | Twenty seeded defects of eight kinds are in the answer key, each on a line that shows it |  | test_legacy: test_there_are_twenty_seeded_defects_of_eight_kinds<br>test_legacy: test_every_defect_points_at_a_line_that_shows_it |
+| LX-03 | The data is fake, and real accents sit beside the garbled ones |  | test_legacy: test_the_data_is_fake<br>test_legacy: test_real_accents_are_kept_alongside_the_garbled_ones |
+
+## Mapping and validation rules
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| MR-01 | A required field that is blank after trimming holds its row back | `REQUIRED` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-01]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-02]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-03]<br>test_convert: test_each_transform[spec0-  Tremblay -expected0]<br>test_convert: test_each_transform[spec1-   -expected1]<br>test_convert: test_each_transform[spec2--expected2] |
+| MR-02 | An ID that is not 6 digits holds its row back (lost leading zeros) | `ID_FORMAT` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-15]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-16]<br>test_convert: test_each_transform[spec3-001234-expected3]<br>test_convert: test_each_transform[spec4-1234-expected4] |
+| MR-03 | A date that is not a real date written YYYY-MM-DD holds its row back | `DATE_INVALID` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-04]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-05]<br>test_convert: test_each_transform[spec5-2024-02-29-expected5]<br>test_convert: test_each_transform[spec6-2023-02-29-expected6]<br>test_convert: test_each_transform[spec7-20240229-expected7] |
+| MR-04 | An amount with more than 2 decimals, or not a number, holds its row back | `MONEY_INVALID` | test_convert: test_each_transform[spec8-100.5-expected8]<br>test_convert: test_each_transform[spec9-100.005-expected9]<br>test_convert: test_a_salary_that_is_not_a_number_is_an_exception_not_a_crash |
+| MR-05 | A code that is not in its code table holds its row back | `CODE_UNKNOWN` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-19]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-20]<br>test_convert: test_each_transform[spec10-B-expected10]<br>test_convert: test_each_transform[spec11-2W-expected11] |
+| MR-06 | A name with double-encoded characters holds its row back | `ENCODING` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-17]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-18]<br>test_convert: test_each_transform[spec12-Beno\xeet-expected12]<br>test_convert: test_each_transform[spec13-Beno\xc3\xaet-expected13]<br>test_convert: test_each_transform[spec14-Zo\ufffd-expected14] |
+| MR-07 | Two rows with the same key are both held back | `DUPLICATE_ID` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-07]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-08] |
+| MR-08 | A termination before the hire date holds the worker back | `DATE_ORDER` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-06] |
+| MR-09 | A position or organization under an organization that does not exist is held back | `REF_ORG` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-12]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-13] |
+| MR-10 | A worker on a position that does not exist is held back | `REF_POSITION` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-14] |
+| MR-11 | Compensation or pay for a worker not in the extract is held back | `REF_WORKER` | test_convert: test_compensation_for_a_worker_not_in_the_extract_is_reported |
+| MR-12 | A trailer whose count or hash total does not match its file is reported | `CONTROL_TOTAL` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-09]<br>test_convert: test_a_missing_trailer_is_reported<br>test_convert: test_a_hash_total_that_does_not_match_is_reported<br>test_convert: test_a_salary_that_is_not_a_number_is_an_exception_not_a_crash |
+| MR-13 | A pay result that does not add up to its lines, or has none, is held back | `PAY_TOTAL` | test_convert: test_each_seeded_defect_is_found_by_its_rule[D-10]<br>test_convert: test_each_seeded_defect_is_found_by_its_rule[D-11]<br>test_convert: test_a_pay_result_without_lines_is_reported<br>test_convert: test_a_payroll_key_with_spaces_still_matches_its_record |
+| MR-14 | A row that needs a held row is held too, and names the row it waits for | `HELD_PARENT` | test_convert: test_cycle_one_counts<br>test_convert: test_rows_of_a_held_worker_are_held_with_an_info_reason<br>test_convert: test_an_organization_under_a_held_organization_is_held_with_its_positions |
+| MR-15 | Legacy codes are turned into the target's codes as mapping.yaml says |  | test_convert: test_mapping_turns_legacy_codes_into_target_codes |
+| MR-16 | No error is raised outside the answer key |  | test_convert: test_no_error_is_raised_outside_the_answer_key<br>test_convert: test_cycle_one_counts |
+
+## Target load rules
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| TR-01 | A good template loads every sheet, and validate-only saves nothing |  | test_mock_api: test_a_good_template_loads_every_sheet<br>test_mock_api: test_validate_only_reports_but_saves_nothing |
+| TR-02 | The target refuses a bad row with its reason and still loads the rest; rows that need a refused row are refused too |  | test_mock_api: test_a_bad_row_is_refused_and_the_good_rows_still_load<br>test_mock_api: test_each_target_rule_refuses_its_row[Workers-change0-family_name-is required]<br>test_mock_api: test_each_target_rule_refuses_its_row[Workers-change1-hire_date-'2019-02-31' is not a date (YYYY-MM-DD)]<br>test_mock_api: test_each_target_rule_refuses_its_row[Workers-change2-hire_date-'20190228' is not a date (YYYY-MM-DD)]<br>test_mock_api: test_each_target_rule_refuses_its_row[Workers-change3-hire_date-'2026-W45-3' is not a date (YYYY-MM-DD)]<br>test_mock_api: test_each_target_rule_refuses_its_row[Workers-change4-termination_date-is before the hire date]<br>test_mock_api: test_each_target_rule_refuses_its_row[Workers-change5-status-Terminated needs a termination date, and only Terminated has one]<br>test_mock_api: test_each_target_rule_refuses_its_row[Workers-change6-position_id-'POS-9999' is not in Positions]<br>test_mock_api: test_each_target_rule_refuses_its_row[Positions-change7-organization_id-'ORG-99' is not in Organizations]<br>test_mock_api: test_each_target_rule_refuses_its_row[Compensation-change8-annual_amount-'-1.00' must be zero or more, with at most 2 decimals]<br>test_mock_api: test_each_target_rule_refuses_its_row[Compensation-change9-annual_amount-'65000.005' must be zero or more, with at most 2 decimals]<br>test_mock_api: test_each_target_rule_refuses_its_row[Pay Results-change10-net-is not gross minus deductions]<br>test_mock_api: test_rows_that_need_a_refused_row_are_refused_too<br>test_mock_api: test_the_same_key_twice_in_one_file_is_refused<br>test_mock_api: test_a_file_that_is_not_a_template_is_refused |
+| TR-03 | Loading the same file again updates rows by key and adds nothing |  | test_mock_api: test_loading_the_same_file_again_updates_instead_of_adding |
+| TR-04 | Lists page up to 100, reports export as JSON or CSV, the error report downloads as a spreadsheet, and a reset empties the tenant |  | test_mock_api: test_the_error_report_downloads_as_a_spreadsheet<br>test_mock_api: test_lists_are_paged_up_to_100<br>test_mock_api: test_reports_export_as_json_or_csv<br>test_mock_api: test_reset_empties_the_tenant |
+
+## Reconciliation
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| RC-01 | The target accepts every row sent, in validate-only and in the load; a refused row is a `TARGET_REJECTED` finding | `Target accepts every row sent` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness<br>test_reconcile: test_rows_the_target_refuses_are_reported_and_still_balance |
+| RC-02 | For each record type, source = held + loaded + rejected, and the target holds what loaded | `Row counts balance` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness<br>test_reconcile: test_a_row_the_target_drops_silently_is_caught<br>test_reconcile: test_a_worker_the_target_drops_fails_the_worker_id_hash_total<br>test_reconcile: test_a_rerun_that_adds_copies_is_caught<br>test_reconcile: test_rows_the_target_refuses_are_reported_and_still_balance |
+| RC-03 | The count and sum of worker IDs sent equal the target's | `Hash total: worker IDs` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness<br>test_reconcile: test_a_target_that_strips_accents_is_caught_field_by_field<br>test_reconcile: test_a_worker_the_target_drops_fails_the_worker_id_hash_total |
+| RC-04 | The annual salary totals match | `Hash total: annual salaries` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness<br>test_reconcile: test_a_target_that_rounds_salaries_fails_the_hash_total |
+| RC-05 | Per pay period, count, gross and net match the legacy database | `Hash totals: pay per period` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness<br>test_reconcile: test_a_row_the_target_drops_silently_is_caught<br>test_reconcile: test_the_source_side_of_the_pay_totals_is_read_with_sql<br>test_reconcile: test_payroll_keys_with_spaces_still_count_in_the_pay_hash_totals |
+| RC-06 | Every loaded worker has compensation | `Every loaded worker has compensation` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness |
+| RC-07 | Every record's hash equals the same record read back: a mismatch is a `RECON_MISMATCH` naming its field, a record not read back a `RECON_MISSING` | `Row hashes match` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness<br>test_reconcile: test_a_target_that_strips_accents_is_caught_field_by_field<br>test_reconcile: test_a_target_that_rounds_salaries_fails_the_hash_total |
+| RC-08 | Loading the same file again adds and changes nothing | `Rerun adds and changes nothing` | test_reconcile: test_a_correct_target_passes_every_check_but_completeness<br>test_reconcile: test_a_rerun_that_adds_copies_is_caught |
+
+## Cycles and exceptions
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| CY-01 | Open exceptions fall from 22 to 12 to 0, and only cycle 3 passes every check |  | test_cycles: test_open_exceptions_go_down_each_cycle<br>test_cycles: test_only_the_last_cycle_passes_every_check |
+| CY-02 | Deltas match exceptions by rule, file, key and field, not by line |  | test_cycles: test_the_deltas_follow_each_defect |
+| CY-03 | Each seeded defect is fixed once or signed off, each fix closes the defect it names, and a fix that matches no row stops the run |  | test_cycles: test_every_seeded_defect_is_fixed_once_or_signed_off<br>test_cycles: test_each_fix_closes_the_defect_it_names<br>test_cycles: test_a_fix_that_matches_no_row_stops_the_run |
+| CY-04 | An accepted exception must match a real exception and name its reason and who signed it off |  | test_convert: test_an_accepted_exception_must_match_something<br>test_convert: test_an_accepted_exception_needs_a_reason_and_who_signed_it_off[reason]<br>test_convert: test_an_accepted_exception_needs_a_reason_and_who_signed_it_off[signed_off_by] |
+| CY-05 | Each cycle writes its exception workbook, keeping accents and leading zeros, and the command line sets its exit code |  | test_cycles: test_the_exception_report_workbook<br>test_cycles: test_the_report_keeps_accents_and_leading_zeros<br>test_cycles: test_the_exceptions_command_prints_one_line_per_exception<br>test_cycles: test_the_command_line_writes_a_report_per_cycle_and_sets_the_exit_code |
+
+## Payroll parallel
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| PA-01 | The new engine pays from its setup: regular pay, overtime only where the pay group has it, half a cent rounded up |  | test_parallel: test_one_payslip_worked_out_by_hand<br>test_parallel: test_overtime_is_paid_only_where_the_pay_group_has_it<br>test_parallel: test_half_a_cent_rounds_up_in_the_new_engine_and_to_even_in_the_legacy_one<br>test_parallel: test_a_setting_change_is_a_copy_and_must_name_a_real_setting |
+| PA-02 | Every pay result has compensation in the target | `Every pay result has compensation in the target` | test_parallel: test_every_loaded_pay_result_is_paid_again<br>test_parallel: test_a_pay_result_without_compensation_fails_the_run |
+| PA-03 | Every pay result was paid by the legacy system | `Every pay result was paid by the legacy system` | test_parallel: test_a_pay_result_the_legacy_system_never_paid_fails_the_run_without_crashing |
+| PA-04 | Every difference is explained by a signed-off setting that replays it exactly | `Every difference is explained` | test_parallel: test_run_1_finds_exactly_the_two_setup_mistakes<br>test_parallel: test_run_2_explains_every_difference_with_rounding<br>test_parallel: test_an_explanation_that_does_not_replay_explains_nothing |
+| PA-05 | No explained difference is larger than a cent per rounded line | `Explained differences are rounding sized` | test_parallel: test_run_2_explains_every_difference_with_rounding<br>test_parallel: test_a_real_gap_is_never_signed_off_as_rounding |
+| PA-06 | Run 1 finds exactly the 2 setup mistakes, run 2 passes, and net pay per period differs by exactly the explained cents |  | test_parallel: test_run_1_finds_exactly_the_two_setup_mistakes<br>test_parallel: test_run_2_explains_every_difference_with_rounding<br>test_parallel: test_net_pay_per_period_differs_by_exactly_the_explained_cents<br>test_parallel: test_run_all_does_each_run_once<br>test_parallel: test_the_command_writes_both_workbooks_and_passes_on_run_2 |
+
+## Masking
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| MK-01 | Only the 5 personal columns of workers.csv change | `Only the personal columns changed` | test_mask: test_every_check_passes_on_a_fresh_masked_copy<br>test_mask: test_only_workers_csv_changes<br>test_mask: test_verify_notices_a_column_outside_the_personal_ones_changed<br>test_mask: test_other_files_in_the_folder_are_not_part_of_the_copy |
+| MK-02 | No personal value is kept on its row | `No personal value is kept on its row` | test_mask: test_every_check_passes_on_a_fresh_masked_copy<br>test_mask: test_verify_notices_a_real_national_id_left_in |
+| MK-03 | No national ID or email appears anywhere in the masked files | `No national ID or email appears anywhere in the masked files` | test_mask: test_every_check_passes_on_a_fresh_masked_copy<br>test_mask: test_verify_notices_a_real_national_id_left_in |
+| MK-04 | Masked national IDs are unique and never a real one | `Masked national IDs stay unique` | test_mask: test_every_check_passes_on_a_fresh_masked_copy<br>test_mask: test_verify_notices_two_workers_sharing_a_masked_id<br>test_mask: test_a_masked_id_is_never_a_real_one_and_never_shared |
+| MK-05 | The checks find the same problems in the masked copy | `The checks find the same problems in the masked copy` | test_mask: test_every_check_passes_on_a_fresh_masked_copy<br>test_mask: test_names_keep_blanks_accents_and_garbling<br>test_mask: test_a_worker_entered_twice_is_masked_the_same_way_on_both_rows<br>test_mask: test_verify_notices_a_defect_the_masking_cleaned_away<br>test_mask: test_a_birth_date_that_is_not_a_valid_date_gets_other_digits_and_stays_invalid[1990-02-30]<br>test_mask: test_a_birth_date_that_is_not_a_valid_date_gets_other_digits_and_stays_invalid[19900101]<br>test_mask: test_a_birth_date_that_is_not_a_valid_date_gets_other_digits_and_stays_invalid[15/03/1990]<br>test_mask: test_new_digits_that_make_a_valid_date_are_tried_again<br>test_mask: test_a_blank_made_of_spaces_stays_as_it_is |
+| MK-06 | Masked values keep their shape: blanks, accents, garbling, 9-digit IDs, birth dates in the same year |  | test_mask: test_national_ids_keep_their_shape<br>test_mask: test_birth_dates_move_1_to_180_days_inside_the_same_year<br>test_mask: test_names_keep_blanks_accents_and_garbling<br>test_mask: test_a_birth_date_that_is_not_a_valid_date_gets_other_digits_and_stays_invalid[1990-02-30]<br>test_mask: test_a_birth_date_that_is_not_a_valid_date_gets_other_digits_and_stays_invalid[19900101]<br>test_mask: test_a_birth_date_that_is_not_a_valid_date_gets_other_digits_and_stays_invalid[15/03/1990]<br>test_mask: test_a_blank_made_of_spaces_stays_as_it_is |
+| MK-07 | Masking needs a key; the same key gives the same bytes and another key other values |  | test_mask: test_the_same_key_gives_the_same_bytes_and_another_key_does_not<br>test_mask: test_masking_needs_a_key<br>test_mask: test_the_command_needs_a_key_and_then_checks_its_copy |
+
+## Loader
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| LD-01 | A call that got no answer is tried up to 3 times with a doubling backoff, then fails naming the call and every error |  | test_client: test_a_read_that_fails_twice_succeeds_on_the_third_try<br>test_client: test_three_failures_raise_a_load_error_that_names_the_call_and_each_error<br>test_client: test_the_backoff_doubles_before_each_try |
+| LD-02 | Only calls that are safe to send twice are retried, and an error status is never retried |  | test_client: test_the_bulk_load_and_the_reset_are_retried_because_sending_them_twice_is_safe[/bulk-loads]<br>test_client: test_the_bulk_load_and_the_reset_are_retried_because_sending_them_twice_is_safe[/tenant/reset]<br>test_client: test_any_other_post_fails_at_the_first_error<br>test_client: test_a_safe_call_keeps_its_retries_with_a_trailing_slash_or_a_query[/bulk-loads/]<br>test_client: test_a_safe_call_keeps_its_retries_with_a_trailing_slash_or_a_query[/bulk-loads?note=1]<br>test_client: test_a_safe_call_keeps_its_retries_with_a_trailing_slash_or_a_query[/tenant/reset/]<br>test_client: test_an_error_that_would_fail_again_is_raised_at_once<br>test_client: test_an_error_status_is_an_answer_and_is_never_retried |
+| LD-03 | Every try and every retry is recorded |  | test_client: test_the_hooks_see_every_try_and_every_retry |
+
+## Integration faults
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| FS-01 | The fault line uses the pinned Toxiproxy image, and a load with no fault validates once and loads once |  | test_client: test_ci_pulls_the_same_toxiproxy_image_the_fault_tests_start<br>test_faults: test_the_line_works_with_no_fault |
+| FS-02 | A slow reply times out and the retry reads it again |  | test_faults: test_a_slow_reply_times_out_and_the_retry_reads_it_again |
+| FS-03 | A reset in the middle of the upload is sent again and loads once |  | test_faults: test_a_reset_in_the_middle_of_the_upload_is_sent_again_and_loads_once |
+| FS-04 | A silent line ends in a timeout, not a hang |  | test_faults: test_a_silent_line_ends_in_a_timeout_not_a_hang |
+| FS-05 | A reply lost after the save is loaded again with no duplicates |  | test_faults: test_a_reply_lost_after_the_save_is_loaded_again_with_no_duplicates |
+| FS-06 | A fault that never clears fails loudly after 3 tries |  | test_faults: test_a_fault_that_never_clears_fails_loudly_after_three_tries |
+
+## Quality records
+
+| ID | Requirement | Rule or check | Tests |
+|---|---|---|---|
+| QR-01 | Every test traces to a requirement in this plan, and every requirement has a test |  | test_trace: test_every_requirement_has_at_least_one_test<br>test_trace: test_a_test_with_no_requirement_or_an_unknown_one_stops_the_run<br>test_trace: test_the_requirements_reach_the_junit_file<br>test_trace: test_collecting_ignores_pytest_addopts |
+| QR-02 | Every rule and check named in this plan is one the code reports, and every one the code reports is named |  | test_trace: test_the_plan_names_every_check_the_code_reports[RC-reconcile.py]<br>test_trace: test_the_plan_names_every_check_the_code_reports[PA-parallel.py]<br>test_trace: test_the_plan_names_every_check_the_code_reports[MK-mask.py]<br>test_trace: test_the_plan_names_every_rule_the_code_reports<br>test_trace: test_each_check_is_named_by_one_requirement_only<br>test_trace: test_the_plan_parser_refuses_a_broken_plan<br>test_trace: test_an_escaped_pipe_stays_inside_its_cell<br>test_trace: test_the_plan_has_every_group_in_order |
+| QR-03 | The traceability matrix shows each requirement with its tests and their latest results |  | test_trace: test_the_requirements_reach_the_junit_file<br>test_trace: test_an_escaped_pipe_stays_inside_its_cell<br>test_trace: test_each_status_of_a_requirement<br>test_trace: test_a_passing_matrix_needs_every_requirement_passing_and_every_test_traced<br>test_trace: test_a_test_in_a_class_keeps_its_file_and_reads_like_its_node_id<br>test_trace: test_an_option_for_the_other_mode_is_refused[args0]<br>test_trace: test_an_option_for_the_other_mode_is_refused[args1]<br>test_trace: test_two_junit_files_make_one_matrix<br>test_trace: test_the_markdown_shows_each_requirement_its_tests_and_result<br>test_trace: test_the_workbook_has_a_summary_the_matrix_and_every_test<br>test_trace: test_the_command_writes_the_matrix_and_sets_the_exit_code<br>test_trace: test_the_command_without_junit_writes_the_tests_of_each_requirement<br>test_trace: test_the_committed_matrix_is_what_the_suites_collect |

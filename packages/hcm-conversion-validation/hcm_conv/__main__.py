@@ -6,11 +6,14 @@
     python -m hcm_conv exceptions --cycle 1   # print a cycle's exceptions (no Excel needed)
     python -m hcm_conv parallel               # cycles 1 to 3, then payroll parallel runs 1 and 2
     python -m hcm_conv mask --out DIR         # a masked copy of legacy/ (key in HCM_MASK_KEY)
+    python -m hcm_conv trace --junit reports/junit.xml --junit reports/junit-faults.xml   # with results
+    python -m hcm_conv trace                  # docs/traceability.md: the tests of each requirement
     python -m hcm_conv serve --port 8051      # start the mock API
     python -m hcm_conv generate               # rewrite legacy/ from the seed
 
 Exit code 1 when a check fails or an exception is still open, so a pipeline can stop on it
-(for parallel, when the last run has an unexplained difference; for mask, when a check fails).
+(for parallel, when the last run has an unexplained difference; for mask, when a check fails;
+for trace with --junit, when a requirement is not passing).
 """
 from __future__ import annotations
 
@@ -19,7 +22,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import cycles, extract, legacy, parallel, report
+from . import cycles, extract, legacy, parallel, report, trace
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,6 +44,10 @@ def main(argv=None) -> int:
     par.add_argument("--out", type=Path, default=ROOT / "reports", help="where the workbooks go")
     msk = sub.add_parser("mask", help="write a masked copy of the legacy extract and check it")
     msk.add_argument("--out", type=Path, default=ROOT / "reports" / "masked")
+    tr = sub.add_parser("trace", help="the traceability matrix: with --junit, each requirement's latest result")
+    tr.add_argument("--junit", type=Path, action="append", help="a JUnit XML file, once per suite (none: the tests only)")
+    tr.add_argument("--out", type=Path, help="with --junit: where traceability.md and .xlsx go (default reports/)")
+    tr.add_argument("--md", type=Path, help="without --junit: where the matrix goes (default docs/traceability.md)")
     serve = sub.add_parser("serve", help="start the mock API")
     serve.add_argument("--port", type=int, default=8051)
     sub.add_parser("generate", help="rewrite legacy/ from the seed")
@@ -51,6 +58,8 @@ def main(argv=None) -> int:
         return 0
     if args.command == "mask":
         return run_mask(args.out)
+    if args.command == "trace":
+        return run_trace(args)
     if args.command == "serve":
         import uvicorn
         from .mock_api import create_app
@@ -128,6 +137,45 @@ def run_mask(out: Path) -> int:
     for check in checks:
         print(f"  {'PASS' if check.passed else 'FAIL'}  {check.name}: {check.detail}")
     return 0 if all(c.passed for c in checks) else 1
+
+
+def shown_path(path: Path) -> str:
+    """reports/junit.xml when the file is in this package, so the matrix reads the same on every machine."""
+    try:
+        return path.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.name
+
+
+def run_trace(args) -> int:
+    if args.junit and args.md:
+        print("--md is for the committed matrix (no --junit); with --junit, use --out")
+        return 2
+    if args.out and not args.junit:
+        print("--out needs --junit; without it, use --md")
+        return 2
+    if not args.junit:   # the committed matrix: what the suites collect, no results
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            tests = trace.collect(Path(tmp) / "map.json")
+        text = trace.to_markdown(trace.build(trace.load_plan(), tests), results=False)
+        (args.md or ROOT / "docs" / "traceability.md").write_bytes(text.encode("utf-8"))   # LF on every machine
+        print(text.splitlines()[6].strip("*"))
+        return 0
+    missing = [str(p) for p in args.junit if not p.is_file()]
+    if missing:
+        print(f"No JUnit file at {', '.join(missing)}: run the suite first")
+        return 2
+    matrix = trace.build(trace.load_plan(), trace.read_junit(args.junit), [shown_path(p) for p in args.junit])
+    print(f"Traceability: {matrix.summary()}")
+    for row in matrix.rows:
+        if row.status != "passing":
+            print(f"  {row.status.upper()}  {row.requirement.id} {row.requirement.text}")
+    out = args.out or ROOT / "reports"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "traceability.md").write_bytes(trace.to_markdown(matrix).encode("utf-8"))
+    print(f"  Matrix: {trace.write_workbook(matrix, out / 'traceability.xlsx')}")
+    return 0 if matrix.passed else 1
 
 
 def print_exceptions(c: cycles.Cycle, everything: bool) -> None:
