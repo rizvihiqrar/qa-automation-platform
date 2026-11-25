@@ -44,24 +44,28 @@ def fixed_rules():
     return rules
 
 
+@pytest.mark.req("PA-01")
 def test_one_payslip_worked_out_by_hand():
     slip = parallel.pay(parallel.RULES, comp("65000.00"), None)
     assert slip == {"REG": D("2500.00"), "TAX": D("550.00"), "PEN": D("125.00"), "BEN": D("42.50"),
                     "gross": D("2500.00"), "deductions": D("717.50"), "net": D("1782.50")}
 
 
+@pytest.mark.req("PA-01")
 def test_overtime_is_paid_only_where_the_pay_group_has_it():
     assert "OT" not in parallel.pay(parallel.RULES, comp("52000.00", "Weekly"), D("120.00"))   # as built
     slip = parallel.pay(fixed_rules(), comp("52000.00", "Weekly"), D("120.00"))
     assert slip["OT"] == D("120.00") and slip["gross"] == D("1120.00")
 
 
+@pytest.mark.req("PA-01")
 def test_half_a_cent_rounds_up_in_the_new_engine_and_to_even_in_the_legacy_one():
     monthly = comp("12001.20", "Monthly")   # 1000.10 a month; pension 5% = 50.005
     assert parallel.pay(parallel.RULES, monthly, None)["PEN"] == D("50.01")
     assert parallel.pay(parallel.with_setting(parallel.RULES, "rounding", "half_even"), monthly, None)["PEN"] == D("50.00")
 
 
+@pytest.mark.req("PA-01")
 def test_a_setting_change_is_a_copy_and_must_name_a_real_setting():
     changed = parallel.with_setting(parallel.RULES, "pay_groups.Semimonthly.periods_per_year", 24)
     assert changed["pay_groups"]["Semimonthly"]["periods_per_year"] == 24
@@ -70,12 +74,14 @@ def test_a_setting_change_is_a_copy_and_must_name_a_real_setting():
         parallel.with_setting(parallel.RULES, "pay_groups.Semimonthly.periods", 24)
 
 
+@pytest.mark.req("PA-02")
 def test_every_loaded_pay_result_is_paid_again(loaded, runs):
     target, _ = loaded
     assert all(r.payslips == len(target["Pay Results"]) == 537 for r in runs)
     assert check(runs[0], "Every pay result has compensation in the target").passed
 
 
+@pytest.mark.req("PA-04", "PA-06")
 def test_run_1_finds_exactly_the_two_setup_mistakes(loaded, runs):
     target, source = loaded
     frequency = {c["worker_id"]: c["frequency"] for c in target["Compensation"]}
@@ -96,6 +102,7 @@ def test_run_1_finds_exactly_the_two_setup_mistakes(loaded, runs):
     assert not runs[0].passed and not check(runs[0], "Every difference is explained").passed
 
 
+@pytest.mark.req("PA-04", "PA-05", "PA-06")
 def test_run_2_explains_every_difference_with_rounding(runs):
     r = runs[1]
     assert r.passed and not r.unexplained()
@@ -104,6 +111,7 @@ def test_run_2_explains_every_difference_with_rounding(runs):
     assert {d.item for d in r.differences} == {"REG", "TAX", "PEN", "gross", "deductions", "net"}
 
 
+@pytest.mark.req("PA-06")
 def test_net_pay_per_period_differs_by_exactly_the_explained_cents(runs):
     r = runs[1]
     for period, (old, new) in r.totals.items():
@@ -120,6 +128,7 @@ def copy_fixes(tmp_path, edit):
     return tmp_path
 
 
+@pytest.mark.req("PA-04")
 def test_an_explanation_that_does_not_replay_explains_nothing(loaded, tmp_path):
     def nothing(plan):
         plan["explained"][0]["value"] = "half_up"   # the engine's own rounding: changes no amount
@@ -127,6 +136,7 @@ def test_an_explanation_that_does_not_replay_explains_nothing(loaded, tmp_path):
     assert len(r.unexplained()) == 118 and not r.explained() and not r.passed
 
 
+@pytest.mark.req("PA-05")
 def test_a_real_gap_is_never_signed_off_as_rounding(loaded, tmp_path):
     def cover(plan):   # sign off the semimonthly mistake as an "explanation"
         plan["explained"].append({"id": "EX-99", "setting": "pay_groups.Semimonthly.periods_per_year", "value": 24})
@@ -136,6 +146,7 @@ def test_a_real_gap_is_never_signed_off_as_rounding(loaded, tmp_path):
     assert not guard.passed and "larger than a cent" in guard.detail
 
 
+@pytest.mark.req("PA-02")
 def test_a_pay_result_without_compensation_fails_the_run(loaded):
     target, source = loaded
     missing = target["Pay Results"][0]["worker_id"]
@@ -145,6 +156,7 @@ def test_a_pay_result_without_compensation_fails_the_run(loaded):
     assert not c.passed and missing in c.detail
 
 
+@pytest.mark.req("PA-03")
 def test_a_pay_result_the_legacy_system_never_paid_fails_the_run_without_crashing(loaded):
     target, source = loaded
     extra = dict(target["Pay Results"][0], period_id="P2026-99")
@@ -154,6 +166,7 @@ def test_a_pay_result_the_legacy_system_never_paid_fails_the_run_without_crashin
     assert not r.passed and not r.unexplained()
 
 
+@pytest.mark.req("PA-06")
 def test_run_all_does_each_run_once(loaded, tmp_path):
     def also_run_1(plan):
         plan["runs"][1] = []
@@ -163,6 +176,7 @@ def test_run_all_does_each_run_once(loaded, tmp_path):
     assert [r.number for r in runs] == [1, 2]
 
 
+@pytest.mark.req("PA-06")
 def test_the_command_writes_both_workbooks_and_passes_on_run_2(tmp_path, capsys):
     assert cli.main(["parallel", "--out", str(tmp_path)]) == 0
     out = capsys.readouterr().out

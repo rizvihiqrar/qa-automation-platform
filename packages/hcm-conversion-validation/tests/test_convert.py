@@ -4,7 +4,7 @@ from collections import Counter
 
 import pytest
 
-from hcm_conv import convert, extract, legacy
+from hcm_conv import convert, cycles, extract, legacy, trace
 
 KEY = json.loads((legacy.LEGACY_DIR / "defects.json").read_text(encoding="utf-8"))
 
@@ -14,22 +14,38 @@ def cycle1():
     return convert.convert(extract.read())
 
 
+STEP_RULE = {"required": "REQUIRED", "id": "ID_FORMAT", "date": "DATE_INVALID", "money": "MONEY_INVALID",
+             "code": "CODE_UNKNOWN", "name": "ENCODING"}
+
+
+def by_step(*cases):
+    """Mark each transform case with the rule it expects; a case that passes, with its step's rule
+    (no step at all: a blank optional field, REQUIRED's)."""
+    def rule(spec, expected):
+        return expected[1] or STEP_RULE[next(iter(spec), "required")]
+    return [pytest.param(*c, marks=pytest.mark.req(trace.requirement_for(rule(c[0], c[2])))) for c in cases]
+
+
 def errors(conversion):
     return [f for f in conversion.findings if f.severity == "error"]
 
 
-@pytest.mark.parametrize("defect", KEY, ids=[d["id"] for d in KEY])
+# Each seeded defect is a case of its own, marked with the requirement of the rule that finds it
+@pytest.mark.parametrize("defect", [pytest.param(d, id=d["id"], marks=pytest.mark.req(trace.requirement_for(d["rule"])))
+                                    for d in KEY])
 def test_each_seeded_defect_is_found_by_its_rule(cycle1, defect):
     hits = [f for f in errors(cycle1) if (f.rule, f.file, f.key) == (defect["rule"], defect["file"], defect["key"])]
     assert hits, f"{defect['id']} ({defect['description']}) was not found"
     assert {f.field for f in hits} == {defect["field"]} or defect["rule"] == "DUPLICATE_ID"
 
 
+@pytest.mark.req("MR-16")
 def test_no_error_is_raised_outside_the_answer_key(cycle1):
     expected = {(d["rule"], d["file"], d["key"]) for d in KEY}
     assert [f for f in errors(cycle1) if (f.rule, f.file, f.key) not in expected] == []
 
 
+@pytest.mark.req("MR-14", "MR-16")
 def test_cycle_one_counts(cycle1):
     assert len(errors(cycle1)) == 22   # 20 defects; each duplicate pair is 2 rows
     held = {sheet: sum(r.held for r in recs) for sheet, recs in cycle1.records.items()}
@@ -37,6 +53,7 @@ def test_cycle_one_counts(cycle1):
     assert Counter(f.rule for f in cycle1.findings)["HELD_PARENT"] == 48
 
 
+@pytest.mark.req("MR-14")
 def test_rows_of_a_held_worker_are_held_with_an_info_reason(cycle1):
     held_workers = {r.key for r in cycle1.records["Workers"] if r.held}
     for sheet in ("Compensation", "Pay Results"):
@@ -47,6 +64,7 @@ def test_rows_of_a_held_worker_are_held_with_an_info_reason(cycle1):
     assert all(f.severity == "info" for f in info)
 
 
+@pytest.mark.req("MR-15")
 def test_mapping_turns_legacy_codes_into_target_codes(cycle1):
     worker = next(r for r in cycle1.records["Workers"] if not r.held)
     assert worker.data["status"] in {"Active", "Terminated"} and worker.data["country"] in {"CAN", "USA"}
@@ -55,7 +73,7 @@ def test_mapping_turns_legacy_codes_into_target_codes(cycle1):
     assert {"given_name", "family_name", "region"} <= worker.data.keys()
 
 
-@pytest.mark.parametrize("spec, raw, expected", [
+@pytest.mark.parametrize("spec, raw, expected", by_step(
     ({"required": True}, "  Tremblay ", ("Tremblay", None, None)),
     ({"required": True}, "   ", ("", "REQUIRED", "is blank")),
     ({}, "", ("", None, None)),
@@ -71,11 +89,12 @@ def test_mapping_turns_legacy_codes_into_target_codes(cycle1):
     ({"name": True}, "Benoît", ("Benoît", None, None)),
     ({"name": True}, "BenoÃ®t", ("BenoÃ®t", "ENCODING", "has double-encoded characters (UTF-8 read as Windows-1252)")),
     ({"name": True}, "Zo\ufffd", ("Zo\ufffd", "ENCODING", "has double-encoded characters (UTF-8 read as Windows-1252)")),
-])
+))
 def test_each_transform(spec, raw, expected):
     assert convert.transform(spec, raw) == expected
 
 
+@pytest.mark.req("MR-12")
 def test_a_missing_trailer_is_reported():
     source = extract.read()
     del source.trailers["compensation.csv"]
@@ -83,12 +102,14 @@ def test_a_missing_trailer_is_reported():
         ("workers.csv", "says 201 records; the file has 200"), ("compensation.csv", "the file has no trailer")]
 
 
+@pytest.mark.req("MR-12")
 def test_a_hash_total_that_does_not_match_is_reported():
     source = extract.read()
     source.trailers["compensation.csv"]["hash_total"] = "1.00"
     assert [f.field for f in convert.control_totals(source) if f.file == "compensation.csv"] == ["hash_total"]
 
 
+@pytest.mark.req("MR-13")
 def test_a_pay_result_without_lines_is_reported():
     source = extract.read()
     source.payroll.execute("DELETE FROM pay_lines WHERE employee_id = '001800' AND period_id = 'P2026-19'")
@@ -96,6 +117,7 @@ def test_a_pay_result_without_lines_is_reported():
     assert [(f.field, f.message) for f in found] == [("lines", "has no pay lines")]
 
 
+@pytest.mark.req("MR-11")
 def test_compensation_for_a_worker_not_in_the_extract_is_reported():
     source = extract.read()
     source.table("compensation.csv")[5].data["employee_id"] = "999999"
@@ -103,11 +125,26 @@ def test_compensation_for_a_worker_not_in_the_extract_is_reported():
     assert [(f.key, f.message) for f in found] == [("999999", "is not in workers.csv")]
 
 
+@pytest.mark.req("CY-04")
 def test_an_accepted_exception_must_match_something(cycle1):
     with pytest.raises(ValueError, match="matches nothing"):
-        convert.accept(cycle1.findings, [{"rule": "REF_ORG", "file": "positions.csv", "key": "POS-0001"}])
+        convert.accept(cycle1.findings, [{"rule": "REF_ORG", "file": "positions.csv", "key": "POS-0001",
+                                          "reason": "test", "signed_off_by": "HR data owner"}])
 
 
+@pytest.mark.req("CY-04")
+@pytest.mark.parametrize("missing", ["reason", "signed_off_by"])
+def test_an_accepted_exception_needs_a_reason_and_who_signed_it_off(cycle1, missing):
+    real = dict(cycles.accepted_for(3)[0])
+    real[missing] = "  "
+    with pytest.raises(ValueError, match="needs a reason and who signed it off"):
+        convert.accept(cycle1.findings, [real])
+    del real[missing]
+    with pytest.raises(ValueError, match="needs a reason and who signed it off"):
+        convert.accept(cycle1.findings, [real])
+
+
+@pytest.mark.req("MR-14")
 def test_an_organization_under_a_held_organization_is_held_with_its_positions():
     source = extract.read()
     orgs = source.table("organizations.csv")
@@ -121,6 +158,7 @@ def test_an_organization_under_a_held_organization_is_held_with_its_positions():
     assert all(r.held for r in conversion.records["Positions"] if r.source["org_id"] in held)
 
 
+@pytest.mark.req("MR-04", "MR-12")
 def test_a_salary_that_is_not_a_number_is_an_exception_not_a_crash():
     source = extract.read()
     source.table("compensation.csv")[3].data["annual_salary"] = "65,000"
@@ -129,6 +167,7 @@ def test_a_salary_that_is_not_a_number_is_an_exception_not_a_crash():
     assert any(f.rule == "CONTROL_TOTAL" and f.field == "hash_total" for f in found)
 
 
+@pytest.mark.req("MR-13")
 def test_a_payroll_key_with_spaces_still_matches_its_record():
     source = extract.read()
     source.payroll.execute("UPDATE pay_results SET employee_id = '079263 ' WHERE employee_id = '079263' AND period_id = 'P2026-20'")

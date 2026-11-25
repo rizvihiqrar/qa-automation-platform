@@ -49,6 +49,7 @@ def is_load(method, path, data):
     return method == "POST" and path == "/bulk-loads" and data.get("mode") == "load"
 
 
+@pytest.mark.req("FS-01")
 def test_the_line_works_with_no_fault(api, clean_line):
     app, _ = api
     toxiproxy, url = clean_line
@@ -59,6 +60,7 @@ def test_the_line_works_with_no_fault(api, clean_line):
     assert loads(app) == [("validate_only", "Completed"), ("load", "Completed"), ("load", "Completed")]
 
 
+@pytest.mark.req("FS-02")
 def test_a_slow_reply_times_out_and_the_retry_reads_it_again(api, clean_line):
     toxiproxy, url = clean_line
     cycle, retries = cycle_through(url, toxiproxy,
@@ -69,6 +71,7 @@ def test_a_slow_reply_times_out_and_the_retry_reads_it_again(api, clean_line):
     assert retries == [Retry("GET /bulk-loads/BL-0001/errors", 1, "ReadTimeout")]
 
 
+@pytest.mark.req("FS-03")
 def test_a_reset_in_the_middle_of_the_upload_is_sent_again_and_loads_once(api, clean_line):
     app, _ = api
     toxiproxy, url = clean_line
@@ -81,6 +84,7 @@ def test_a_reset_in_the_middle_of_the_upload_is_sent_again_and_loads_once(api, c
     assert loads(app) == [("validate_only", "Completed"), ("load", "Completed"), ("load", "Completed")]
 
 
+@pytest.mark.req("FS-04")
 def test_a_silent_line_ends_in_a_timeout_not_a_hang(api, clean_line):
     toxiproxy, url = clean_line
     started = time.monotonic()
@@ -92,6 +96,7 @@ def test_a_silent_line_ends_in_a_timeout_not_a_hang(api, clean_line):
     assert time.monotonic() - started < 30
 
 
+@pytest.mark.req("FS-05")
 def test_a_reply_lost_after_the_save_is_loaded_again_with_no_duplicates(api, clean_line):
     app, _ = api
     toxiproxy, url = clean_line
@@ -107,6 +112,7 @@ def test_a_reply_lost_after_the_save_is_loaded_again_with_no_duplicates(api, cle
     assert "Row counts balance" in names and "Rerun adds and changes nothing" in names
 
 
+@pytest.mark.req("FS-06")
 def test_a_fault_that_never_clears_fails_loudly_after_three_tries(clean_line):
     toxiproxy, url = clean_line
     toxiproxy.add("silent", "timeout", "upstream", timeout=0)

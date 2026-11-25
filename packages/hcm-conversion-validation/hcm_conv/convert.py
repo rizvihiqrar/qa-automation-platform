@@ -228,6 +228,8 @@ def hold_dependants(records: dict[str, list[Record]], findings: list[Finding]) -
 def accept(findings: list[Finding], accepted: list[dict]) -> None:
     """Mark the exceptions the business signed off as known (they stay held, but are not open)."""
     for a in accepted:
+        if not str(a.get("reason") or "").strip() or not str(a.get("signed_off_by") or "").strip():
+            raise ValueError(f"accepted exception {a.get('rule')} {a.get('key')} needs a reason and who signed it off")
         hits = [f for f in findings if (f.rule, f.file, f.key) == (a["rule"], a["file"], a["key"])]
         if not hits:
             raise ValueError(f"accepted exception {a} matches nothing")

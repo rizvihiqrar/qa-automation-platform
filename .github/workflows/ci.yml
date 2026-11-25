@@ -454,6 +454,51 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # The traceability matrix from the JUnit files of both HCM jobs: every test plan requirement
+  # must have tests, all passed. A job of its own, run after both whatever they ended with, so
+  # neither suite waits for the other and a red one still gets a matrix that shows why.
+  hcm-conversion-validation-traceability:
+    name: hcm-conversion-validation-traceability
+    needs: [hcm-conversion-validation, hcm-conversion-validation-faults]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: packages/hcm-conversion-validation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: packages/hcm-conversion-validation/requirements.txt
+      - run: pip install -r requirements.txt
+      # A suite that never got to upload leaves its file missing, and trace exits 2 naming it
+      - name: JUnit results of the main suite
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: report-hcm-conversion-validation
+          path: packages/hcm-conversion-validation/junit/main
+      - name: JUnit results of the fault suite
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: report-hcm-conversion-validation-faults
+          path: packages/hcm-conversion-validation/junit/faults
+      # Fails if a requirement has no tests, or any of its tests failed or was skipped
+      - name: Traceability matrix with the results of both suites
+        run: python -m hcm_conv trace --junit junit/main/junit.xml --junit junit/faults/junit-faults.xml --out reports
+      - name: Upload the matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-hcm-conversion-validation-traceability
+          path: packages/hcm-conversion-validation/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Pull requests only: every Playwright or Cypress spec the PR adds or changes runs
   # 3 times with no retries (Cypress in Chrome and Firefox), so a test that passes
   # only sometimes is caught before it merges. scripts/burn-in.mjs picks the specs.

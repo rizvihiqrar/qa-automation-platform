@@ -2,7 +2,7 @@
 
 # hcm-conversion-validation
 
-A data conversion test kit for HR and payroll, in Python. A generated legacy extract (CSV files plus a SQLite payroll history, 200 workers, 20 seeded defects of 8 kinds) is mapped, validated, loaded through a Workday-style mock API's bulk load, and read back through its report export. Then the target is reconciled with the source by row counts, hash totals and a hash of every record. Three mock cycles show the exceptions going from 22 to 0 as the data is cleaned, with the deltas between cycles in an Excel exception report. Then a payroll parallel pays the last three pay periods again in the new system and proves every cent of difference, and a masked copy of the extract hides every person while still breaking the same rules. Finally the load goes through a bad network line (Toxiproxy in Docker): a slow reply, a reset mid-upload, a silent line and a reply lost after the save, and it still ends reconciled. Fake data only. Not affiliated with any HR vendor.
+A data conversion test kit for HR and payroll, in Python. A generated legacy extract (CSV files plus a SQLite payroll history, 200 workers, 20 seeded defects of 8 kinds) is mapped, validated, loaded through a Workday-style mock API's bulk load, and read back through its report export. Then the target is reconciled with the source by row counts, hash totals and a hash of every record. Three mock cycles show the exceptions going from 22 to 0 as the data is cleaned, with the deltas between cycles in an Excel exception report. Then a payroll parallel pays the last three pay periods again in the new system and proves every cent of difference, and a masked copy of the extract hides every person while still breaking the same rules. Finally the load goes through a bad network line (Toxiproxy in Docker): a slow reply, a reset mid-upload, a silent line and a reply lost after the save, and it still ends reconciled. A [test plan](docs/test-plan.md) gives each of 61 requirements an ID, every test names the requirements it checks, and a [traceability matrix](docs/traceability.md) lists each requirement's tests; CI builds it again with every test's latest result. Fake data only. Not affiliated with any HR vendor.
 
 **In plain English:** moving a company's people and pay from an old system to a new one is like moving house. This kit counts the boxes before and after, adds up the numbers on them, opens every box to compare it with a photo taken before it left, and drives the truck a second time to make sure nothing gets delivered twice. Anything that can't move yet (a missing hire date, a duplicated employee ID, a name garbled by the wrong file encoding) goes on a list with the reason, and the list gets shorter each cycle. After the move, the new system pays three old pay runs again, and every cent that comes out different needs a signed-off reason that the kit checks by working the pay out again. The copy given to testers has made-up names, birth dates and ID numbers, so nobody real is in it. And when the truck breaks down halfway (the phone line drops, or the new office says nothing back), the kit sends the boxes again and proves nothing arrived twice.
 
@@ -25,15 +25,16 @@ Python 3.12. Nothing else for the main tests: the mock API runs inside the same 
 ## Quick start
 
 ```bash
-.venv/bin/python -m pytest                     # 140 tests
+.venv/bin/python -m pytest                     # 166 tests
 .venv/bin/python -m pytest tests_faults        # 6 fault tests (Docker must be running)
 .venv/bin/python -m hcm_conv run               # cycles 1 to 3, writes reports/exceptions_cycleN.xlsx
 .venv/bin/python -m hcm_conv exceptions --cycle 1
 .venv/bin/python -m hcm_conv parallel          # payroll parallel runs 1 and 2, writes reports/parallel_runN.xlsx
 HCM_MASK_KEY=any-secret .venv/bin/python -m hcm_conv mask    # writes and checks reports/masked/
+.venv/bin/python -m hcm_conv trace --junit reports/junit.xml --junit reports/junit-faults.xml   # the matrix with results
 ```
 
-`run` exits with 1 while any check fails or any exception is open, `parallel` while run 2 has an unexplained difference, and `mask` when its copy fails a check, so a pipeline can stop on any of them.
+`run` exits with 1 while any check fails or any exception is open, `parallel` while run 2 has an unexplained difference, `mask` when its copy fails a check, and `trace` while a requirement has no tests or a test that did not pass, so a pipeline can stop on any of them.
 
 ## At a glance
 
@@ -57,7 +58,11 @@ HCM_MASK_KEY=any-secret .venv/bin/python -m hcm_conv mask    # writes and checks
 - Integration faults on a real line: Toxiproxy (in Docker, started by testcontainers) between the loader and the mock API puts one fault on one call, and cycle 3 must still pass every check
 - The loader times out every call and retries only what is safe to send twice (reads, the bulk load, the reset), up to 3 tries with a growing backoff; an error status is never retried
 - The dangerous case is tested: the API saves the load and the reply is lost, so the loader loads again, and the reconciliation proves nothing was duplicated or changed
-- 51 bugs were put back on purpose, one at a time, and the right tests failed each time (see [Results](#results))
+- A test plan with scope, approach, schedule, roles, entry and exit criteria and 61 numbered requirements in 10 groups; each rule and check is named exactly as the code reports it, and a test fails if the two drift apart
+- Every test carries a `req` marker: the run stops before any test starts if a test has none or names an ID that is not in the plan, and each ID is written into the JUnit XML
+- The traceability matrix (Markdown and .xlsx) shows each requirement, its tests and their latest results from both suites; a requirement passes only when it has tests and all of them passed
+- Building the matrix found two gaps, now closed: no test had ever made the worker ID hash total fail, and an accepted exception could be signed off by nobody
+- 67 bugs were put back on purpose, one at a time, and the right tests failed each time (see [Results](#results))
 
 ## Results
 
@@ -139,8 +144,24 @@ The masked copy passes all 5 of its checks with any key: CI uses a new key, made
 | Loader: the fault hook is not called on a retry | 7 |
 | Mock API: a second bulk load adds rows instead of updating them | 21 |
 | CI pulls another Toxiproxy tag than the tests start | 1 |
+| An accepted exception with no reason or no sign-off is let through | 2 |
+| The worker ID hash total always passes | 1 |
+| Traceability: a test with no `req` marker runs anyway | 1 |
+| Traceability: a test naming an ID the plan does not have runs anyway | 1 |
+| Traceability: the IDs never reach the JUnit file | 1 |
+| Traceability: a skipped test counts as passed | 1 |
+| Traceability: a test that errors reads as passed | 1 |
+| Traceability: a test with no requirement does not fail the matrix | 1 |
+| Traceability: the plan renames a check the code reports | 2 |
+| Traceability: a requirement that no test names | 2 |
+| Traceability: the plan uses an ID twice | 1 |
+| Traceability: a new test the committed matrix does not list | 1 |
+| Traceability: the nested collect run passes PYTEST_ADDOPTS on (code review) | 1 |
+| Traceability: a test in a class gets a folder for a file name (code review) | 1 |
+| Traceability: an escaped pipe in the plan splits its cell (code review) | 1 |
+| Traceability: an option for the other mode is ignored quietly (code review) | 1 |
 
-The stage 1 suite passed 10 runs in a row with no retries (5 before the code review fixes, 5 after); the stage 2 suite passed 3 in a row before the code review fixes and 5 after.
+The stage 1 suite passed 10 runs in a row with no retries (5 before the code review fixes, 5 after); the stage 2 suite passed 3 in a row before the code review fixes and 5 after; with the stage 3 markers, the main suite passed 3 in a row and the fault suite 2 before the review fixes.
 
 ## License
 

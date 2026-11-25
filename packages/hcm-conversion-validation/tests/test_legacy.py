@@ -1,11 +1,14 @@
 """The legacy extract: fake, repeatable, and its answer key matches what is in the files."""
 import json
 
+import pytest
+
 from hcm_conv import extract, legacy
 
 KEY = json.loads((legacy.LEGACY_DIR / "defects.json").read_text(encoding="utf-8"))
 
 
+@pytest.mark.req("LX-01")
 def test_the_committed_extract_is_exactly_what_the_generator_writes(tmp_path):
     # A hand edit, or a Faker upgrade that changes the names, would move every expected count.
     legacy.write(tmp_path)
@@ -13,6 +16,7 @@ def test_the_committed_extract_is_exactly_what_the_generator_writes(tmp_path):
         assert (tmp_path / name).read_bytes() == (legacy.LEGACY_DIR / name).read_bytes(), name
 
 
+@pytest.mark.req("LX-01")
 def test_the_sizes_are_the_ones_the_readme_gives():
     source = extract.read()
     assert len(source.table("workers.csv")) == 200
@@ -22,11 +26,13 @@ def test_the_sizes_are_the_ones_the_readme_gives():
     assert source.payroll.execute("SELECT count(*) FROM pay_periods").fetchone()[0] == 3
 
 
+@pytest.mark.req("LX-02")
 def test_there_are_twenty_seeded_defects_of_eight_kinds():
     assert [d["id"] for d in KEY] == [f"D-{n:02d}" for n in range(1, 21)]
     assert len({d["type"] for d in KEY}) == 8
 
 
+@pytest.mark.req("LX-02")
 def test_every_defect_points_at_a_line_that_shows_it():
     source = extract.read()
     for d in KEY:
@@ -43,6 +49,7 @@ def test_every_defect_points_at_a_line_that_shows_it():
         assert row.data[key_field] == d["key"], d["id"]
 
 
+@pytest.mark.req("LX-03")
 def test_the_data_is_fake():
     source = extract.read()
     for row in source.table("workers.csv"):
@@ -50,6 +57,7 @@ def test_the_data_is_fake():
         assert row.data["national_id"].startswith("0")   # no real SIN starts with 0
 
 
+@pytest.mark.req("LX-03")
 def test_real_accents_are_kept_alongside_the_garbled_ones():
     names = [r.data["first_name"] + " " + r.data["last_name"] for r in extract.read().table("workers.csv")]
     garbled = [n for n in names if "Ã" in n]

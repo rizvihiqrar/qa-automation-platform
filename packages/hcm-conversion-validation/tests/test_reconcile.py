@@ -31,6 +31,7 @@ def with_fault(monkeypatch, fault):
     monkeypatch.setattr(mock_api, "process", faulty)
 
 
+@pytest.mark.req("RC-01", "RC-02", "RC-03", "RC-04", "RC-05", "RC-06", "RC-07", "RC-08")
 def test_a_correct_target_passes_every_check_but_completeness(api):
     result = run_cycle1(api)
     failed = [name for name, ok in checks(result).items() if not ok]
@@ -39,6 +40,7 @@ def test_a_correct_target_passes_every_check_but_completeness(api):
     assert result.load == {"validate_only": "Completed", "load": "Completed", "rows": 1116, "loaded": 1116, "rejected": 0}
 
 
+@pytest.mark.req("RC-07", "RC-03")
 def test_a_target_that_strips_accents_is_caught_field_by_field(api, monkeypatch):
     import unicodedata
 
@@ -54,6 +56,7 @@ def test_a_target_that_strips_accents_is_caught_field_by_field(api, monkeypatch)
     assert any("René" in f.message for f in mismatches)
 
 
+@pytest.mark.req("RC-04", "RC-07")
 def test_a_target_that_rounds_salaries_fails_the_hash_total(api, monkeypatch):
     def round_pay(tenant, n):
         for c in tenant.records["Compensation"].values():
@@ -64,6 +67,7 @@ def test_a_target_that_rounds_salaries_fails_the_hash_total(api, monkeypatch):
     assert not checks(result)["Row hashes match"]
 
 
+@pytest.mark.req("RC-02", "RC-05")
 def test_a_row_the_target_drops_silently_is_caught(api, monkeypatch):
     def drop_one(tenant, n):
         tenant.records["Pay Results"].pop(next(iter(tenant.records["Pay Results"])))
@@ -74,6 +78,19 @@ def test_a_row_the_target_drops_silently_is_caught(api, monkeypatch):
     assert [f.rule for f in result.findings] == ["RECON_MISSING"]
 
 
+@pytest.mark.req("RC-03", "RC-02")
+def test_a_worker_the_target_drops_fails_the_worker_id_hash_total(api, monkeypatch):
+    # Found by the traceability matrix (2026-11-25): until this test, RC-03 was only ever seen passing
+    def drop_worker(tenant, n):
+        tenant.records["Workers"].pop(next(iter(tenant.records["Workers"])))
+    with_fault(monkeypatch, drop_worker)
+    result = run_cycle1(api)
+    assert not checks(result)["Hash total: worker IDs"]
+    detail = next(c.detail for c in result.checks if c.name == "Hash total: worker IDs")
+    assert detail.startswith("source 186 workers") and "target 185" in detail
+
+
+@pytest.mark.req("RC-08", "RC-02")
 def test_a_rerun_that_adds_copies_is_caught(api, monkeypatch):
     def copy_on_second_load(tenant, n):
         if n == 2:
@@ -88,6 +105,7 @@ def test_a_rerun_that_adds_copies_is_caught(api, monkeypatch):
     assert checks(result)["Row counts balance"]   # the first load was fine
 
 
+@pytest.mark.req("RC-01", "RC-02")
 def test_rows_the_target_refuses_are_reported_and_still_balance(api, monkeypatch):
     monkeypatch.setitem(mock_api.CODES, "frequency", {"Weekly", "Biweekly", "Monthly"})   # no Semimonthly
     result = run_cycle1(api)
@@ -100,6 +118,7 @@ def test_rows_the_target_refuses_are_reported_and_still_balance(api, monkeypatch
     assert comp.rejected == len(rejected) and comp.target == comp.loaded
 
 
+@pytest.mark.req("RC-05")
 def test_the_source_side_of_the_pay_totals_is_read_with_sql(api):
     source = extract.read()
     conversion = convert.convert(source)
@@ -108,6 +127,7 @@ def test_the_source_side_of_the_pay_totals_is_read_with_sql(api):
     assert sent == len(conversion.sent("Pay Results")) == 499
 
 
+@pytest.mark.req("RC-05")
 def test_payroll_keys_with_spaces_still_count_in_the_pay_hash_totals(api):
     source = extract.read()
     source.payroll.execute("UPDATE pay_results SET employee_id = employee_id || ' ' WHERE period_id = 'P2026-21'")
