@@ -462,7 +462,7 @@ jobs:
     needs: [hcm-conversion-validation, hcm-conversion-validation-faults]
     if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: packages/hcm-conversion-validation
@@ -490,7 +490,13 @@ jobs:
       # Fails if a requirement has no tests, or any of its tests failed or was skipped
       - name: Traceability matrix with the results of both suites
         run: python -m hcm_conv trace --junit junit/main/junit.xml --junit junit/faults/junit-faults.xml --out reports
-      - name: Upload the matrix
+      # The test plan's exit criteria against fresh evidence (cycles, parallel, masking) and the
+      # same JUnit files; fails on NO-GO. Also writes the defect log. Runs even if the matrix failed,
+      # so a red run still says which criteria block go.
+      - name: Go or no-go readiness report and defect log
+        if: always()
+        run: HCM_MASK_KEY="ci-run-${{ github.run_id }}" python -m hcm_conv readiness --junit junit/main/junit.xml --junit junit/faults/junit-faults.xml --out reports
+      - name: Upload the matrix, the readiness report and the defect log
         if: always()
         uses: actions/upload-artifact@v4
         with:

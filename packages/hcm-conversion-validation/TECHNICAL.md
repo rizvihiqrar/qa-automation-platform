@@ -4,7 +4,7 @@
 
 **Contents:** [Features](#features) · [Configuration](#configuration) · [CI integration](#ci-integration) · [FAQ](#faq) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
-Stage 1 of three is the conversion itself (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds the [payroll parallel](#the-payroll-parallel), [masking](#masking) and [integration faults](#integration-faults) that reuse the Toxiproxy setup from qa-practice-api. Stage 3 adds the [test plan and the traceability matrix](#test-plan-and-traceability), then a defect log and a go or no-go readiness report.
+Stage 1 of three is the conversion itself (see the [ROADMAP](../../ROADMAP.md) row HCM). Stage 2 adds the [payroll parallel](#the-payroll-parallel), [masking](#masking) and [integration faults](#integration-faults) that reuse the Toxiproxy setup from qa-practice-api. Stage 3 adds the [test plan and the traceability matrix](#test-plan-and-traceability), the [defect log](#the-defect-log) and the [go or no-go readiness report](#the-readiness-report).
 
 ## Features
 
@@ -34,6 +34,8 @@ legacy/ (CSV + payroll.sql) ─ fixes/cycleN.yaml ─▶ extract ─▶ mapping.
 | [mask.py](hcm_conv/mask.py) | Writes a masked copy of the extract and checks it |
 | [trace.py](hcm_conv/trace.py) | Reads the test plan's requirements and the JUnit files, and builds the traceability matrix |
 | [conftest.py](conftest.py) | For both suites: every test names its requirements, and the IDs go into the JUnit XML |
+| [defects.py](hcm_conv/defects.py) | The defect log, worked out from the cycles and the parallel runs at a checkpoint |
+| [readiness.py](hcm_conv/readiness.py) | The go or no-go report on the test plan's exit criteria |
 
 ### The legacy extract
 
@@ -235,7 +237,7 @@ The loader's bulk load retry assumes the target handles loads of the same keys o
 
 ### Test plan and traceability
 
-[docs/test-plan.md](docs/test-plan.md) is the test plan: scope, approach, environments, schedule, roles, entry and exit criteria, risks, and 61 requirements in 10 groups, each with an ID. Its third column names the rule or the check exactly as the code reports it (`REQUIRED`, `Row hashes match`).
+[docs/test-plan.md](docs/test-plan.md) is the test plan: scope, approach, environments, schedule, roles, entry and exit criteria, risks, defect management, and 63 requirements in 10 groups, each with an ID. Its third column names the rule or the check exactly as the code reports it (`REQUIRED`, `Row hashes match`).
 
 | Group | IDs | What they cover |
 |---|---|---|
@@ -248,7 +250,7 @@ The loader's bulk load retry assumes the target handles loads of the same keys o
 | Masking | MK-01 to MK-07 | Its 5 checks, the shapes and the key |
 | Loader | LD-01 to LD-03 | Timeouts and retries |
 | Integration faults | FS-01 to FS-06 | One per fault, plus the clean line |
-| Quality records | QR-01 to QR-03 | The plan and the matrix themselves |
+| Quality records | QR-01 to QR-05 | The plan, the matrix, the defect log and the readiness report themselves |
 
 Each test names its requirements with a marker. A parametrized test can mark each case: the seeded defect cases take the requirement of the rule in the answer key, so D-04 is MR-03.
 
@@ -285,6 +287,48 @@ Four tests keep the plan honest: every requirement has a test; the check names i
 
 Building the matrix found two gaps. RC-03 (`Hash total: worker IDs`) was only ever seen passing: no test made it fail, so a break that made it always pass went unnoticed. A test now drops a worker in the target. And CY-04 asks that every accepted exception names its reason and who signed it off, which nothing checked: `convert.accept` now refuses one without either.
 
+### The defect log
+
+[defects.py](hcm_conv/defects.py) works the log out from the evidence at a checkpoint (the last cycle and the last parallel run given); nothing in it is typed by hand. [docs/defect-log.md](docs/defect-log.md) is the log after cycle 3 and run 2.
+
+| ID | Where it comes from | Found in | Closed by |
+|---|---|---|---|
+| D-01 to D-20 | The answer key, matched to the cycle's findings by rule, file and key | The first cycle whose findings have it | The first later cycle that no longer has it; the fix is the cycle file that names the defect |
+| N-01 | A new exception in a later cycle's deltas that is not in the answer key | That cycle | Named by the later fix whose `match` holds its key |
+| PP-01, PP-02 | The setup changes in fixes/parallel.yaml | Parallel run 1 (it has unexplained differences) | A later run, with the change, whose `Every difference is explained` passes |
+| EX-01 | The signed-off explanations | Parallel run 1 | Accepted: the count of differences it explains in the last run |
+
+Status is Open, Closed or Accepted. A seeded defect that no cycle ever reports is Open with "the rule never reported it", so a rule that goes quiet fails go. `python -m hcm_conv readiness` also writes `reports/defect-log.xlsx`.
+
+| Checkpoint | Defects | Open | Closed | Accepted |
+|---|---:|---:|---:|---:|
+| Cycle 1, before the parallel | 20 | 20 | 0 | 0 |
+| Cycle 2 and run 1 | 24 | 13 | 10 | 1 |
+| Cycle 3 and run 2 | 24 | 0 | 21 | 3 |
+
+### The readiness report
+
+[readiness.py](hcm_conv/readiness.py) checks the test plan's 7 exit criteria. The evidence is worked out again, not read from earlier reports: cycles 1 to 3 run into a fresh tenant, the parallel pays from cycle 3's target, a masked copy is made in a temporary folder and checked, and the test results come from the JUnit files through the traceability matrix.
+
+| # | Exit criterion | Passes when |
+|---|---|---|
+| 1 | No open exception, and every accepted one signed off | The last cycle has 0 open; every accepted entry has `signed_off_by` |
+| 2 | Every reconciliation check passes | All 8 checks of the last cycle |
+| 3 | The payroll parallel explains every difference | The last run passes its 4 checks (no parallel run is a fail) |
+| 4 | Every masking check passes | All 5, and at least one ran |
+| 5 | Every fault scenario passes | FS-01 to FS-06 passing in the matrix |
+| 6 | Every requirement has tests, and all of them passed | The matrix passes: no requirement without tests, no result outside the plan |
+| 7 | Every logged defect is closed or accepted | The log has no Open defect |
+
+Go needs all 7; there is no tolerance. The report lists what blocks go and what was signed off. `reports/readiness.json` holds the same in release-gate's result shape, one check per criterion:
+
+```json
+{"decision": "go", "checkpoint": "mock cycle 3 and payroll parallel run 2",
+ "checks": [{"name": "Every reconciliation check passes", "kind": "check", "passed": true, "detail": "cycle 3: 8 of 8 pass"}]}
+```
+
+The committed [GO](docs/readiness-go.md) and [NO-GO](docs/readiness-no-go.md) examples are the checkpoints after cycle 3 and run 2, and after cycle 2 and run 1 (that one fails criteria 1, 2, 3 and 7). Their criteria 5 and 6 come from a matrix with every requirement passing, so they change only when the evidence does; a test fails when they differ from what the code builds (`python -m hcm_conv readiness --examples` rebuilds them). CI makes the real decision from both suites' JUnit files on every run.
+
 ## Configuration
 
 | Command | Option | Default | What it does |
@@ -298,12 +342,15 @@ Building the matrix found two gaps. RC-03 (`Hash total: worker IDs`) was only ev
 | `python -m hcm_conv trace` | `--junit FILE` (once per suite) | none | Build the matrix with results; exit 1 unless every requirement is passing |
 | | `--out DIR` | `reports/` | Where traceability.md and traceability.xlsx go |
 | | `--md FILE` | `docs/traceability.md` | Without `--junit`: the committed matrix, from a collect-only run |
+| `python -m hcm_conv readiness` | `--junit FILE` (once per suite) | none | Decide go or no-go at cycle 3 and run 2; exit 1 on NO-GO. Writes readiness.md, readiness.json, defect-log.md and defect-log.xlsx |
+| | `--out DIR` | `reports/` (`docs/` with `--examples`) | Where they go |
+| | `--examples` | | Rebuild the committed GO and NO-GO examples and the defect log (no `--junit`) |
 | `python -m hcm_conv serve` | `--port` | 8051 | Start the mock API on 127.0.0.1 |
 | `python -m hcm_conv generate` | | | Rewrite `legacy/` from seed 51 |
 
 ## CI integration
 
-The fault tests run in their own job, `hcm-conversion-validation-faults`: it pulls the Toxiproxy image through [scripts/retry.sh](../../scripts/retry.sh) (registries answer 502 now and then), then runs `pytest tests_faults`. Their own job keeps the main job Python only and quick. A third job, `hcm-conversion-validation-traceability`, runs after both, whatever they ended with (`if: always()`), downloads their JUnit files and builds the matrix with results; it fails unless every requirement is passing, and a suite that never uploaded makes it exit 2 naming the missing file. So neither suite waits for the other, and a red run still gets a matrix that shows which requirement it broke. A test in [tests/test_client.py](tests/test_client.py) fails if the tag CI pulls is not the one the tests start.
+The fault tests run in their own job, `hcm-conversion-validation-faults`: it pulls the Toxiproxy image through [scripts/retry.sh](../../scripts/retry.sh) (registries answer 502 now and then), then runs `pytest tests_faults`. Their own job keeps the main job Python only and quick. A third job, `hcm-conversion-validation-traceability`, runs after both, whatever they ended with (`if: always()`), downloads their JUnit files, builds the matrix with results, then makes the go or no-go decision and writes the defect log; it fails unless every requirement is passing and the decision is GO, and a suite that never uploaded makes it exit 2 naming the missing file. So neither suite waits for the other, and a red run still gets a matrix that shows which requirement it broke. A test in [tests/test_client.py](tests/test_client.py) fails if the tag CI pulls is not the one the tests start.
 
 The `hcm-conversion-validation` job in [ci.yml](../../.github/workflows/ci.yml) installs the pinned requirements, runs `pip-audit`, runs pytest, then runs the three cycles, the payroll parallel and the masking for real (each must end with exit code 0), and keeps `reports/` (JUnit XML, the exception and parallel workbooks, the masked copy) for 7 days. The masking step uses a new key on every run, made from the run ID (`ci-run-<run id>`), so its checks must pass whatever the key is, and a failure can be rebuilt locally with the same key (the data is fake, so the key is no secret). Dependabot watches `requirements.txt` ([scripts/dependabot.test.mjs](../../scripts/dependabot.test.mjs) fails if any package with a `requirements.txt` is left out).
 
@@ -344,6 +391,9 @@ A list in the plan goes stale the day someone adds a test. A marker lives on the
 ### Why is the committed matrix without results?
 Results change with every run, and a committed file with results can only be checked by a run that already passed. So the committed file holds what changes with the code (the requirements and their tests) and a test keeps it current; the results go into the CI report.
 
+### Why work the defect log out instead of keeping it by hand?
+A hand-kept log says what someone remembered to write. This one is worked out from what the rules and checks report at each checkpoint, so a defect cannot be marked closed while a rule still finds it, and a seeded defect the rules stop finding shows up as open.
+
 ### Is this the real Workday API?
 No. It is a small mock shaped after public descriptions of such interfaces, with its own names. No vendor code, documents or data are used.
 
@@ -362,6 +412,8 @@ No. It is a small mock shaped after public descriptions of such interfaces, with
 | `Every test must name its test plan requirements` and exit code 4 | A test has no `req` marker, or names an ID that is not in docs/test-plan.md | Add the marker, or the requirement to the plan |
 | `docs/traceability.md is stale` | A test or a requirement was added, renamed or moved | Run `python -m hcm_conv trace` and commit the file |
 | The plan check names a check that is not in the code | A `Check(...)` name or a rule changed | Change the plan's third column to the name the code reports |
+| `docs/readiness-go.md is stale` (or no-go, or defect-log) | The evidence or the report changed | Run `python -m hcm_conv readiness --examples` and commit the files |
+| `readiness` says NO-GO | An exit criterion failed | The report's What blocks go section names each criterion and its evidence |
 | Run 2 shows an unexplained difference | A real pay gap, or a new explanation that does not replay | Read the Differences sheet of `reports/parallel_run2.xlsx`: each row names the worker, period and item |
 
 ## Development
@@ -376,4 +428,6 @@ HCM_MASK_KEY=dev-key .venv/bin/python -m hcm_conv mask
 .venv/bin/python -m pytest tests_faults --junitxml=reports/junit-faults.xml   # needs Docker
 .venv/bin/python -m hcm_conv trace --junit reports/junit.xml --junit reports/junit-faults.xml
 .venv/bin/python -m hcm_conv trace               # after adding a test: rebuild docs/traceability.md
+.venv/bin/python -m hcm_conv readiness --junit reports/junit.xml --junit reports/junit-faults.xml
+.venv/bin/python -m hcm_conv readiness --examples   # after changing the evidence: rebuild the docs examples
 ```

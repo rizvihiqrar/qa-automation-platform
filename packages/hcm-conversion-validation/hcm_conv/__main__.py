@@ -8,12 +8,13 @@
     python -m hcm_conv mask --out DIR         # a masked copy of legacy/ (key in HCM_MASK_KEY)
     python -m hcm_conv trace --junit reports/junit.xml --junit reports/junit-faults.xml   # with results
     python -m hcm_conv trace                  # docs/traceability.md: the tests of each requirement
+    python -m hcm_conv readiness --junit reports/junit.xml --junit reports/junit-faults.xml   # go or no-go
     python -m hcm_conv serve --port 8051      # start the mock API
     python -m hcm_conv generate               # rewrite legacy/ from the seed
 
 Exit code 1 when a check fails or an exception is still open, so a pipeline can stop on it
 (for parallel, when the last run has an unexplained difference; for mask, when a check fails;
-for trace with --junit, when a requirement is not passing).
+for trace with --junit, when a requirement is not passing; for readiness, on NO-GO).
 """
 from __future__ import annotations
 
@@ -48,6 +49,10 @@ def main(argv=None) -> int:
     tr.add_argument("--junit", type=Path, action="append", help="a JUnit XML file, once per suite (none: the tests only)")
     tr.add_argument("--out", type=Path, help="with --junit: where traceability.md and .xlsx go (default reports/)")
     tr.add_argument("--md", type=Path, help="without --junit: where the matrix goes (default docs/traceability.md)")
+    rd = sub.add_parser("readiness", help="the go or no-go readiness report and the defect log")
+    rd.add_argument("--junit", type=Path, action="append", help="a JUnit XML file, once per suite")
+    rd.add_argument("--out", type=Path, help="where the files go (default reports/, or docs/ with --examples)")
+    rd.add_argument("--examples", action="store_true", help="rebuild the committed GO and NO-GO examples and the defect log")
     serve = sub.add_parser("serve", help="start the mock API")
     serve.add_argument("--port", type=int, default=8051)
     sub.add_parser("generate", help="rewrite legacy/ from the seed")
@@ -60,6 +65,8 @@ def main(argv=None) -> int:
         return run_mask(args.out)
     if args.command == "trace":
         return run_trace(args)
+    if args.command == "readiness":
+        return run_readiness(args)
     if args.command == "serve":
         import uvicorn
         from .mock_api import create_app
@@ -145,6 +152,48 @@ def shown_path(path: Path) -> str:
         return path.resolve().relative_to(ROOT).as_posix()
     except ValueError:
         return path.name
+
+
+def run_readiness(args) -> int:
+    import secrets
+
+    from fastapi.testclient import TestClient
+
+    from . import defects, readiness
+    from .mock_api import create_app
+    if bool(args.junit) == args.examples:
+        print("Give --junit (once per suite) for the decision, or --examples to rebuild the committed examples")
+        return 2
+    missing = [str(p) for p in args.junit or [] if not p.is_file()]
+    if missing:
+        print(f"No JUnit file at {', '.join(missing)}: run the suite first")
+        return 2
+    # The masking checks must pass whatever the key is, so any key will do here
+    key = os.environ.get("HCM_MASK_KEY", "").encode("utf-8") or secrets.token_bytes(16)
+    with TestClient(create_app()) as client:
+        evidence = readiness.gather(client, key)
+    plan = trace.load_plan()
+    if args.examples:
+        out = args.out or ROOT / "docs"
+        out.mkdir(parents=True, exist_ok=True)
+        for name, text in readiness.examples(evidence, plan).items():
+            (out / name).write_bytes(text.encode("utf-8"))
+            print(f"  {out / name}")
+        return 0
+    matrix = trace.build(plan, trace.read_junit(args.junit), [shown_path(p) for p in args.junit])
+    cs, rs = evidence.cycles, evidence.runs
+    log = defects.log(cs, rs)
+    result = readiness.decide(cs, rs, evidence.mask_checks, matrix, log, parallel_skipped=evidence.parallel_skipped)
+    out = args.out or ROOT / "reports"
+    md, js = readiness.write(result, out)
+    # This run's log links to this run's report, not the committed GO example
+    (out / "defect-log.md").write_bytes(defects.to_markdown(log, result.point, "readiness.md").encode("utf-8"))
+    defects.write_workbook(log, result.point, out / "defect-log.xlsx")
+    print(f"Readiness at {result.point}: {result.decision}")
+    for i, c in enumerate(result.criteria, start=1):
+        print(f"  {'PASS' if c.passed else 'FAIL'}  {i}. {c.name}: {c.detail}")
+    print(f"  Report: {md}, {js}, {out / 'defect-log.xlsx'}")
+    return 0 if result.decision == "GO" else 1
 
 
 def run_trace(args) -> int:
