@@ -2,7 +2,7 @@
 
 [← Back to overview](../README.md) · [Traceability matrix](traceability.md)
 
-**Contents:** [Overview](#overview) · [Scope](#scope) · [Approach](#approach) · [Environments and data](#environments-and-data) · [Schedule](#schedule) · [Roles](#roles) · [Entry criteria](#entry-criteria) · [Exit criteria](#exit-criteria) · [Requirements](#requirements) · [Risks](#risks)
+**Contents:** [Overview](#overview) · [Scope](#scope) · [Approach](#approach) · [Environments and data](#environments-and-data) · [Schedule](#schedule) · [Roles](#roles) · [Entry criteria](#entry-criteria) · [Exit criteria](#exit-criteria) · [Requirements](#requirements) · [Defect management](#defect-management) · [Risks](#risks)
 
 ## Overview
 
@@ -63,7 +63,7 @@ Every fixed bug was put back once to show a test fails without the fix (the deli
 | HR data owner | Fixes to worker, position and organization data; signs off accepted exceptions |
 | Payroll manager | The payroll setup; signs off explained differences |
 | Conversion lead | The mapping, the loads and the cycle plan |
-| QA | This plan, the tests, the matrix, the defect log and the readiness report |
+| QA | This plan, the tests, the [matrix](traceability.md), the [defect log](defect-log.md) and the readiness report |
 
 ## Entry criteria
 
@@ -73,7 +73,7 @@ Every fixed bug was put back once to show a test fails without the fix (the deli
 
 ## Exit criteria
 
-The go or no-go decision. Every item must hold; there is no tolerance.
+The go or no-go decision. Every item must hold; there is no tolerance. The [readiness report](readiness-go.md) checks each one (QR-05); a [NO-GO example](readiness-no-go.md) shows the checkpoint after cycle 2 and parallel run 1.
 
 1. No open exception after the last cycle; each accepted one names who signed it off.
 2. Every reconciliation check passes: counts, hash totals, row hashes and the rerun.
@@ -197,6 +197,20 @@ The third column names the rule or the check, exactly as the code reports it. A 
 | QR-01 | Every test traces to a requirement in this plan, and every requirement has a test | |
 | QR-02 | Every rule and check named in this plan is one the code reports, and every one the code reports is named | |
 | QR-03 | The traceability matrix shows each requirement with its tests and their latest results | |
+| QR-04 | The defect log lists every defect with where it was found, what closed it and its status, worked out from the cycles and the parallel runs | |
+| QR-05 | The readiness report checks every exit criterion against fresh evidence, and says go only when all of them pass | |
+
+## Defect management
+
+The [defect log](defect-log.md) is worked out from the evidence, not typed: each seeded defect from the answer key, each new exception that arrives in a later cycle (named by the fix that closes it), each payroll setup change, and each signed-off difference. A defect is:
+
+| Status | When |
+|---|---|
+| Open | Its rule or check still reports it at the checkpoint |
+| Closed | A later cycle or parallel run no longer reports it; the log names the fix |
+| Accepted | The owner signed it off: an accepted exception (HR data owner) or an explained difference (payroll manager) |
+
+Data defects belong to the HR data owner, payroll setup and differences to the payroll manager. Go needs every defect closed or accepted (exit criterion 7).
 
 ## Risks
 
