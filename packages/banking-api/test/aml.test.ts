@@ -375,19 +375,19 @@ describe('the audit record', () => {
     assert.doesNotThrow(() => sql('reported', 'large_cash'));
   });
 
-  test('BK-R45 a ledger file from before the screening gets the table when it is opened, and keeps its rows', () => {
+  test('BK-R45 a ledger file from before the screening gets the table when it is opened, and keeps its rows', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'banking-aml-'));
     try {
       const file = join(dir, 'old.db');
       const first = new Ledger(file);
-      const account = first.openAccount('Ada', 'CAD');
-      first.deposit(account.id, 500n, 'CAD');
+      const account = await first.openAccount('Ada', 'CAD');
+      await first.deposit(account.id, 500n, 'CAD');
       first.db.exec('DROP TABLE screening_decisions');
-      first.close();
+      await first.close();
       const reopened = new Ledger(file);
-      assert.deepEqual(reopened.decisions(), []);
-      assert.equal(reopened.getAccount(account.id)?.balance, 500n);
-      reopened.close();
+      assert.deepEqual(await reopened.decisions(), []);
+      assert.equal((await reopened.getAccount(account.id))?.balance, 500n);
+      await reopened.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

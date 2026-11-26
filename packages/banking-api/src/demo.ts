@@ -55,5 +55,5 @@ try {
   console.log(`\nAs doubles, three 0.10 deposits are ${0.1 + 0.1 + 0.1}, and 90071992547409.93 in cents is ${90071992547409.93 * 100}.`);
 } finally {
   server.close();
-  ledger.close();
+  await ledger.close();
 }

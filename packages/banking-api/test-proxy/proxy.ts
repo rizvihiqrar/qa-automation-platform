@@ -65,7 +65,7 @@ export async function startWire(): Promise<Wire> {
   // server, and the ledger last.
   after(() => new Promise<void>((resolve) => {
     stop();
-    server.close(() => { ledger.close(); resolve(); });
+    server.close(() => { ledger.close().then(resolve, resolve); });
     server.closeAllConnections();
   }));
 

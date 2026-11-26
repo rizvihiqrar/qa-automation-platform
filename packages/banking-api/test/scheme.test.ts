@@ -125,7 +125,7 @@ describe('the payment reference', () => {
 });
 
 describe('a ledger file made before the reference existed', () => {
-  test('BK-R38 opens as it was, gets the reference column, keeps its rows, and takes a reference after', () => {
+  test('BK-R38 opens as it was, gets the reference column, keeps its rows, and takes a reference after', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'banking-old-'));
     const file = join(dir, 'old.db');
     try {
@@ -137,18 +137,18 @@ describe('a ledger file made before the reference existed', () => {
       raw.close();
 
       const first = new Ledger(file);
-      const id = first.openAccount('Old File', 'CAD').id;
-      assert.equal(first.deposit(id, 5000n, 'CAD').ok, true);
-      first.close();
+      const id = (await first.openAccount('Old File', 'CAD')).id;
+      assert.equal((await first.deposit(id, 5000n, 'CAD')).ok, true);
+      await first.close();
 
       const ledger = new Ledger(file); // opened again: the column exists already, nothing is added twice
-      const made = ledger.deposit(id, 100n, 'CAD');
+      const made = await ledger.deposit(id, 100n, 'CAD');
       assert.equal(made.ok && made.value.reference, null);
-      const withReference = ledger.apply({ kind: 'deposit', from: null, to: id, amount: 100n, currency: 'CAD', reference: 'AFTER-1' });
+      const withReference = await ledger.apply({ kind: 'deposit', from: null, to: id, amount: 100n, currency: 'CAD', reference: 'AFTER-1' });
       assert.equal(withReference.ok && withReference.value.reference, 'AFTER-1');
-      assert.equal(ledger.getAccount(id)!.balance, 5200n);
-      assert.equal(ledger.getTransfer(1)!.reference, null);
-      ledger.close();
+      assert.equal((await ledger.getAccount(id))!.balance, 5200n);
+      assert.equal((await ledger.getTransfer(1))!.reference, null);
+      await ledger.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

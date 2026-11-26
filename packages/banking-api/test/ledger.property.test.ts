@@ -42,14 +42,15 @@ const checks = loadChecks();
 
 const otherCurrency = (c: Currency): Currency => (c === 'CAD' ? 'JPY' : 'CAD');
 
-test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK-R27 BK-R28 BK-R39 BK-R40 any sequence of moves: the ledger matches the model and holds together', () => {
+test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK-R27 BK-R28 BK-R39 BK-R40 any sequence of moves: the ledger matches the model and holds together', async () => {
   // size 'max': fast-check's default keeps arrays short, and short sequences rarely
   // reach the limit.
-  fc.assert(fc.property(fc.array(move, { minLength: 1, maxLength: 40, size: 'max' }), (moves) => {
+  await fc.assert(fc.asyncProperty(fc.array(move, { minLength: 1, maxLength: 40, size: 'max' }), async (moves) => {
     // A fixed clock, so a run never crosses midnight UTC in the middle of the daily limit (BK-R40).
     const ledger = new Ledger(':memory:', () => '2026-11-22T12:00:00.000Z');
     try {
-      const ids = ACCOUNTS.map((c, i) => ledger.openAccount(`Owner ${i}`, c).id);
+      const ids: number[] = [];
+      for (const [i, c] of ACCOUNTS.entries()) ids.push((await ledger.openAccount(`Owner ${i}`, c)).id);
       const balances = ACCOUNTS.map(() => 0n);
       const issued: Record<string, bigint> = { CAD: 0n, JPY: 0n, KWD: 0n };
       const sent = ACCOUNTS.map(() => 0n); // what each account has sent today
@@ -70,7 +71,7 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
           const c = ACCOUNTS[m.account]!;
           const amount = resolve(m.amount, m.account);
           if (issued[c]! + amount > MAX_MINOR) expected = 'limit_exceeded';
-          result = ledger.deposit(ids[m.account]!, amount, c);
+          result = await ledger.deposit(ids[m.account]!, amount, c);
           if (!expected) { balances[m.account]! += amount; issued[c]! += amount; }
         } else if (m.kind === 'withdrawal') {
           const c = ACCOUNTS[m.account]!;
@@ -78,7 +79,7 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
           if (balances[m.account]! < amount) expected = 'insufficient_funds';
           else if (amount > PAYMENT_LIMITS[c].single) expected = 'payment_limit';
           else if (sent[m.account]! + amount > PAYMENT_LIMITS[c].daily) expected = 'daily_limit';
-          result = ledger.withdraw(ids[m.account]!, amount, c);
+          result = await ledger.withdraw(ids[m.account]!, amount, c);
           if (!expected) { balances[m.account]! -= amount; issued[c]! -= amount; sent[m.account]! += amount; }
         } else {
           const from = ACCOUNTS[m.from]!;
@@ -89,21 +90,21 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
           else if (balances[m.from]! < amount) expected = 'insufficient_funds';
           else if (amount > PAYMENT_LIMITS[currency].single) expected = 'payment_limit';
           else if (sent[m.from]! + amount > PAYMENT_LIMITS[currency].daily) expected = 'daily_limit';
-          result = ledger.transfer(ids[m.from]!, ids[m.to]!, amount, currency);
+          result = await ledger.transfer(ids[m.from]!, ids[m.to]!, amount, currency);
           if (!expected) { balances[m.from]! -= amount; balances[m.to]! += amount; sent[m.from]! += amount; }
         }
         assert.equal(result.ok ? null : result.code, expected, JSON.stringify(m, (_, v) => (typeof v === 'bigint' ? `${v}n` : v)));
         if (result.ok) moved += 1;
 
         // The ledger agrees with the model, account by account (BK-R09, BK-R12).
-        ids.forEach((id, i) => {
-          const found = ledger.getAccount(id)!;
+        for (const [i, id] of ids.entries()) {
+          const found = (await ledger.getAccount(id))!;
           assert.equal(found.balance, balances[i], `account ${i}`);
           assert.ok(found.balance >= 0n);
           // The statement ends on the balance (BK-R15).
-          const statement = ledger.statement(id);
+          const statement = await ledger.statement(id);
           assert.equal(statement.at(-1)?.balance_after ?? 0n, found.balance);
-        });
+        }
       }
 
       // The ledger holds together (BK-R13, BK-R14): one transfer per accepted move, and
@@ -119,7 +120,7 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
         assert.equal(held, total, c);
       }
     } finally {
-      ledger.close();
+      await ledger.close();
     }
   }), { numRuns: 300 });
 });
