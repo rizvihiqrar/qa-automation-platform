@@ -78,25 +78,25 @@ describe('the checks', () => {
     assert.deepEqual(checks.filter((c) => c.severity === 'warning').map((c) => c.id), ['stale_in_flight_keys']);
   });
 
-  test('BK-R26 BK-R27 BK-R28 BK-R29 the clean sample, built through the Ledger, passes every check', () => {
-    const ledger = buildSample();
+  test('BK-R26 BK-R27 BK-R28 BK-R29 the clean sample, built through the Ledger, passes every check', async () => {
+    const ledger = await buildSample();
     try {
       const results = runChecks(ledger.db, checks, { now: SAMPLE_NOW });
       assert.deepEqual(results.filter(failed), []);
       assert.deepEqual(summarize(results), { checks: 14, passed: 14, errors: 0, warnings: 0, badRows: 0 });
     } finally {
-      ledger.close();
+      await ledger.close();
     }
   });
 
   for (const { name, rule, sql, expect } of DEFECTS) {
-    test(`${rule} defect "${name}" fires exactly: ${expect.join(', ') || 'nothing'}`, () => {
-      const ledger = buildSample();
+    test(`${rule} defect "${name}" fires exactly: ${expect.join(', ') || 'nothing'}`, async () => {
+      const ledger = await buildSample();
       try {
         inject(ledger.db, sql);
         assert.deepEqual(fired(ledger.db), [...expect].sort());
       } finally {
-        ledger.close();
+        await ledger.close();
       }
     });
   }
@@ -117,13 +117,13 @@ describe('the checks', () => {
     assert.deepEqual(withOthers, ['transfer_entry_count', 'transfer_not_balanced', 'entry_mismatch', 'currency_not_zero', 'negative_balance', 'orphan_entries', 'orphan_transfers']);
   });
 
-  test('BK-R28 with foreign keys on, as the Ledger sets them, the database refuses an orphan; the checks are for every other connection', () => {
-    const ledger = buildSample();
+  test('BK-R28 with foreign keys on, as the Ledger sets them, the database refuses an orphan; the checks are for every other connection', async () => {
+    const ledger = await buildSample();
     try {
       assert.throws(() => ledger.db.exec("INSERT INTO ledger_entries VALUES (19, 99, 1, 5, 'CAD')"), /FOREIGN KEY constraint failed/);
       assert.throws(() => ledger.db.exec("INSERT INTO idempotency_keys VALUES ('rent-again', 'sample', 4, '2026-10-20T12:01:00.000Z')"), /UNIQUE constraint failed/);
     } finally {
-      ledger.close();
+      await ledger.close();
     }
   });
 
@@ -200,15 +200,15 @@ describe('the runner', () => {
     }
   });
 
-  test('BK-R30 sums past 2^53 are shown exactly', () => {
-    const ledger = buildSample();
+  test('BK-R30 sums past 2^53 are shown exactly', async () => {
+    const ledger = await buildSample();
     try {
       inject(ledger.db, "INSERT INTO transfers (id, kind, from_account_id, to_account_id, amount, currency, created_at) VALUES (10, 'deposit', 10, 9, 1, 'KWD', '2026-10-20T12:01:00.000Z'); INSERT INTO ledger_entries VALUES (19, 10, 10, -1, 'KWD'), (20, 10, 9, 1, 'KWD');");
       const limit = runChecks(ledger.db, checks, { now: SAMPLE_NOW }).find((r) => r.id === 'currency_limit')!;
       assert.deepEqual(limit.rows.map((r) => ({ ...r })), [{ currency: 'KWD', issued: MAX_MINOR + 1n }]);
       assert.match(formatText([limit]), /FAIL  currency_limit +1 row\(s\)\n +currency=KWD, issued=100000000000000000\n/);
     } finally {
-      ledger.close();
+      await ledger.close();
     }
   });
 });
@@ -219,35 +219,35 @@ describe('npm run check', () => {
   const cli = (...args: string[]) => spawnSync(process.execPath, ['src/check.ts', ...args], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
   // On a real file the checks run at the real time, so the sample's key in flight is
   // long stale; `settled` lets that request finish (give its key up) first.
-  const sampleFile = (name: string, { sql, settled = true }: { sql?: string; settled?: boolean } = {}) => {
+  const sampleFile = async (name: string, { sql, settled = true }: { sql?: string; settled?: boolean } = {}) => {
     const path = join(dir, name);
-    const ledger = buildSample(path);
-    if (settled) ledger.releaseKey('in-flight');
+    const ledger = await buildSample(path);
+    if (settled) await ledger.releaseKey('in-flight');
     if (sql) inject(ledger.db, sql);
-    ledger.close();
+    await ledger.close();
     return path;
   };
 
-  test('BK-R30 a clean ledger file: every check passes, exit 0', () => {
-    const run = cli('--db', sampleFile('clean.db'));
+  test('BK-R30 a clean ledger file: every check passes, exit 0', async () => {
+    const run = cli('--db', await sampleFile('clean.db'));
     assert.equal(run.status, 0, run.stderr);
     assert.match(run.stdout, /14\/14 checks passed, 0 error\(s\), 0 warning\(s\), 0 bad row\(s\)/);
   });
 
-  test('BK-R30 a broken ledger file: the failing check and its rows are shown, exit 1', () => {
-    const run = cli('--db', sampleFile('broken.db', { sql: 'UPDATE ledger_entries SET amount = 1001 WHERE id = 8;' }));
+  test('BK-R30 a broken ledger file: the failing check and its rows are shown, exit 1', async () => {
+    const run = cli('--db', await sampleFile('broken.db', { sql: 'UPDATE ledger_entries SET amount = 1001 WHERE id = 8;' }));
     assert.equal(run.status, 1);
     assert.match(run.stdout, /FAIL  transfer_not_balanced +1 row\(s\)\n +transfer_id=4, total=1/);
   });
 
-  test('BK-R29 BK-R30 a warning alone is shown but doesn\'t fail: exit 0', () => {
-    const run = cli('--db', sampleFile('warned.db', { settled: false }));
+  test('BK-R29 BK-R30 a warning alone is shown but doesn\'t fail: exit 0', async () => {
+    const run = cli('--db', await sampleFile('warned.db', { settled: false }));
     assert.equal(run.status, 0);
     assert.match(run.stdout, /warn  stale_in_flight_keys +1 row\(s\)\n +key=in-flight/);
   });
 
-  test('BK-R30 the file is opened read-only: checking it changes nothing', () => {
-    const path = sampleFile('untouched.db');
+  test('BK-R30 the file is opened read-only: checking it changes nothing', async () => {
+    const path = await sampleFile('untouched.db');
     const before = readFileSync(path);
     cli('--db', path);
     assert.deepEqual(readFileSync(path), before);

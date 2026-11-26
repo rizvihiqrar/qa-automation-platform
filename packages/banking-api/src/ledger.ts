@@ -79,6 +79,31 @@ export interface Refusal {
 }
 export type Result<T> = { ok: true; value: T } | Refusal;
 
+export type TransferWithEntries = Transfer & { entries: { account_id: number | null; amount: bigint }[] };
+
+// What the API, the screening and the tools use: the same promises from every store, so
+// the SQLite ledger below and a Postgres one are interchangeable. Every method is async,
+// because a store over the network can't answer in the same tick.
+export interface Store {
+  openAccount(owner: string, currency: Currency): Promise<Account>;
+  getAccount(accountId: number): Promise<Account | null>;
+  listAccounts(): Promise<Account[]>;
+  deposit(accountId: number, amount: bigint, currency: Currency): Promise<Result<Transfer>>;
+  withdraw(accountId: number, amount: bigint, currency: Currency): Promise<Result<Transfer>>;
+  transfer(fromId: number, toId: number, amount: bigint, currency: Currency): Promise<Result<Transfer>>;
+  check(m: Movement): Promise<Refusal | null>;
+  apply(m: Movement, key?: string): Promise<Result<Transfer>>;
+  claimKey(key: string, fingerprint: string): Promise<Claim>;
+  releaseKey(key: string): Promise<void>;
+  now(): string;
+  cashTotal(accountId: number, kind: 'deposit' | 'withdrawal', since: string): Promise<bigint>;
+  recordDecision(m: Movement, decision: Decision, rule: string | null, detail: string): Promise<ScreeningDecision>;
+  decisions(): Promise<ScreeningDecision[]>;
+  getTransfer(transferId: number): Promise<TransferWithEntries | null>;
+  statement(accountId: number): Promise<Entry[]>;
+  close(): Promise<void>;
+}
+
 // What a keyed request finds when it claims its key (BK-R20, BK-R21).
 export type Claim =
   | { state: 'claimed' }
@@ -97,7 +122,10 @@ const optionalId = (v: unknown): number | null => (v === null ? null : Number(v)
 // money movement or none of it (BK-R13). Several processes may open the same file:
 // BEGIN IMMEDIATE makes their writes take turns, and the busy timeout makes a
 // connection wait its turn instead of failing (BK-R24, BK-R25).
-export class Ledger {
+// The methods are async to match Store, but the work inside each is synchronous: a write
+// runs from BEGIN to COMMIT without giving the event loop a turn, so two requests in one
+// process never share an open transaction on this one connection.
+export class Ledger implements Store {
   readonly db: DatabaseSync;
   readonly #now: () => string;
   readonly #statements = new Map<string, StatementSync>();
@@ -119,7 +147,7 @@ export class Ledger {
     this.#write(() => this.db.exec('ALTER TABLE transfers ADD COLUMN reference TEXT CHECK (reference IS NULL OR length(reference) BETWEEN 1 AND 35)'));
   }
 
-  close(): void {
+  async close(): Promise<void> {
     this.db.close();
   }
 
@@ -181,21 +209,25 @@ export class Ledger {
     return row?.sent as bigint;
   }
 
-  openAccount(owner: string, currency: Currency): Account {
+  async openAccount(owner: string, currency: Currency): Promise<Account> {
     const created_at = this.#now();
     const row = this.#sql("INSERT INTO accounts (kind, owner, currency, created_at) VALUES ('customer', ?, ?, ?)").run(owner, currency, created_at);
     return { id: id(row.lastInsertRowid), owner, currency, balance: 0n, created_at };
   }
 
   // Customer accounts only: a funding account is not found through the API.
-  getAccount(accountId: number): Account | null {
+  async getAccount(accountId: number): Promise<Account | null> {
+    return this.#account(accountId);
+  }
+
+  #account(accountId: number): Account | null {
     const row = this.#sql("SELECT id, owner, currency, created_at FROM accounts WHERE id = ? AND kind = 'customer'").get(accountId);
     if (!row) return null;
     return { id: id(row.id), owner: row.owner as string, currency: row.currency as Currency, balance: this.#balance(id(row.id)), created_at: row.created_at as string };
   }
 
   // Customer accounts, oldest first, with balances summed from the entries (BK-R31).
-  listAccounts(): Account[] {
+  async listAccounts(): Promise<Account[]> {
     const rows = this.#sql(`
       SELECT a.id, a.owner, a.currency, a.created_at, COALESCE(SUM(e.amount), 0) AS balance
       FROM accounts a LEFT JOIN ledger_entries e ON e.account_id = a.id
@@ -205,25 +237,29 @@ export class Ledger {
     return rows.map((r: Row) => ({ id: id(r.id), owner: r.owner as string, currency: r.currency as Currency, balance: r.balance as bigint, created_at: r.created_at as string }));
   }
 
-  deposit(accountId: number, amount: bigint, currency: Currency): Result<Transfer> {
+  deposit(accountId: number, amount: bigint, currency: Currency): Promise<Result<Transfer>> {
     return this.apply({ kind: 'deposit', from: null, to: accountId, amount, currency });
   }
 
-  withdraw(accountId: number, amount: bigint, currency: Currency): Result<Transfer> {
+  withdraw(accountId: number, amount: bigint, currency: Currency): Promise<Result<Transfer>> {
     return this.apply({ kind: 'withdrawal', from: accountId, to: null, amount, currency });
   }
 
-  transfer(fromId: number, toId: number, amount: bigint, currency: Currency): Result<Transfer> {
+  transfer(fromId: number, toId: number, amount: bigint, currency: Currency): Promise<Result<Transfer>> {
     return this.apply({ kind: 'transfer', from: fromId, to: toId, amount, currency });
   }
 
   // Whether the movement would be refused, without writing anything. Refusal order
   // (BK-R16): unknown account, same account, currency, then funds or the limit. A
   // passing check outside a transaction is only a forecast: apply() checks again.
-  check(m: Movement): Refusal | null {
-    const from = m.from === null ? null : this.getAccount(m.from);
+  async check(m: Movement): Promise<Refusal | null> {
+    return this.#check(m);
+  }
+
+  #check(m: Movement): Refusal | null {
+    const from = m.from === null ? null : this.#account(m.from);
     if (m.from !== null && !from) return refuse(404, 'not_found', `account ${m.from} not found`);
-    const to = m.to === null ? null : this.getAccount(m.to);
+    const to = m.to === null ? null : this.#account(m.to);
     if (m.to !== null && !to) return refuse(404, 'not_found', `account ${m.to} not found`);
     if (from && to && from.id === to.id) return refuse(422, 'same_account', 'cannot transfer from an account to itself');
     for (const account of [from, to]) {
@@ -252,9 +288,9 @@ export class Ledger {
   // inside the transaction, after any wait the caller had, so two movements at once
   // can't both spend the same money (BK-R24). With a key, the key is linked to the
   // transfer in the same transaction (BK-R22).
-  apply(m: Movement, key?: string): Result<Transfer> {
+  async apply(m: Movement, key?: string): Promise<Result<Transfer>> {
     return this.#write(() => {
-      const refusal = this.check(m);
+      const refusal = this.#check(m);
       if (refusal) return refusal;
       const fundingId = this.#fundingAccount(m.currency);
       const fromId = m.from ?? fundingId;
@@ -277,7 +313,7 @@ export class Ledger {
   // Claims a key for a request, or says what the key already belongs to: the same
   // request done (replay), the same request still running (in flight), or another
   // request (mismatch). Keys past their 24 hours are deleted first (BK-R23).
-  claimKey(key: string, fingerprint: string): Claim {
+  async claimKey(key: string, fingerprint: string): Promise<Claim> {
     return this.#write((): Claim => {
       const expired = new Date(Date.parse(this.#now()) - KEY_TTL_MS).toISOString();
       this.#sql('DELETE FROM idempotency_keys WHERE created_at <= ?').run(expired);
@@ -288,12 +324,12 @@ export class Ledger {
       }
       if (row.fingerprint !== fingerprint) return { state: 'mismatch' };
       if (row.transfer_id === null) return { state: 'in_flight' };
-      return { state: 'replay', transfer: this.getTransfer(id(row.transfer_id))! };
+      return { state: 'replay', transfer: this.#transfer(id(row.transfer_id))! };
     });
   }
 
   // Gives up a claim that never got its transfer, so the key can be tried again (BK-R22).
-  releaseKey(key: string): void {
+  async releaseKey(key: string): Promise<void> {
     this.#write(() => this.#sql('DELETE FROM idempotency_keys WHERE key = ? AND transfer_id IS NULL').run(key));
   }
 
@@ -304,14 +340,14 @@ export class Ledger {
 
   // What an account has taken in as deposits, or paid out as withdrawals, after `since`
   // (BK-R43). Cash is deposits and withdrawals only: a transfer between customers isn't.
-  cashTotal(accountId: number, kind: 'deposit' | 'withdrawal', since: string): bigint {
+  async cashTotal(accountId: number, kind: 'deposit' | 'withdrawal', since: string): Promise<bigint> {
     const column = kind === 'deposit' ? 'to_account_id' : 'from_account_id';
     const row = this.#sql(`SELECT COALESCE(SUM(amount), 0) AS total FROM transfers WHERE ${column} = ? AND kind = ? AND created_at > ?`).get(accountId, kind, since);
     return row?.total as bigint;
   }
 
   // One audit row for one decision (BK-R45), written in its own transaction.
-  recordDecision(m: Movement, decision: Decision, rule: string | null, detail: string): ScreeningDecision {
+  async recordDecision(m: Movement, decision: Decision, rule: string | null, detail: string): Promise<ScreeningDecision> {
     const decided_at = this.#now();
     const row = this.#write(() => this.#sql(`
       INSERT INTO screening_decisions (decided_at, kind, from_account_id, to_account_id, amount, currency, decision, rule, detail)
@@ -320,7 +356,7 @@ export class Ledger {
   }
 
   // Every decision, oldest first.
-  decisions(): ScreeningDecision[] {
+  async decisions(): Promise<ScreeningDecision[]> {
     const rows = this.#sql('SELECT * FROM screening_decisions ORDER BY id').all();
     return rows.map((r: Row) => ({
       id: id(r.id), decided_at: r.decided_at as string, kind: r.kind as Kind,
@@ -330,7 +366,11 @@ export class Ledger {
     }));
   }
 
-  getTransfer(transferId: number): (Transfer & { entries: { account_id: number | null; amount: bigint }[] }) | null {
+  async getTransfer(transferId: number): Promise<TransferWithEntries | null> {
+    return this.#transfer(transferId);
+  }
+
+  #transfer(transferId: number): TransferWithEntries | null {
     const row = this.#sql(`
       SELECT t.id, t.kind, t.amount, t.currency, t.created_at, t.reference,
              CASE WHEN f.kind = 'funding' THEN NULL ELSE t.from_account_id END AS from_account_id,
@@ -353,7 +393,7 @@ export class Ledger {
   }
 
   // Oldest first, each with the balance after it (BK-R15).
-  statement(accountId: number): Entry[] {
+  async statement(accountId: number): Promise<Entry[]> {
     const rows = this.#sql(`
       SELECT e.id, e.transfer_id, t.kind, e.amount, t.created_at,
              SUM(e.amount) OVER (ORDER BY e.id) AS balance_after,

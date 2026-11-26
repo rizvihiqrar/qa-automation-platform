@@ -65,9 +65,9 @@ Each movement awaits a screening step first, standing in for an outside fraud or
 
 ```ts
 // src/ledger.ts: the bank's rules run again inside the write transaction
-apply(m: Movement, key?: string): Result<Transfer> {
+async apply(m: Movement, key?: string): Promise<Result<Transfer>> {
   return this.#write(() => {          // BEGIN IMMEDIATE ... COMMIT
-    const refusal = this.check(m);    // funds and the limit, read under the write lock
+    const refusal = this.#check(m);   // funds and the limit, read under the write lock
     if (refusal) return refusal;
     // insert the transfer, the two entries, and link the key
   });
@@ -83,6 +83,12 @@ What the tests measured, sending requests together and letting the database deci
 | 60 withdrawals of 10.00 from 100.00 through two processes on one file | 37 pass, balance −270.00 | 10 pass, 50 refused |
 | The same, on the code before today (check already inside the transaction) | 1 to 4 of 60 answered `500 database is locked` | no `500`: a busy connection waits up to 5 s |
 | One key sent 10 times at once to two servers | (no keys before today) | one `201`, nine `409`, a later retry replayed |
+
+### One store interface
+
+The API, the screening and the tools use the ledger through `Store` in [`src/ledger.ts`](src/ledger.ts): every method is async, so a store over the network fits behind the same calls. The SQLite `Ledger` keeps its work synchronous inside each method: a write runs from `BEGIN IMMEDIATE` to `COMMIT` without giving the event loop a turn, so two requests in one process never share an open transaction on its one connection, and nothing the tests measure changed.
+
+That same property hides a class of bug. A call that is not awaited still finishes before the next line on SQLite, so a missing `await` on `releaseKey` or on an audit row passed all 451 tests (B174, B175). [`store.test.ts`](test/store.test.ts) reads the source instead: every call to a `Store` method is awaited, returned or chained (`.then`, `Promise.all`), in this package's `src/`, `test/` and `test-proxy/` and in every other package that runs this ledger (visual-regression-demo starts it for its screenshots; money-course plants bugs in a copy). The method names come from the interface itself, and a store is anything called `ledger` or made by `new Ledger(` or `buildSample(`. TypeScript 7 has no JavaScript API yet, so this is a text scan with its own test, not a type-aware lint, and it can't tell that a `return` inside a callback whose result is thrown away returns nowhere.
 
 ### SQL ledger checks
 
@@ -389,13 +395,14 @@ Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cy
 | [`scheme.test.ts`](test/scheme.test.ts) | 40 | Payment scheme rules: the reference alphabet and length, each limit at minus one, exactly, and plus one in four currencies, the daily total across withdrawals and transfers, what does not count, the UTC midnight boundary, replays, and three payments at once |
 | [`aml.test.ts`](test/aml.test.ts) | 54 | Anti-money-laundering rules: each cash threshold at one unit below and exactly at it in four currencies, the 24-hour window at exactly 24 hours and a millisecond inside, deposits and withdrawals kept apart, eleven spellings of listed names blocked, near misses held, other names allowed, either side of a transfer, one reply for a block and a hold, the audit row, replays, the table's `CHECK`, an old ledger file, and a real server process |
 | [`entitlements.test.ts`](test/entitlements.test.ts) | 98 | Who may do what: the matrix file and its validation, all 24 role and action pairs through the API (nothing written when refused), every read route against `view`, the checks coming first (404, 400, 415, key, screening), odd role headers, the check on a server built from 10 wrong matrices, three stand-in servers, a real server process, and `npm run entitlements` (its own server, `--url`, `--matrix`) exits 0, 1 and 2 |
+| [`store.test.ts`](test/store.test.ts) | 5 | Every `Store` call is awaited, returned or chained, here and in the packages that run this ledger (the method names come from the interface), which files the scan reads, the scan's own test, and a refusal that can't be written as a reply is a `500` in JSON, never a request left open |
 | [`spec.test.ts`](test/spec.test.ts) | 4 | Every rule in [SPEC.md](SPEC.md) has a test (Node or Cypress), every rule a test names exists, and the README and the guide state the rule and mistake counts the spec and the table hold |
 | [`test-proxy`](test-proxy) | 30 | Through mitmproxy in Docker (`npm run test:proxy`): 16 on the wire, 14 checks of the wire checks. See [network inspection](#network-inspection-with-a-proxy) |
 | [`cypress/e2e`](cypress/e2e) | 69 per browser | The UI in Chrome and Firefox: see [the banking UI](#the-banking-ui-tested-with-cypress) |
 
 ### Deliberate breaks
 
-Each mistake was put into the code, the tests run, and the code restored. All 170 were caught. B92 to B132 break the anti-money-laundering rules and each ran `test/aml.test.ts`; B133 to B170 break the role matrix and the check on it, and each ran `test/entitlements.test.ts` and `test/aml.test.ts` (the audit record now needs the auditor). B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
+Each mistake was put into the code, the tests run, and the code restored. All 181 were caught. B171 to B181 break the async store and its guards, and each ran `npm test`; B174 and B175 passed every test until the source scan was added, and B180 and B181 until the code review widened it. B92 to B132 break the anti-money-laundering rules and each ran `test/aml.test.ts`; B133 to B170 break the role matrix and the check on it, and each ran `test/entitlements.test.ts` and `test/aml.test.ts` (the audit record now needs the auditor). B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
 
 | # | Mistake | Caught by |
 |---|---|---:|
@@ -569,8 +576,23 @@ Each mistake was put into the code, the tests run, and the code restored. All 17
 | B168 | Only the first underscore of an action is turned into a space | 1 |
 | B169 | A server that cannot be reached exits 1, like a difference | 1 |
 | B170 | The command ignores --url and checks its own server | 2 |
+| B171 | The forecast check not awaited (a promise is always a refusal) | 129 |
+| B172 | `apply` not awaited | 95 |
+| B173 | `claimKey` not awaited | 15 |
+| B174 | `releaseKey` not awaited: a refused keyed request gives its key up after the reply | 1 (the source scan) |
+| B175 | The allowed audit row not awaited | 1 (the source scan) |
+| B176 | The 24-hour cash total not awaited | 6 |
+| B177 | The sanctions read of each party not awaited | 51 |
+| B178 | The fallback `500` taken out: a reply that can't be written leaves the request open | 1 |
+| B179 | A method left out of the `Store` interface | 2 |
+| B180 | The proxy tests' teardown not awaiting the ledger's close | 1 (the source scan) |
+| B181 | visual-regression-demo calling the ledger as if it were synchronous | 1 (the source scan) |
 
 ### What building it found
+
+- **On SQLite, a missing `await` is invisible.** Each `Ledger` method does its work before it hands back the promise, so B174 and B175 changed nothing any of 451 tests could see. On Postgres the same mistakes would give a key up, or write the audit row, after the reply. A source scan catches both, and runs on every `npm test`.
+- **Two breaks hung the run instead of failing it.** With the forecast check or `apply` not awaited, the code took the promise for a refusal and threw an error with no status. Sending that reply threw again inside the error handler, so the request never got an answer and each run stopped only at the five-minute limit. The handler now falls back to a `500`, and `npm test` has a 60 second per-test limit, so the same breaks fail in seconds with the test's name.
+- **The first scan looked in the wrong places.** It read only `src/` and only receivers named `ledger`, so the code review found two floating calls it passed: the proxy tests' teardown, and visual-regression-demo, which starts this ledger for its screenshots and still called it as if it were synchronous (the whole-repo type-check had flagged it, but only the two packages expected to change were read in its output). The scan now reads every package that runs the ledger (B180, B181). One guard is not proven by a break: the second fallback inside the error handler, for when even the `500` can't be written. No request can make the first `send` and then the second one throw, so taking it out fails no test; it stays as a guard against a crash.
 
 - **A new rule broke old tests in three places.** The model test sent huge withdrawals, so it needed the limits, and a fixed clock, or a run near midnight UTC would depend on the day. Four SQL-check tests and the demo defects inserted into `transfers` by position, with seven values, and failed the moment the table gained a column. They now name their columns.
 - **An old ledger file had no `reference` column.** `CREATE TABLE IF NOT EXISTS` leaves an existing table as it was, so a file kept from before today failed on its first deposit. The code review found it. The ledger now adds the column when it opens a file without it, and a test opens a file made with the old schema (B91 takes the step out).
@@ -698,7 +720,7 @@ No sign-in. Since Day S10 a request can claim a role in an `X-Role` header and t
 
 ```bash
 npm ci
-npm test                          # 298 tests, about three seconds
+npm test                          # 455 tests, about six seconds
 npm run demo                      # the requests in the screenshot above
 npm run check -- --demo           # the SQL ledger checks on a ledger with defects put in
 npm run race -- raced.db          # race two servers on one file, then:

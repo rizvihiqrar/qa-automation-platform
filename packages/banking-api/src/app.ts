@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { MATRIX, can, words, type Action, type Matrix } from './entitlements.ts';
-import { Ledger, type Account, type Entry, type Movement, type Refusal, type Result, type ScreeningDecision, type Transfer } from './ledger.ts';
+import { Ledger, type Account, type Entry, type Movement, type Refusal, type Result, type ScreeningDecision, type Store, type Transfer } from './ledger.ts';
 import { CURRENCIES, REFERENCE_MAX, formatAmount, isCurrency, isReference, parseAmount, type Currency } from './money.ts';
 
 // A plain node:http server: no framework, no runtime dependencies. Every response is
@@ -26,7 +26,7 @@ class HttpError extends Error {
 
 type Body = Record<string, unknown>;
 type Reply = [status: number, payload: unknown, headers?: Record<string, string>];
-interface Context { ledger: Ledger; params: number[]; body: Body; req: IncomingMessage; screen: Screen }
+interface Context { ledger: Store; params: number[]; body: Body; req: IncomingMessage; screen: Screen }
 type Handler = (ctx: Context) => Reply | Promise<Reply>;
 // `actions` names what each method is for, which the roles are checked against (BK-R46).
 interface Route { pattern: RegExp; methods: Record<string, Handler>; actions?: Record<string, Action> }
@@ -54,15 +54,27 @@ const routes: Route[] = [
   { pattern: /^\/screening-decisions$/, methods: { GET: listDecisions }, actions: { GET: 'read_audit' } },
 ];
 
-export function createApp(ledger: Ledger = new Ledger(), { screen = async () => {}, entitlements = MATRIX }: Options = {}): Server {
+export function createApp(ledger: Store = new Ledger(), { screen = async () => {}, entitlements = MATRIX }: Options = {}): Server {
   return createServer((req, res) => {
     handle(ledger, screen, entitlements, req, res).catch((err: unknown) => {
-      if (err instanceof HttpError) return send(res, err.status, { error: err.message, code: err.code }, err.headers);
-      // Another process held the database past the busy timeout: a reason to retry,
-      // not a server fault (BK-R25).
-      if (isBusy(err)) return send(res, 503, { error: 'the database is busy; try again', code: 'busy' }, { 'Retry-After': '1' });
-      console.error(err);
-      send(res, 500, { error: 'internal error', code: 'internal' });
+      try {
+        if (err instanceof HttpError) return send(res, err.status, { error: err.message, code: err.code }, err.headers);
+        // Another process held the database past the busy timeout: a reason to retry,
+        // not a server fault (BK-R25).
+        if (isBusy(err)) return send(res, 503, { error: 'the database is busy; try again', code: 'busy' }, { 'Retry-After': '1' });
+        console.error(err);
+        send(res, 500, { error: 'internal error', code: 'internal' });
+      } catch (failed) {
+        // The error could not be sent as it was (a refusal with no valid status, say, from a
+        // store call that was not awaited): a 500 still, never a request left without an answer.
+        console.error(failed);
+        try {
+          if (!res.headersSent) return send(res, 500, { error: 'internal error', code: 'internal' });
+        } catch (again) {
+          console.error(again);
+        }
+        res.destroy();
+      }
     });
   });
 }
@@ -80,7 +92,7 @@ const UI_FILES: Record<string, [file: string, type: string]> = {
 };
 const UI_POLICY = "default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
 
-async function handle(ledger: Ledger, screen: Screen, matrix: Matrix, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handle(ledger: Store, screen: Screen, matrix: Matrix, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { pathname } = new URL(req.url ?? '/', 'http://localhost');
   const file = UI_FILES[pathname];
   if (file) {
@@ -205,28 +217,28 @@ function unwrap<T>(result: Result<T>): T {
 
 // ---- Handlers ------------------------------------------------------------------
 
-function openAccount({ ledger, body }: Context): Reply {
+async function openAccount({ ledger, body }: Context): Promise<Reply> {
   const owner = typeof body.owner === 'string' ? body.owner.trim() : '';
   if (owner.length < 1 || owner.length > OWNER_MAX) {
     throw new HttpError(400, 'invalid_owner', `owner must be a name of 1 to ${OWNER_MAX} characters`);
   }
-  return [201, account(ledger.openAccount(owner, currencyOf(body)))];
+  return [201, account(await ledger.openAccount(owner, currencyOf(body)))];
 }
 
-function listAccounts({ ledger }: Context): Reply {
-  return [200, { accounts: ledger.listAccounts().map(account) }];
+async function listAccounts({ ledger }: Context): Promise<Reply> {
+  return [200, { accounts: (await ledger.listAccounts()).map(account) }];
 }
 
-function getAccount({ ledger, params: [accountId] }: Context): Reply {
-  const found = ledger.getAccount(accountId!);
+async function getAccount({ ledger, params: [accountId] }: Context): Promise<Reply> {
+  const found = await ledger.getAccount(accountId!);
   if (!found) throw new HttpError(404, 'not_found', `account ${accountId} not found`);
   return [200, account(found)];
 }
 
-function getEntries({ ledger, params: [accountId] }: Context): Reply {
-  const found = ledger.getAccount(accountId!);
+async function getEntries({ ledger, params: [accountId] }: Context): Promise<Reply> {
+  const found = await ledger.getAccount(accountId!);
   if (!found) throw new HttpError(404, 'not_found', `account ${accountId} not found`);
-  const entries = ledger.statement(found.id).map((e) => entry(e, found.currency));
+  const entries = (await ledger.statement(found.id)).map((e) => entry(e, found.currency));
   return [200, { ...account(found), entries }];
 }
 
@@ -260,7 +272,7 @@ const fingerprint = (m: Movement): string =>
 async function move(ctx: Context, m: Movement): Promise<Reply> {
   const key = idempotencyKeyOf(ctx.req);
   if (key === null) return run(ctx, m);
-  const claim = ctx.ledger.claimKey(key, fingerprint(m));
+  const claim = await ctx.ledger.claimKey(key, fingerprint(m));
   if (claim.state === 'mismatch') throw new HttpError(422, 'idempotency_key_mismatch', 'this Idempotency-Key was used for a different request');
   if (claim.state === 'in_flight') throw new HttpError(409, 'idempotency_key_in_use', 'a request with this Idempotency-Key is still running; retry later');
   if (claim.state === 'replay') return [201, transfer(claim.transfer), { 'Idempotent-Replayed': 'true' }];
@@ -270,22 +282,22 @@ async function move(ctx: Context, m: Movement): Promise<Reply> {
     written = true;
     return reply;
   } finally {
-    if (!written) ctx.ledger.releaseKey(key);
+    if (!written) await ctx.ledger.releaseKey(key);
   }
 }
 
 // A movement that would be refused now is refused before the screening, which isn't
 // asked about it. One that passes is checked again when written (BK-R24).
 async function run({ ledger, screen }: Context, m: Movement, key?: string): Promise<Reply> {
-  const refusal = ledger.check(m);
+  const refusal = await ledger.check(m);
   if (refusal) unwrap(refusal);
   const held = await screen(m);
   if (held) unwrap(held);
-  return [201, transfer(unwrap(ledger.apply(m, key)))];
+  return [201, transfer(unwrap(await ledger.apply(m, key)))];
 }
 
-function getTransfer({ ledger, params: [transferId] }: Context): Reply {
-  const found = ledger.getTransfer(transferId!);
+async function getTransfer({ ledger, params: [transferId] }: Context): Promise<Reply> {
+  const found = await ledger.getTransfer(transferId!);
   if (!found) throw new HttpError(404, 'not_found', `transfer ${transferId} not found`);
   return [200, {
     ...transfer(found),
@@ -294,8 +306,8 @@ function getTransfer({ ledger, params: [transferId] }: Context): Reply {
 }
 
 // The audit record of the screening (BK-R45), oldest first.
-function listDecisions({ ledger }: Context): Reply {
-  return [200, { decisions: ledger.decisions().map(decision) }];
+async function listDecisions({ ledger }: Context): Promise<Reply> {
+  return [200, { decisions: (await ledger.decisions()).map(decision) }];
 }
 
 // ---- Responses: every amount as a string with the currency's decimals (BK-R07) ---

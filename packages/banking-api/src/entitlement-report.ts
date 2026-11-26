@@ -56,5 +56,5 @@ try {
   process.exitCode = 2;
 } finally {
   server?.close();
-  ledger?.close();
+  await ledger?.close();
 }

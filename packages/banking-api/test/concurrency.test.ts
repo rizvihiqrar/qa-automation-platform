@@ -161,7 +161,7 @@ describe('a database locked for too long', () => {
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const holder = new DatabaseSync(dbPath);
     try {
-      const id = ledger.openAccount('Locked', 'CAD').id;
+      const id = (await ledger.openAccount('Locked', 'CAD')).id;
       holder.exec('BEGIN IMMEDIATE');
       const res = await fetch(`${base}/accounts/${id}/deposits`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'locked' }, body: JSON.stringify({ amount: '1.00', currency: 'CAD' }),
@@ -176,7 +176,7 @@ describe('a database locked for too long', () => {
       if (holder.isTransaction) holder.exec('ROLLBACK');
       holder.close();
       await new Promise<void>((resolve) => server.close(() => resolve()));
-      ledger.close();
+      await ledger.close();
       rmSync(dir, { recursive: true, force: true });
     }
   });

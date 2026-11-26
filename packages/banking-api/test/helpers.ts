@@ -34,7 +34,7 @@ export async function startApi({ now, screen, aml = false, entitlements }: { now
   const server = createApp(ledger, { screen: rules && screen ? async (m) => { await screen(m); return rules(m); } : rules ?? screen, entitlements });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  after(() => new Promise<void>((resolve) => { server.close(() => resolve()); ledger.close(); }));
+  after(() => new Promise<void>((resolve) => { server.close(() => { ledger.close().then(resolve, resolve); }); }));
 
   const request = async (method: string, path: string, body?: unknown, headers: Record<string, string> = {}): Promise<Reply> => {
     const init: RequestInit = { method, headers: { ...headers } };

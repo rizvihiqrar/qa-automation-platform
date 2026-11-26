@@ -26,12 +26,12 @@ export function inject(db: DatabaseSync, sql: string): void {
   db.exec(sql);
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   let db: DatabaseSync;
   let now = new Date();
   if ('demo' in args) {
-    db = buildSample().db;
+    db = (await buildSample()).db;
     inject(db, readFileSync(new URL('../sql/demo-defects.sql', import.meta.url), 'utf8'));
     now = SAMPLE_NOW;
   } else {
@@ -49,7 +49,7 @@ function main(): void {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    main();
+    await main();
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
     process.exitCode = 2;
