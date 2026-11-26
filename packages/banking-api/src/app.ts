@@ -26,7 +26,7 @@ class HttpError extends Error {
 
 type Body = Record<string, unknown>;
 type Reply = [status: number, payload: unknown, headers?: Record<string, string>];
-interface Context { ledger: Store; params: number[]; body: Body; req: IncomingMessage; screen: Screen }
+interface Context { ledger: Store; params: number[]; body: Body; req: IncomingMessage; screen: Screen; rules?: Rules }
 type Handler = (ctx: Context) => Reply | Promise<Reply>;
 // `actions` names what each method is for, which the roles are checked against (BK-R46).
 interface Route { pattern: RegExp; methods: Record<string, Handler>; actions?: Record<string, Action> }
@@ -37,7 +37,12 @@ interface Route { pattern: RegExp; methods: Record<string, Handler>; actions?: R
 // writes (BK-R24).
 // It may answer with a refusal, which stops the movement (BK-R44).
 export type Screen = (movement: Movement) => Promise<Refusal | void>;
-export interface Options { screen?: Screen; entitlements?: Matrix }
+// Rules decided on what the ledger holds (the anti-money-laundering rules, BK-R42 to BK-R45),
+// run after the screening and inside the store's exclusive section for the movement, on the
+// store it hands them: what they read can't change before the money is written, and what they
+// write is kept even when the movement is then refused.
+export type Rules = (movement: Movement, store: Store) => Promise<Refusal | void>;
+export interface Options { screen?: Screen; rules?: Rules; entitlements?: Matrix }
 
 // Positive integer ids in paths; anything else isn't a route (404).
 const ID = '([1-9][0-9]{0,14})';
@@ -54,9 +59,9 @@ const routes: Route[] = [
   { pattern: /^\/screening-decisions$/, methods: { GET: listDecisions }, actions: { GET: 'read_audit' } },
 ];
 
-export function createApp(ledger: Store = new Ledger(), { screen = async () => {}, entitlements = MATRIX }: Options = {}): Server {
+export function createApp(ledger: Store = new Ledger(), { screen = async () => {}, rules, entitlements = MATRIX }: Options = {}): Server {
   return createServer((req, res) => {
-    handle(ledger, screen, entitlements, req, res).catch((err: unknown) => {
+    handle(ledger, screen, rules, entitlements, req, res).catch((err: unknown) => {
       try {
         if (err instanceof HttpError) return send(res, err.status, { error: err.message, code: err.code }, err.headers);
         // Another process held the database past the busy timeout: a reason to retry,
@@ -79,8 +84,14 @@ export function createApp(ledger: Store = new Ledger(), { screen = async () => {
   });
 }
 
-const isBusy = (err: unknown): boolean =>
-  (err as { code?: string }).code === 'ERR_SQLITE_ERROR' && (((err as { errcode?: number }).errcode ?? 0) & 0xff) === 5;
+// SQLite: SQLITE_BUSY. Postgres: a lock not granted within lock_timeout (55P03), a deadlock the
+// server broke by cancelling this side (40P01), or no free connection in the pool in time.
+const PG_BUSY = new Set(['55P03', '40P01']);
+const isBusy = (err: unknown): boolean => {
+  const { code, errcode, message } = err as { code?: string; errcode?: number; message?: string };
+  if (code === 'ERR_SQLITE_ERROR') return ((errcode ?? 0) & 0xff) === 5;
+  return (code !== undefined && PG_BUSY.has(code)) || message === 'timeout exceeded when trying to connect';
+};
 
 // The banking UI (public/): plain files, no build, served from the same origin as the
 // API so it needs no CORS. Nothing inline, so the policy allows only this origin (BK-R32).
@@ -92,7 +103,7 @@ const UI_FILES: Record<string, [file: string, type: string]> = {
 };
 const UI_POLICY = "default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
 
-async function handle(ledger: Store, screen: Screen, matrix: Matrix, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handle(ledger: Store, screen: Screen, rules: Rules | undefined, matrix: Matrix, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { pathname } = new URL(req.url ?? '/', 'http://localhost');
   const file = UI_FILES[pathname];
   if (file) {
@@ -116,7 +127,7 @@ async function handle(ledger: Store, screen: Screen, matrix: Matrix, req: Incomi
     }
     authorize(req, route.actions?.[req.method ?? ''], matrix);
     const body = req.method === 'POST' ? await readJson(req) : {};
-    const [status, payload, headers] = await handler({ ledger, params: match.slice(1).map(Number), body, req, screen });
+    const [status, payload, headers] = await handler({ ledger, params: match.slice(1).map(Number), body, req, screen, rules });
     return send(res, status, payload, headers);
   }
   throw new HttpError(404, 'not_found', `no route for ${pathname}`);
@@ -288,12 +299,20 @@ async function move(ctx: Context, m: Movement): Promise<Reply> {
 
 // A movement that would be refused now is refused before the screening, which isn't
 // asked about it. One that passes is checked again when written (BK-R24).
-async function run({ ledger, screen }: Context, m: Movement, key?: string): Promise<Reply> {
+// The rules and the write run in one exclusive section of the store, so two movements on the
+// same account are decided and written one after the other (BK-R43, BK-R24). A refusal comes
+// back out of the section as a value, not a throw, so what the rules recorded is kept.
+async function run({ ledger, screen, rules }: Context, m: Movement, key?: string): Promise<Reply> {
   const refusal = await ledger.check(m);
   if (refusal) unwrap(refusal);
   const held = await screen(m);
   if (held) unwrap(held);
-  return [201, transfer(unwrap(await ledger.apply(m, key)))];
+  const written = await ledger.exclusive(m, async (store): Promise<Result<Transfer>> => {
+    const stopped = rules ? await rules(m, store) : undefined;
+    if (stopped) return stopped;
+    return store.apply(m, key);
+  });
+  return [201, transfer(unwrap(written))];
 }
 
 async function getTransfer({ ledger, params: [transferId] }: Context): Promise<Reply> {

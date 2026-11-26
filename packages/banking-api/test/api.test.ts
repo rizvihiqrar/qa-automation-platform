@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { startApi } from './helpers.ts';
+import { failWrites, startApi } from './helpers.ts';
 
 // Designed cases against the running API. Each title starts with the rules it checks.
 
@@ -277,15 +277,14 @@ describe('all or nothing', () => {
     const b = await own.openAccount('CAD');
     await own.post(`/accounts/${a}/deposits`, { amount: '10.00', currency: 'CAD' });
     // Make the credit fail after the debit has been written.
-    own.ledger.db.exec("CREATE TEMP TRIGGER fail_credit BEFORE INSERT ON ledger_entries WHEN NEW.amount > 0 BEGIN SELECT RAISE(ABORT, 'disk full'); END");
+    const restore = await failWrites(own.ledger, 'credit');
     const reply = await own.post('/transfers', { from_account_id: a, to_account_id: b, amount: '4.00', currency: 'CAD' });
-    own.ledger.db.exec('DROP TRIGGER fail_credit');
+    await restore();
     refused(reply, 500, 'internal');
     assert.equal(reply.body.error, 'internal error', 'the database error is not shown to the client');
     assert.deepEqual([(await own.get(`/accounts/${a}`)).body.balance, (await own.get(`/accounts/${b}`)).body.balance], ['10.00', '0.00']);
-    const count = (sql: string) => Number((own.ledger.db.prepare(sql).get() as { n: number }).n);
-    assert.equal(count('SELECT COUNT(*) AS n FROM transfers'), 1);
-    assert.equal(count('SELECT COUNT(*) AS n FROM ledger_entries'), 2);
+    assert.equal(await own.count('transfers'), 1);
+    assert.equal(await own.count('ledger_entries'), 2);
     // and the ledger still works afterwards
     assert.equal((await own.post('/transfers', { from_account_id: a, to_account_id: b, amount: '4.00', currency: 'CAD' })).status, 201);
   });

@@ -6,7 +6,7 @@ import { describe, test } from 'node:test';
 import { Ledger } from '../src/ledger.ts';
 import { CASH_REPORT_THRESHOLD, CURRENCIES, DEMO_RATE_E4, type Currency } from '../src/money.ts';
 import { matchName, normalize, NEAR_MIN_LENGTH } from '../src/sanctions.ts';
-import { startApi, startServers, type Api, type Reply } from './helpers.ts';
+import { failWrites, sqliteOnly, startApi, startServers, type Api, type Reply } from './helpers.ts';
 
 // Anti-money-laundering rules on the screening step (BK-R42 to BK-R45): a report for
 // large cash, the 24-hour rule, a sanctions list and the audit record. Each title starts
@@ -27,7 +27,7 @@ const AUDITOR = { 'X-Role': 'auditor' }; // the audit record is read by the audi
 const audit = (target: Api) => target.request('GET', '/screening-decisions', undefined, AUDITOR);
 const rows = async () => (await audit(api)).body.decisions as any[];
 const last = async () => (await rows()).at(-1);
-const transfersCount = () => Number((api.ledger.db.prepare('SELECT COUNT(*) AS n FROM transfers').get() as { n: number }).n);
+const transfersCount = () => api.count('transfers');
 
 function held(reply: Reply) {
   assert.equal(reply.status, 422, JSON.stringify(reply.body));
@@ -203,9 +203,9 @@ describe('the sanctions list', () => {
   ]) {
     test(`BK-R44 a deposit to an account owned by "${name}" is blocked, and nothing is written`, async () => {
       const id = await owner(name);
-      const before = transfersCount();
+      const before = await transfersCount();
       held(await deposit(id, '10.00'));
-      assert.equal(transfersCount(), before);
+      assert.equal(await transfersCount(), before);
       assert.equal((await api.get(`/accounts/${id}`)).body.balance, '0.00');
       const row = await last();
       assert.equal(row.decision, 'blocked');
@@ -241,7 +241,7 @@ describe('the sanctions list', () => {
     // Funded under a clean name, then renamed past the API: a listed owner can't deposit.
     const listed = await owner('Ada Byron');
     await deposit(listed, '100.00');
-    api.ledger.db.exec(`UPDATE accounts SET owner = 'Yusuf Karimov' WHERE id = ${listed}`);
+    await api.exec(`UPDATE accounts SET owner = 'Yusuf Karimov' WHERE id = ${listed}`);
     held(await transfer(clean, listed, '1.00'));
     held(await transfer(listed, clean, '1.00'));
     held(await withdraw(listed, '1.00'));
@@ -256,8 +256,8 @@ describe('the sanctions list', () => {
     const exact = await owner('Ada Byron');
     await deposit(near, '100.00');
     await deposit(exact, '100.00');
-    api.ledger.db.exec(`UPDATE accounts SET owner = 'Viktor Ostrowsky' WHERE id = ${near}`);
-    api.ledger.db.exec(`UPDATE accounts SET owner = 'Viktor Ostrovsky' WHERE id = ${exact}`);
+    await api.exec(`UPDATE accounts SET owner = 'Viktor Ostrowsky' WHERE id = ${near}`);
+    await api.exec(`UPDATE accounts SET owner = 'Viktor Ostrovsky' WHERE id = ${exact}`);
     for (const [from, to] of [[near, exact], [exact, near]] as const) {
       held(await transfer(from, to, '1.00'));
       const row = await last();
@@ -313,6 +313,20 @@ describe('the name matching on its own', () => {
 });
 
 describe('the audit record', () => {
+  // On Postgres the rules write their row inside the transaction that then writes the movement;
+  // a failed write must not take the row with it (the code review found it did).
+  test('BK-R45 BK-R13 a movement whose write fails after the screening keeps its one decision, and writes nothing else', async () => {
+    const own = await startApi({ aml: true });
+    const id = await own.openAccount('CAD', 'Ada Lovelace');
+    const restore = await failWrites(own.ledger, 'credit');
+    const reply = await own.post(`/accounts/${id}/deposits`, { amount: '25.00', currency: 'CAD' });
+    await restore();
+    assert.equal(reply.status, 500);
+    const decisions = (await own.request('GET', '/screening-decisions', undefined, AUDITOR)).body.decisions;
+    assert.deepEqual(decisions.map((d: { decision: string; amount: string }) => `${d.decision} ${d.amount}`), ['allowed 25.00']);
+    assert.deepEqual([await own.count('transfers'), await own.count('ledger_entries')], [0, 0]);
+  });
+
   test('BK-R45 every movement that reaches the screening gets exactly one row, with the answer, the rule and the reason', async () => {
     const before = (await rows()).length;
     const fresh = await api.openAccount('CAD');
@@ -366,16 +380,16 @@ describe('the audit record', () => {
     assert.equal((await rows()).length, before + 3);
   });
 
-  test('BK-R45 the table refuses a row with a rule on an allowed decision, or none on a stopped one', () => {
+  test('BK-R45 the table refuses a row with a rule on an allowed decision, or none on a stopped one', async () => {
     const sql = (decision: string, rule: string | null) =>
-      api.ledger.db.exec(`INSERT INTO screening_decisions (decided_at, kind, amount, currency, decision, rule, detail) VALUES ('t', 'deposit', 1, 'CAD', '${decision}', ${rule === null ? 'NULL' : `'${rule}'`}, 'x')`);
-    assert.throws(() => sql('allowed', 'large_cash'), /CHECK/);
-    assert.throws(() => sql('blocked', null), /CHECK/);
-    assert.throws(() => sql('maybe', 'x'), /CHECK/);
-    assert.doesNotThrow(() => sql('reported', 'large_cash'));
+      api.exec(`INSERT INTO screening_decisions (decided_at, kind, amount, currency, decision, rule, detail) VALUES ('t', 'deposit', 1, 'CAD', '${decision}', ${rule === null ? 'NULL' : `'${rule}'`}, 'x')`);
+    await assert.rejects(sql('allowed', 'large_cash'), /check/i);
+    await assert.rejects(sql('blocked', null), /check/i);
+    await assert.rejects(sql('maybe', 'x'), /check/i);
+    await assert.doesNotReject(sql('reported', 'large_cash'));
   });
 
-  test('BK-R45 a ledger file from before the screening gets the table when it is opened, and keeps its rows', async () => {
+  test('BK-R45 a ledger file from before the screening gets the table when it is opened, and keeps its rows', sqliteOnly('a ledger file made before the table'), async () => {
     const dir = mkdtempSync(join(tmpdir(), 'banking-aml-'));
     try {
       const file = join(dir, 'old.db');
@@ -447,6 +461,6 @@ describe('requests at the same time, with a slow screening', () => {
     assert.equal(replies.find((r) => r.status === 422)!.body.code, 'insufficient_funds');
     const withdrawals = (await audit(slow)).body.decisions.filter((d: any) => d.kind === 'withdrawal');
     assert.deepEqual(withdrawals.map((d: any) => d.decision), ['allowed', 'allowed']);
-    assert.equal(Number((slow.ledger.db.prepare("SELECT COUNT(*) AS n FROM transfers WHERE kind = 'withdrawal'").get() as { n: number }).n), 1);
+    assert.equal(Number((await slow.rows("SELECT COUNT(*) AS n FROM transfers WHERE kind = 'withdrawal'"))[0]!.n), 1);
   });
 });

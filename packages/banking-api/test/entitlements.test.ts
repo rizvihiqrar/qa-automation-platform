@@ -14,13 +14,19 @@ import { startApi, startServers, type Api, type Reply } from './helpers.ts';
 // check that finds a permission that is missing or excessive. Each title starts with the rules it checks.
 
 const api = await startApi({ aml: true });
-const count = (target: Api, table: string) => Number((target.ledger.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n);
-const written = (target: Api) => ['accounts', 'transfers', 'ledger_entries', 'screening_decisions', 'idempotency_keys'].map((t) => count(target, t));
+const count = (target: Api, table: string) => target.count(table);
+const written = (target: Api) => Promise.all(['accounts', 'transfers', 'ledger_entries', 'screening_decisions', 'idempotency_keys'].map((t) => count(target, t)));
 
 // Two accounts, the first holding 1,000.00, made with no role (BK-R48: no header, no restriction).
 const from = await api.openAccount('CAD', 'Fixture One');
 const to = await api.openAccount('CAD', 'Fixture Two');
 assert.equal((await api.post(`/accounts/${from}/deposits`, { amount: '1000.00', currency: 'CAD' })).status, 201);
+// A transfer for the read routes below. Made here, before the first describe(): node:test starts
+// the tests a describe() registers while the file's later top-level code is still running, so a
+// write placed between two describe() blocks landed in the middle of the first one's row counts
+// (seen on Postgres, where the write takes longer: 1 of 6 runs; it had never shown on SQLite).
+const made = await api.post('/transfers', { from_account_id: from, to_account_id: to, amount: '3.00', currency: 'CAD' });
+assert.equal(made.status, 201);
 
 // One valid request for each action, which succeeds for a role that may.
 const REQUESTS: Record<Action, (target: Api, headers: Record<string, string>) => Promise<Reply>> = {
@@ -95,22 +101,19 @@ describe('every role and every action, through the API', () => {
     for (const action of ACTIONS) {
       const may = can(MATRIX, role, action);
       test(`BK-R46 ${role} ${may ? 'may' : 'may not'} ${words(action)}`, async () => {
-        const before = written(api);
+        const before = await written(api);
         const reply = await REQUESTS[action](api, as(role));
         if (may) {
           assert.ok(reply.status === 200 || reply.status === 201, `${reply.status} ${JSON.stringify(reply.body)}`);
         } else {
           forbidden(reply);
           assert.match(reply.body.error, new RegExp(`the role ${role} may not ${words(action)}`));
-          assert.deepEqual(written(api), before, 'a forbidden request wrote something');
+          assert.deepEqual(await written(api), before, 'a forbidden request wrote something');
         }
       });
     }
   }
 });
-
-const made = await api.post('/transfers', { from_account_id: from, to_account_id: to, amount: '3.00', currency: 'CAD' });
-assert.equal(made.status, 201);
 
 describe('every read route is the view action', () => {
   const ROUTES = ['/accounts', `/accounts/${from}`, `/accounts/${from}/entries`, `/transfers/${made.body.id}`];
@@ -142,15 +145,15 @@ describe('authorization comes first', () => {
     const key = { 'Idempotency-Key': `entitlements-${Date.now()}` };
     const body = { from_account_id: from, to_account_id: to, amount: '2.00', currency: 'CAD' };
     forbidden(await api.request('POST', '/transfers', body, { ...as('teller'), ...key }));
-    assert.equal(count(api, 'idempotency_keys'), 0);
+    assert.equal(await count(api, 'idempotency_keys'), 0);
     forbidden(await api.request('POST', '/transfers', body, { ...as('teller'), 'Idempotency-Key': 'bad key with spaces' }));
     assert.equal((await api.request('POST', '/transfers', body, { ...as('supervisor'), ...key })).status, 201);
   });
 
   test('BK-R47 a forbidden payment is not screened: it leaves no audit row', async () => {
-    const before = count(api, 'screening_decisions');
+    const before = await count(api, 'screening_decisions');
     forbidden(await api.request('POST', `/accounts/${from}/withdrawals`, { amount: '20000.00', currency: 'CAD' }, as('viewer')));
-    assert.equal(count(api, 'screening_decisions'), before);
+    assert.equal(await count(api, 'screening_decisions'), before);
   });
 
   test('BK-R47 a route that does not exist is 404 and a wrong method is 405, for any role (they are about the route, not the person)', async () => {

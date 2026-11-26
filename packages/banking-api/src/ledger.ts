@@ -101,6 +101,11 @@ export interface Store {
   decisions(): Promise<ScreeningDecision[]>;
   getTransfer(transferId: number): Promise<TransferWithEntries | null>;
   statement(accountId: number): Promise<Entry[]>;
+  // Runs `work` with the movement's accounts to itself: no other exclusive section for the same
+  // accounts runs until it ends, in this process or (on Postgres) any other. `work` is handed the
+  // store to use inside, and must use only that one. Sections don't nest: on SQLite a section
+  // asked for inside another waits for that one to end, which it never does.
+  exclusive<T>(m: Movement, work: (store: Store) => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }
 
@@ -149,6 +154,17 @@ export class Ledger implements Store {
 
   async close(): Promise<void> {
     this.db.close();
+  }
+
+  // One exclusive section at a time in this process, in the order they were asked for. Across
+  // processes on one file the rules run outside BEGIN IMMEDIATE (they are async, the write is
+  // not), so two servers could both read the same 24-hour total: the Postgres store closes that,
+  // with row locks held across the whole section.
+  #section: Promise<unknown> = Promise.resolve();
+  exclusive<T>(_m: Movement, work: (store: Store) => Promise<T>): Promise<T> {
+    const run = this.#section.then(() => work(this));
+    this.#section = run.catch(() => {});
+    return run;
   }
 
   // Integers come back as BigInt, so no amount ever passes through a double.
@@ -256,32 +272,15 @@ export class Ledger implements Store {
     return this.#check(m);
   }
 
+  // The facts the rules need, read here, and the rules in refusalFor(), shared with the
+  // Postgres store so both refuse in the same order with the same words.
   #check(m: Movement): Refusal | null {
     const from = m.from === null ? null : this.#account(m.from);
-    if (m.from !== null && !from) return refuse(404, 'not_found', `account ${m.from} not found`);
     const to = m.to === null ? null : this.#account(m.to);
-    if (m.to !== null && !to) return refuse(404, 'not_found', `account ${m.to} not found`);
-    if (from && to && from.id === to.id) return refuse(422, 'same_account', 'cannot transfer from an account to itself');
-    for (const account of [from, to]) {
-      if (account && account.currency !== m.currency) return mismatch(account, m.currency);
-    }
-    if (from) {
-      if (from.balance < m.amount) {
-        return refuse(422, 'insufficient_funds', `insufficient funds: balance is ${formatAmount(from.balance, m.currency)}, amount is ${formatAmount(m.amount, m.currency)}`);
-      }
-      // A payment out: the scheme's limits come after the funds (BK-R39, BK-R40).
-      const limits = PAYMENT_LIMITS[m.currency];
-      if (m.amount > limits.single) {
-        return refuse(422, 'payment_limit', `a payment may be at most ${formatAmount(limits.single, m.currency)} ${m.currency}; this one is ${formatAmount(m.amount, m.currency)}`);
-      }
-      const sent = this.#sentToday(from.id);
-      if (sent + m.amount > limits.daily) {
-        return refuse(422, 'daily_limit', `daily limit ${formatAmount(limits.daily, m.currency)} ${m.currency}: ${formatAmount(sent, m.currency)} already sent today, so ${formatAmount(m.amount, m.currency)} more would pass it`);
-      }
-    } else if (this.#issued(m.currency) + m.amount > MAX_MINOR) {
-      return refuse(422, 'limit_exceeded', `deposit would take the ${m.currency} held by all accounts past ${formatAmount(MAX_MINOR, m.currency)}`);
-    }
-    return null;
+    return refusalFor(m, from, to, {
+      sentToday: (accountId) => this.#sentToday(accountId),
+      issued: (currency) => this.#issued(currency),
+    });
   }
 
   // One transfer row and two entries, all or nothing (BK-R13). The check runs again
@@ -413,3 +412,39 @@ export class Ledger implements Store {
 
 const mismatch = (account: Account, currency: Currency): Refusal =>
   refuse(422, 'currency_mismatch', `account ${account.id} holds ${account.currency}, not ${currency}`);
+
+// What a rule may still need to read once it is reached: what an account has sent today, and
+// how much of a currency all accounts hold. Asked for only when the rule before has passed.
+export interface Totals {
+  sentToday(accountId: number): bigint;
+  issued(currency: Currency): bigint;
+}
+
+// The bank's rules for one movement, given its accounts as found (null: not found, or the
+// funding side). Refusal order (BK-R16): unknown account, same account, currency, then funds
+// or the limit. Every store calls this, so the order and the words are the same on each.
+export function refusalFor(m: Movement, from: Account | null, to: Account | null, totals: Totals): Refusal | null {
+  if (m.from !== null && !from) return refuse(404, 'not_found', `account ${m.from} not found`);
+  if (m.to !== null && !to) return refuse(404, 'not_found', `account ${m.to} not found`);
+  if (from && to && from.id === to.id) return refuse(422, 'same_account', 'cannot transfer from an account to itself');
+  for (const account of [from, to]) {
+    if (account && account.currency !== m.currency) return mismatch(account, m.currency);
+  }
+  if (from) {
+    if (from.balance < m.amount) {
+      return refuse(422, 'insufficient_funds', `insufficient funds: balance is ${formatAmount(from.balance, m.currency)}, amount is ${formatAmount(m.amount, m.currency)}`);
+    }
+    // A payment out: the scheme's limits come after the funds (BK-R39, BK-R40).
+    const limits = PAYMENT_LIMITS[m.currency];
+    if (m.amount > limits.single) {
+      return refuse(422, 'payment_limit', `a payment may be at most ${formatAmount(limits.single, m.currency)} ${m.currency}; this one is ${formatAmount(m.amount, m.currency)}`);
+    }
+    const sent = totals.sentToday(from.id);
+    if (sent + m.amount > limits.daily) {
+      return refuse(422, 'daily_limit', `daily limit ${formatAmount(limits.daily, m.currency)} ${m.currency}: ${formatAmount(sent, m.currency)} already sent today, so ${formatAmount(m.amount, m.currency)} more would pass it`);
+    }
+  } else if (totals.issued(m.currency) + m.amount > MAX_MINOR) {
+    return refuse(422, 'limit_exceeded', `deposit would take the ${m.currency} held by all accounts past ${formatAmount(MAX_MINOR, m.currency)}`);
+  }
+  return null;
+}

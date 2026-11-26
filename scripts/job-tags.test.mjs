@@ -23,3 +23,20 @@ test('the job names are read from ci.yml', () => {
 test('every CI job with a fixed name has a kind in job-tags.json', () => {
   assert.deepEqual(fixedJobNames(ci).filter((n) => !(n in tags)), []);
 });
+
+// The package matrix names each job after its row's `name:`, or its package when there is none.
+// Those were left to be tagged by hand, and three went in untagged: banking-api-proxy (2026-11-22),
+// qa-practice-api-sampling (2026-11-20), found 2026-11-26 when banking-api-postgres was added.
+export function matrixJobNames(yaml) {
+  return [...yaml.matchAll(/^\s+- \{ package: ([\w-]+),(?:\s*name: ([\w-]+),)?/gm)].map((m) => m[2] ?? m[1]);
+}
+
+test('the matrix job names are read from ci.yml', () => {
+  const names = matrixJobNames(ci);
+  assert.ok(names.includes('banking-api') && names.includes('banking-api-postgres') && names.includes('qa-practice-api-postgres'), names.join(', '));
+  assert.deepEqual(matrixJobNames('          - { package: a,   browsers: false }\n          - { package: a, name: a-b, browsers: true }\n'), ['a', 'a-b']);
+});
+
+test('every package matrix job has a kind in job-tags.json', () => {
+  assert.deepEqual([...new Set(matrixJobNames(ci))].filter((n) => !(n in tags)), []);
+});

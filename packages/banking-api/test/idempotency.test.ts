@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { KEY_TTL_MS } from '../src/ledger.ts';
-import { startApi, type Api, type Reply } from './helpers.ts';
+import { failWrites, startApi, type Api, type Reply } from './helpers.ts';
 
 // Idempotency keys over HTTP: a retried request moves money once. Each title starts
 // with the rules it checks.
@@ -18,7 +18,7 @@ const keyed = (target: Api, key: string) => ({
     target.request('POST', '/transfers', { from_account_id: from, to_account_id: to, amount, currency }, { 'Idempotency-Key': key }),
 });
 const balance = async (target: Api, id: number) => (await target.get(`/accounts/${id}`)).body.balance as string;
-const count = (target: Api, table: string) => Number((target.ledger.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n);
+const count = (target: Api, table: string) => target.count(table);
 
 function refused(reply: Reply, status: number, code: string) {
   assert.equal(reply.status, status, JSON.stringify(reply.body));
@@ -44,9 +44,9 @@ describe('the Idempotency-Key header', () => {
   for (const [label, key] of [['empty', ''], ['256 characters', 'k'.repeat(256)], ['with a space', 'a b'], ['with a non-ASCII letter', 'clé']] as const) {
     test(`BK-R19 BK-R16 a key ${label} is refused with 400 invalid_idempotency_key and nothing is written`, async () => {
       const id = await api.openAccount('CAD');
-      const before = count(api, 'transfers');
+      const before = await count(api, 'transfers');
       refused(await keyed(api, key).deposit(id, '1.00'), 400, 'invalid_idempotency_key');
-      assert.equal(count(api, 'transfers'), before);
+      assert.equal(await count(api, 'transfers'), before);
     });
   }
 
@@ -68,7 +68,7 @@ describe('replays', () => {
     const id = await api.openAccount('CAD');
     const k = keyed(api, newKey());
     const first = await k.deposit(id, '25.00');
-    const before = count(api, 'ledger_entries');
+    const before = await count(api, 'ledger_entries');
     const again = await k.deposit(id, '25.00');
     assert.equal(first.status, 201);
     assert.equal(first.headers.get('idempotent-replayed'), null);
@@ -76,7 +76,7 @@ describe('replays', () => {
     assert.equal(again.headers.get('idempotent-replayed'), 'true');
     assert.deepEqual(again.body, first.body);
     assert.equal(await balance(api, id), '25.00');
-    assert.equal(count(api, 'ledger_entries'), before);
+    assert.equal(await count(api, 'ledger_entries'), before);
   });
 
   test('BK-R20 withdrawals and transfers replay too, even after the balance has run out', async () => {
@@ -110,7 +110,7 @@ describe('replays', () => {
     const key = newKey();
     const first = await keyed(api, key).deposit(id, '1.00');
     await keyed(api, key).deposit(id, '1.00');
-    const rows = api.ledger.db.prepare('SELECT transfer_id FROM idempotency_keys WHERE key = ?').all(key);
+    const rows = await api.rows(`SELECT transfer_id FROM idempotency_keys WHERE key = '${key}'`);
     assert.deepEqual(rows.map((r) => Number(r.transfer_id)), [first.body.id]);
   });
 });
@@ -123,7 +123,7 @@ describe('a key reused for something else', () => {
     const key = newKey();
     const k = keyed(api, key);
     await k.deposit(a, '5.00');
-    const before = count(api, 'transfers');
+    const before = await count(api, 'transfers');
     for (const reply of [
       await k.deposit(a, '5.01'),
       await k.deposit(b, '5.00'),
@@ -131,7 +131,7 @@ describe('a key reused for something else', () => {
       await k.transfer(a, b, '5.00'),
       await k.deposit(usd, '5.00', 'USD'),
     ]) refused(reply, 422, 'idempotency_key_mismatch');
-    assert.equal(count(api, 'transfers'), before);
+    assert.equal(await count(api, 'transfers'), before);
     assert.deepEqual([await balance(api, a), await balance(api, b)], ['55.00', '0.00']);
   });
 
@@ -192,10 +192,10 @@ describe('refused and failed requests keep no key', () => {
     const own = await startApi();
     const id = await own.openAccount('CAD');
     const k = keyed(own, 'retry-after-failure');
-    own.ledger.db.exec("CREATE TEMP TRIGGER fail_credit BEFORE INSERT ON ledger_entries WHEN NEW.amount > 0 BEGIN SELECT RAISE(ABORT, 'disk full'); END");
+    const restore = await failWrites(own.ledger, 'credit');
     refused(await k.deposit(id, '3.00'), 500, 'internal');
-    own.ledger.db.exec('DROP TRIGGER fail_credit');
-    assert.deepEqual([count(own, 'transfers'), count(own, 'idempotency_keys')], [0, 0]);
+    await restore();
+    assert.deepEqual([await count(own, 'transfers'), await count(own, 'idempotency_keys')], [0, 0]);
     assert.equal((await k.deposit(id, '3.00')).headers.get('idempotent-replayed'), null);
     assert.equal((await k.deposit(id, '3.00')).headers.get('idempotent-replayed'), 'true');
     assert.equal(await balance(own, id), '3.00');
@@ -204,10 +204,10 @@ describe('refused and failed requests keep no key', () => {
   test('BK-R22 BK-R13 the key is linked in the same transaction: if linking fails, the transfer is not written either', async () => {
     const own = await startApi();
     const id = await own.openAccount('CAD');
-    own.ledger.db.exec("CREATE TEMP TRIGGER fail_link BEFORE UPDATE ON idempotency_keys BEGIN SELECT RAISE(ABORT, 'disk full'); END");
+    const restore = await failWrites(own.ledger, 'link');
     refused(await keyed(own, 'link').deposit(id, '3.00'), 500, 'internal');
-    own.ledger.db.exec('DROP TRIGGER fail_link');
-    assert.deepEqual([count(own, 'transfers'), count(own, 'ledger_entries'), count(own, 'idempotency_keys')], [0, 0, 0]);
+    await restore();
+    assert.deepEqual([await count(own, 'transfers'), await count(own, 'ledger_entries'), await count(own, 'idempotency_keys')], [0, 0, 0]);
     assert.equal(await balance(own, id), '0.00');
   });
 });

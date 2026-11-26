@@ -6,6 +6,7 @@ import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../src/app.ts';
 import type { Store } from '../src/ledger.ts';
+import { describeStore } from '../src/store.ts';
 
 // The ledger is used through Store, whose methods are async. On SQLite the work inside
 // each one is done before its promise is handed back, so a call that is not awaited still
@@ -29,10 +30,10 @@ export const storeMethods = (source = ledgerSource): string[] => {
   return [...body.matchAll(/^\s+(\w+)\(/gm)].map((m) => m[1]!);
 };
 
-// The names a file holds a store in: anything called ledger, and anything made by
-// `new Ledger(` or `buildSample(`.
+// The names a file holds a store in: anything called ledger or store, and anything made by
+// `new Ledger(`, `buildSample(` or one of the functions that open a store.
 const storeNames = (text: string): string[] =>
-  [...new Set(['ledger', ...[...text.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:new Ledger|buildSample)\(/g)].map((m) => m[1]!)])];
+  [...new Set(['ledger', 'store', ...[...text.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*\(?(?:await\s+)?\(?(?:new Ledger|buildSample|openTestStore|openStore|PostgresLedger\.open)\(/g)].map((m) => m[1]!)])];
 
 // The Store calls in one file that are neither awaited, returned nor chained, as "line: text".
 export function floatingCalls(text: string, methods: string[]): string[] {
@@ -104,6 +105,9 @@ describe('every Store call is awaited', () => {
       '  const sample = await buildSample(path);',
       "  sample.releaseKey('in-flight');",
       "  api.ledger.openAccount('Ada', 'CAD');",
+      "  const pg = (await openTestStore(undefined, schema)) as PostgresLedger;",
+      "  pg.recordDecision(m, 'allowed', null, 'x');",
+      "    store.apply(m, key);",
       '    if (!written) await ctx.ledger.releaseKey(key);',
       '  return [201, transfer(unwrap(await ledger.apply(m, key)))];',
       '  const total = (await ledger.cashTotal(a, k, s)) + m.amount;',
@@ -122,7 +126,57 @@ describe('every Store call is awaited', () => {
       "5: first.deposit(account.id, 500n, 'CAD');",
       "7: sample.releaseKey('in-flight');",
       "8: api.ledger.openAccount('Ada', 'CAD');",
+      "10: pg.recordDecision(m, 'allowed', null, 'x');",
+      '11: store.apply(m, key);',
     ]);
+  });
+});
+
+// node:test starts the tests a describe() registers while the file's later top-level code is
+// still running. A write placed between two describe() blocks (entitlements.test.ts, a fixture
+// transfer) landed inside the first block's row counts: 1 run in 6 on Postgres, never seen on
+// SQLite, where the write finishes before the first test asks. Setup goes before the first block.
+export function lateTopLevelAwaits(text: string): string[] {
+  const lines = text.split(/\r?\n/);
+  const first = lines.findIndex((l) => /^(describe|test)\(/.test(l));
+  if (first < 0) return [];
+  return lines.flatMap((line, i) => (i > first && /^(?![\s/])[^/]*\bawait\b/.test(line) ? [`${i + 1}: ${line.trim()}`] : []));
+}
+
+describe('test files do their setup first', () => {
+  test('no test file awaits at the top level after its first describe() or test()', () => {
+    const late = ['test', 'test-proxy'].flatMap((d) => sourceFiles(join(PACKAGE, d)))
+      .filter((f) => f.endsWith('.test.ts'))
+      .flatMap((f) => lateTopLevelAwaits(readFileSync(f, 'utf8')).map((l) => `${relative(PACKAGE, f)}:${l}`));
+    assert.deepEqual(late, []);
+  });
+
+  test('the check finds a top-level await after the first block, and leaves indented and earlier ones', () => {
+    const text = [
+      'const api = await startApi();',
+      "describe('a', () => {",
+      "  test('x', async () => { await api.get('/'); });",
+      '});',
+      "const made = await api.post('/transfers', {});",
+      "describe('b', async () => {",
+      '  const servers = await startServers(2);',
+      '});',
+      'await Promise.all([]);',
+    ].join('\n');
+    assert.deepEqual(lateTopLevelAwaits(text), ["5: const made = await api.post('/transfers', {});", '9: await Promise.all([]);']);
+  });
+});
+
+describe('the store a server opens', () => {
+  test('the log line names the store and never the password, even for a connection string that is not a URL', () => {
+    assert.equal(describeStore({}), 'in memory');
+    assert.equal(describeStore({ DATABASE_PATH: 'ledger.db' }), 'ledger.db');
+    assert.equal(describeStore({ DATABASE_URL: 'postgres://app:secret@db.example:6543/ledger', DATABASE_SCHEMA: 'bank' }), 'postgres db.example:6543/ledger, schema bank');
+    for (const odd of ['postgres://app:p#ss@db/ledger', 'host=/var/run/postgresql dbname=ledger password=secret']) {
+      const line = describeStore({ DATABASE_URL: odd });
+      assert.match(line, /^postgres .*, schema public$/, odd);
+      assert.doesNotMatch(line, /p#ss|secret/, odd);
+    }
   });
 });
 

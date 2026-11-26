@@ -23,6 +23,23 @@ test('CI pulls every image that with-postgres.ts starts', () => {
   for (const image of images) assert.ok(pulled.includes(image), `ci.yml does not pull ${image}`);
 });
 
+// banking-api starts Postgres with its own launcher (the ledger on Postgres, 2026-11-26).
+test('CI pulls the Postgres image banking-api\'s with-postgres.ts starts', () => {
+  const launcher = read('packages', 'banking-api', 'scripts', 'with-postgres.ts');
+  const image = /POSTGRES_IMAGE = '([^']+)'/.exec(launcher)?.[1];
+  assert.ok(image, 'no POSTGRES_IMAGE in packages/banking-api/scripts/with-postgres.ts');
+  const pulled = [...ci.matchAll(/docker pull --quiet (\S+)/g)].map((m) => m[1]);
+  assert.ok(pulled.includes(image), `ci.yml does not pull ${image}`);
+});
+
+test('the banking-api-postgres row runs the Node tests on Postgres', () => {
+  const row = ci.split(/\r?\n/).find((l) => l.includes('name: banking-api-postgres'));
+  assert.ok(row, 'no banking-api-postgres row in ci.yml');
+  assert.match(row, /package: banking-api,/);
+  assert.match(row, /postgres: true/);
+  assert.match(row, /command: npm run test:postgres/);
+});
+
 test('the qa-practice-api-postgres row runs the suite on Postgres', () => {
   const row = ci.split(/\r?\n/).find((l) => l.includes('name: qa-practice-api-postgres'));
   assert.ok(row, 'no qa-practice-api-postgres row in ci.yml');

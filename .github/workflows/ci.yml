@@ -178,6 +178,10 @@ jobs:
           # Network inspection with a proxy: mitmproxy in Docker between the client and the server,
           # recording what is on the wire and changing a request in flight (test-proxy/)
           - { package: banking-api, name: banking-api-proxy, browsers: false, proxy: true, command: npm run test:proxy }
+          # The same Node tests with the ledger on a real Postgres that Testcontainers starts in Docker
+          # (DATABASE_URL, a schema per test server), plus the Postgres-only tests: the SQL ledger checks
+          # and their defects, row locks, and races through two server processes on one database
+          - { package: banking-api, name: banking-api-postgres, browsers: false, postgres: true, command: npm run test:postgres }
           # Testing money in software: the course checks (the model answer against six planted bugs)
           # and the quiz page in Chromium and Firefox
           - { package: money-course,             browsers: true,  browserList: chromium firefox, command: npm test }
@@ -247,7 +251,8 @@ jobs:
 
       # Pulled here through retry.sh (Docker Hub answers 502 now and then), so
       # Testcontainers finds the images already on the runner. The tags must match
-      # POSTGRES_IMAGE and TOXIPROXY_IMAGE in packages/qa-practice-api/scripts/with-postgres.ts.
+      # POSTGRES_IMAGE and TOXIPROXY_IMAGE in packages/qa-practice-api/scripts/with-postgres.ts,
+      # and POSTGRES_IMAGE in packages/banking-api/scripts/with-postgres.ts (which needs no Toxiproxy).
       - name: Pull Postgres and Toxiproxy images
         if: matrix.postgres
         run: |

@@ -89,6 +89,40 @@ export function runChecks(db: DatabaseSync, checks: Check[] = loadChecks(), { no
   });
 }
 
+// A check's SQL for Postgres: the same text, with each `:name` outside comments turned into
+// `$1`, `$2` ... in the order the names first appear, and the values in that order.
+export function toPositional(sql: string, values: Record<string, string>): { text: string; params: string[] } {
+  const names = parametersOf(sql);
+  const missing = names.filter((n) => !(n in values));
+  if (missing.length) throw new Error(`unknown parameter ${missing.map((n) => `:${n}`).join(', ')}`);
+  const text = sql.split(/\r?\n/).map((line) => {
+    const at = line.indexOf('--');
+    const code = at === -1 ? line : line.slice(0, at);
+    return code.replace(/(?<![:\w]):([a-z_]+)/g, (_, n: string) => `$${names.indexOf(n) + 1}`) + (at === -1 ? '' : line.slice(at));
+  }).join('\n');
+  return { text, params: names.map((n) => values[n]!) };
+}
+
+// The same checks on Postgres, through any query function (a pool, or one connection). The
+// files are not changed: one set of SQL, two databases.
+export async function runChecksPostgres(
+  query: (text: string, params: unknown[]) => Promise<Record<string, unknown>[]>,
+  checks: Check[] = loadChecks(),
+  { now = new Date() }: { now?: Date } = {},
+): Promise<CheckResult[]> {
+  const values = parameters(now);
+  const results: CheckResult[] = [];
+  for (const { id, severity, description, sql } of checks) {
+    try {
+      const { text, params } = toPositional(sql, values);
+      results.push({ id, severity, description, rows: await query(text, params) });
+    } catch (err) {
+      results.push({ id, severity: 'error', description, rows: [], error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return results;
+}
+
 export const failed = (r: CheckResult): boolean => r.rows.length > 0 || r.error !== undefined;
 
 export function summarize(results: CheckResult[]): Summary {

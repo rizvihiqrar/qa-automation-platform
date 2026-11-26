@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { Ledger } from '../src/ledger.ts';
-import { startApi, type Api, type Reply } from './helpers.ts';
+import { sqliteOnly, startApi, type Api, type Reply } from './helpers.ts';
 
 // Payment scheme rules (BK-R38 to BK-R40): the reference a payment carries, the most
 // one payment may be, and the most one account may send in a day. Each title starts
@@ -15,7 +15,7 @@ import { startApi, type Api, type Reply } from './helpers.ts';
 const DAY = '2026-11-22T12:00:00.000Z';
 let clock = DAY;
 const api = await startApi({ now: () => clock });
-const count = (target: Api, table: string) => Number((target.ledger.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n);
+const count = (target: Api, table: string) => target.count(table);
 const balance = async (id: number) => (await api.get(`/accounts/${id}`)).body.balance as string;
 
 function refused(reply: Reply, status: number, code: string) {
@@ -84,9 +84,9 @@ describe('the payment reference', () => {
     test(`BK-R38 BK-R16 a reference that is ${label} is refused with 400 invalid_reference and nothing is written`, async () => {
       const from = await funded('100.00');
       const to = await api.openAccount('CAD');
-      const before = count(api, 'transfers');
+      const before = await count(api, 'transfers');
       refused(await pay(from, to, '1.00', 'CAD', { reference }), 400, 'invalid_reference');
-      assert.equal(count(api, 'transfers'), before);
+      assert.equal(await count(api, 'transfers'), before);
       assert.equal(await balance(from), '100.00');
     });
   }
@@ -125,7 +125,7 @@ describe('the payment reference', () => {
 });
 
 describe('a ledger file made before the reference existed', () => {
-  test('BK-R38 opens as it was, gets the reference column, keeps its rows, and takes a reference after', async () => {
+  test('BK-R38 opens as it was, gets the reference column, keeps its rows, and takes a reference after', sqliteOnly('a ledger file made before the column'), async () => {
     const dir = mkdtempSync(join(tmpdir(), 'banking-old-'));
     const file = join(dir, 'old.db');
     try {
@@ -181,12 +181,12 @@ describe('the most one payment may be', () => {
   test('BK-R39 a refused payment writes nothing, and the message names the limit and the amount', async () => {
     const from = await funded('50000.00');
     const to = await api.openAccount('CAD');
-    const before = count(api, 'transfers');
+    const before = await count(api, 'transfers');
     const reply = await pay(from, to, '10000.01');
     refused(reply, 422, 'payment_limit');
     assert.match(reply.body.error, /10000\.00/);
     assert.match(reply.body.error, /10000\.01/);
-    assert.equal(count(api, 'transfers'), before);
+    assert.equal(await count(api, 'transfers'), before);
     assert.equal(await balance(from), '50000.00');
   });
 
