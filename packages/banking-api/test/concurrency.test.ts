@@ -7,10 +7,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { describe, test } from 'node:test';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { createApp } from '../src/app.ts';
-import { failed, runChecks } from '../src/checks.ts';
 import { BUSY_TIMEOUT_MS, Ledger } from '../src/ledger.ts';
 import { MAX_MINOR, formatAmount } from '../src/money.ts';
-import { startApi, startServers, type Reply } from './helpers.ts';
+import { sqliteOnly, startApi, startServers, type Reply } from './helpers.ts';
 
 // Requests at the same time, for real. Two kinds of overlap: a wait inside one
 // process (the screening awaited before each movement, during which other requests
@@ -29,16 +28,6 @@ const tally = (replies: Reply[]) => {
 
 const slowScreen = () => sleep(20);
 
-// The SQL ledger checks that fail on a file the races left, opened read-only while the
-// servers still run. Whole results, so a failure shows the rows.
-const checkFile = (path: string) => {
-  const db = new DatabaseSync(path, { readOnly: true, timeout: BUSY_TIMEOUT_MS });
-  try {
-    return runChecks(db).filter(failed);
-  } finally {
-    db.close();
-  }
-};
 
 describe('one process: requests overlap while the screening runs', () => {
   test('BK-R24 BK-R12 20 transfers of 10.00 at once from 100.00: exactly 10 pass, and the balance stops at zero', async () => {
@@ -84,7 +73,7 @@ describe('one process: requests overlap while the screening runs', () => {
   });
 });
 
-describe('two server processes on one database file', async () => {
+describe('two server processes on one database (a SQLite file, or one Postgres schema)', async () => {
   const servers = await startServers(2);
   const [one, two] = servers.bases as [string, string];
 
@@ -97,7 +86,7 @@ describe('two server processes on one database file', async () => {
     assert.equal((await servers.get(two, `/accounts/${id}`)).body.balance, '0.00');
   });
 
-  test('BK-R25 a server waits for another connection\'s write to finish, then answers 201', async () => {
+  test('BK-R25 a server waits for another connection\'s write to finish, then answers 201', sqliteOnly('a SQLite write lock held from outside; postgres.test.ts holds a row lock'), async () => {
     const id = (await servers.post(one, '/accounts', { owner: 'Wait', currency: 'CAD' })).body.id;
     // A busy timeout here too: in SQLite's default journal mode a COMMIT waits for
     // readers in the other process to finish, and without one it fails at once.
@@ -110,8 +99,8 @@ describe('two server processes on one database file', async () => {
     assert.equal((await reply).status, 201);
   });
 
-  test('BK-R13 BK-R24 BK-R26 BK-R27 BK-R28 what the races left in the file passes every SQL ledger check', () => {
-    assert.deepEqual(checkFile(servers.dbPath), []);
+  test('BK-R13 BK-R24 BK-R26 BK-R27 BK-R28 what the races left in the file passes every SQL ledger check', async () => {
+    assert.deepEqual(await servers.failingChecks(), []);
   });
 });
 
@@ -146,13 +135,13 @@ describe('two server processes with a slow screening', async () => {
     assert.equal((await servers.get(one, `/accounts/${id}`)).body.balance, '9.00');
   });
 
-  test('BK-R24 BK-R26 BK-R27 BK-R28 BK-R29 what these races left in the file passes every SQL ledger check', () => {
-    assert.deepEqual(checkFile(servers.dbPath), []);
+  test('BK-R24 BK-R26 BK-R27 BK-R28 BK-R29 what these races left in the file passes every SQL ledger check', async () => {
+    assert.deepEqual(await servers.failingChecks(), []);
   });
 });
 
 describe('a database locked for too long', () => {
-  test('BK-R25 BK-R16 a write that can\'t get the lock in time is 503 busy with Retry-After, and nothing is written', async () => {
+  test('BK-R25 BK-R16 a write that can\'t get the lock in time is 503 busy with Retry-After, and nothing is written', sqliteOnly('SQLite\'s busy timeout'), async () => {
     const dir = mkdtempSync(join(tmpdir(), 'banking-api-'));
     const dbPath = join(dir, 'ledger.db');
     const ledger = new Ledger(dbPath, undefined, 100);

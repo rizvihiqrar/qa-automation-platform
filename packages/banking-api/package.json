@@ -12,17 +12,24 @@
     "race": "node src/race.ts",
     "test:ui": "node src/ui-test.ts",
     "cy:open": "cypress open",
-    "test:proxy": "node --test \"test-proxy/*.test.ts\""
+    "test:proxy": "node --test \"test-proxy/*.test.ts\"",
+    "test:postgres": "node scripts/with-postgres.ts node --test --test-timeout=60000 \"test/*.test.ts\""
   },
   "engines": {
     "node": ">=24"
   },
   "license": "MIT",
   "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.2",
     "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
     "axe-core": "^4.14.1",
     "cypress": "^16.3.0",
     "fast-check": "^4.10.3",
+    "testcontainers": "^12.2.2",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
   }
 }

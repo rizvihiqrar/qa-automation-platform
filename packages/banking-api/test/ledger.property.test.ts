@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fc from 'fast-check';
-import { Ledger } from '../src/ledger.ts';
 import { MAX_MINOR, PAYMENT_LIMITS, type Currency } from '../src/money.ts';
-import { failed, loadChecks, runChecks } from '../src/checks.ts';
+import { ON_POSTGRES, failingChecks, openTestStore, rowsOf } from './helpers.ts';
 
 // A model of the bank: random sequences of deposits, withdrawals and transfers between
 // accounts in three currencies, run against the real ledger and against a few lines of
 // BigInt arithmetic. After every step the two must agree, and the ledger must hold
-// together. Runs on the Ledger directly (no HTTP), so it can make thousands of moves.
+// together. Runs on the store directly (no HTTP), so it can make thousands of moves. On
+// Postgres each run gets a schema of its own, which takes longer, so it makes 60 runs there.
 
 const ACCOUNTS: Currency[] = ['CAD', 'CAD', 'CAD', 'JPY', 'JPY', 'KWD'];
 
@@ -38,8 +38,6 @@ const move: fc.Arbitrary<Move> = fc.oneof(
   { weight: 3, arbitrary: fc.record({ kind: fc.constant('transfer' as const), from: account, to: account, amount, currency: fc.constantFrom('own' as const, 'other' as const) }) },
 );
 
-const checks = loadChecks();
-
 const otherCurrency = (c: Currency): Currency => (c === 'CAD' ? 'JPY' : 'CAD');
 
 test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK-R27 BK-R28 BK-R39 BK-R40 any sequence of moves: the ledger matches the model and holds together', async () => {
@@ -47,7 +45,7 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
   // reach the limit.
   await fc.assert(fc.asyncProperty(fc.array(move, { minLength: 1, maxLength: 40, size: 'max' }), async (moves) => {
     // A fixed clock, so a run never crosses midnight UTC in the middle of the daily limit (BK-R40).
-    const ledger = new Ledger(':memory:', () => '2026-11-22T12:00:00.000Z');
+    const ledger = await openTestStore(() => '2026-11-22T12:00:00.000Z');
     try {
       const ids: number[] = [];
       for (const [i, c] of ACCOUNTS.entries()) ids.push((await ledger.openAccount(`Owner ${i}`, c)).id);
@@ -110,17 +108,17 @@ test('BK-PR-08 BK-R06 BK-R09 BK-R10 BK-R11 BK-R12 BK-R13 BK-R14 BK-R15 BK-R26 BK
       // The ledger holds together (BK-R13, BK-R14): one transfer per accepted move, and
       // every SQL ledger check passes on what the moves left (BK-R26 to BK-R28). Then
       // each currency's customer balances add up to what the model says was issued.
-      const q = (sql: string) => { const s = ledger.db.prepare(sql); s.setReadBigInts(true); return s.all(); };
-      assert.equal(Number(q('SELECT COUNT(*) AS n FROM transfers')[0]!.n), moved);
-      assert.deepEqual(runChecks(ledger.db, checks).filter(failed), []);
+      const q = (sql: string) => rowsOf(ledger, sql);
+      assert.equal(Number((await q('SELECT COUNT(*) AS n FROM transfers'))[0]!.n), moved);
+      assert.deepEqual(await failingChecks(ledger), []);
       for (const [c, total] of Object.entries(issued)) {
         assert.ok(total <= MAX_MINOR);
-        const held = q(`SELECT COALESCE(SUM(e.amount), 0) AS total FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
-                        WHERE a.kind = 'customer' AND e.currency = '${c}'`)[0]!.total;
-        assert.equal(held, total, c);
+        const held = (await q(`SELECT COALESCE(SUM(e.amount), 0) AS total FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
+                        WHERE a.kind = 'customer' AND e.currency = '${c}'`))[0]!.total;
+        assert.equal(BigInt(held as bigint | number), total, c);
       }
     } finally {
       await ledger.close();
     }
-  }), { numRuns: 300 });
+  }), { numRuns: ON_POSTGRES ? 60 : 300 });
 });

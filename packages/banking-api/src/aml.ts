@@ -1,4 +1,4 @@
-import type { Screen } from './app.ts';
+import type { Rules } from './app.ts';
 import type { Movement, Refusal, Store } from './ledger.ts';
 import { CASH_REPORT_THRESHOLD, CASH_WINDOW_MS, formatAmount } from './money.ts';
 import { matchName, SANCTIONS_DEMO, type Listed, type Match } from './sanctions.ts';
@@ -8,6 +8,11 @@ import { matchName, SANCTIONS_DEMO, type Listed, type Match } from './sanctions.
 // rule, and a sanctions list. Each movement that reaches the screening gets exactly one
 // decision, written to the audit table before the movement is written (or refused).
 //
+// The rules run inside the store's exclusive section for the movement (app.ts), on the store
+// it hands them: on Postgres that is the transaction holding the accounts' locks, so the
+// 24-hour total can't change between reading it and writing the movement, even from another
+// server process.
+//
 // Order of weight: blocked (a listed name), held (almost a listed name), reported
 // (large cash), allowed. The strongest one decides; the others aren't looked for.
 
@@ -15,8 +20,8 @@ import { matchName, SANCTIONS_DEMO, type Listed, type Match } from './sanctions.
 // told which, or why (no tipping off). The audit row has the difference.
 const HOLD: Refusal = { ok: false, status: 422, code: 'screening_hold', error: 'this movement is held for review; contact the bank' };
 
-export function amlScreen(ledger: Store, list: Listed[] = SANCTIONS_DEMO): Screen {
-  return async (m: Movement) => {
+export function amlRules(list: Listed[] = SANCTIONS_DEMO): Rules {
+  return async (m: Movement, ledger: Store) => {
     // Both parties are read, and the stronger match decides: an exact one beats a near one.
     let strongest: { accountId: number; match: Match } | null = null;
     for (const accountId of [m.from, m.to]) {

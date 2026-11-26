@@ -90,6 +90,30 @@ The API, the screening and the tools use the ledger through `Store` in [`src/led
 
 That same property hides a class of bug. A call that is not awaited still finishes before the next line on SQLite, so a missing `await` on `releaseKey` or on an audit row passed all 451 tests (B174, B175). [`store.test.ts`](test/store.test.ts) reads the source instead: every call to a `Store` method is awaited, returned or chained (`.then`, `Promise.all`), in this package's `src/`, `test/` and `test-proxy/` and in every other package that runs this ledger (visual-regression-demo starts it for its screenshots; money-course plants bugs in a copy). The method names come from the interface itself, and a store is anything called `ledger` or made by `new Ledger(` or `buildSample(`. TypeScript 7 has no JavaScript API yet, so this is a text scan with its own test, not a type-aware lint, and it can't tell that a `return` inside a callback whose result is thrown away returns nowhere.
 
+### The ledger on Postgres
+
+Set `DATABASE_URL` and the same server keeps its ledger on Postgres ([`src/postgres.ts`](src/postgres.ts), chosen in [`src/store.ts`](src/store.ts)); `DATABASE_SCHEMA` names the schema, and the tables are made the first time a server opens it ([`sql/schema.postgres.sql`](sql/schema.postgres.sql)). The tables, columns and constraints are the same as on SQLite, with `BIGINT` for ids and amounts. The bank's rules are one function, `refusalFor` in [`src/ledger.ts`](src/ledger.ts), that both stores call, so they refuse in the same order with the same words. `pg` is loaded only when `DATABASE_URL` is set, so the SQLite server still needs nothing from npm.
+
+What SQLite gets from `BEGIN IMMEDIATE` (the whole database locked for each write), Postgres gets from row locks:
+
+```ts
+// src/postgres.ts: the locks a movement takes before its rules are checked
+const parties = [...new Set([m.from, m.to].filter((p) => p !== null))].sort((a, b) => a - b);
+await c.query("SELECT id FROM accounts WHERE id = ANY($1::bigint[]) AND kind = 'customer' ORDER BY id FOR UPDATE", [parties]);
+if (m.from === null) await c.query("SELECT pg_advisory_xact_lock(hashtext('issued ' || $1))", [m.currency]);
+```
+
+- **The accounts, lowest id first.** Under `READ COMMITTED` two transactions would both sum the old entries and both spend the same money. `FOR UPDATE` makes the second wait for the first to commit, and taking the locks in id order means two opposite transfers wait for each other instead of deadlocking.
+- **The currency, for a deposit.** The limit is on what all accounts in a currency hold (BK-R06), so deposits into different accounts must also take turns. An advisory lock on the currency does that without a row to lock.
+- **The rules and the write in one section.** The anti-money-laundering rules read the 24-hour cash total. On SQLite nothing runs between that read and the write. On Postgres every read is a round trip, and the first run of the suite there found two deposits of 6,000.00 sent together both allowed, where one must be reported. The server now runs the rules and the write in `Store.exclusive`: one transaction that holds the movement's locks from before the rules read anything until the money is written, across server processes too. A refusal from the rules comes back out as a value, not a thrown error, so its audit row is committed.
+- **The funding account, read before it is made.** Two first deposits in a currency both try to make its funding account; a unique index lets one in. An `INSERT ... ON CONFLICT DO NOTHING` uses up an id even when it does nothing, so the account is looked up first, and the ids stay the same as on SQLite for the same movements (the 22 defect tests name rows by id).
+- **Every number as BigInt.** `pg` returns `int8` and `numeric` (what `SUM` gives) as text, and the pool parses both with `BigInt`.
+
+- **A wait with a limit.** Every connection sets `lock_timeout` to 5 seconds and the pool waits as long for a free connection, so a row held by another tool is `503 busy` with `Retry-After`, as a locked SQLite file is (BK-R25).
+- **What the rules wrote, kept when the write fails.** Each write inside the section (the movement, a key claim) runs in a savepoint and is rolled back to it on an error; the section then commits, so the audit row stays, as it does on SQLite where it is its own transaction.
+
+`npm run test:postgres` starts `postgres:17-alpine` with Testcontainers and runs every Node test file on it, each test server in a schema of its own. Four tests are about SQLite itself (old ledger files, its busy timeout, a lock held on the file) and are skipped there; [`postgres.test.ts`](test/postgres.test.ts) holds the Postgres side: the 14 checks on the sample and the same 22 defects, a row lock held from outside, 60 opposite transfers through two servers, ten deposits into five accounts at the currency limit, the 24-hour rule through two servers, and `npm run check` on a database URL.
+
 ### SQL ledger checks
 
 The tests above go through the API. These checks go straight to the database and ask whether the books still balance, however the rows got there: through the API, a manual fix, a migration, or a script with foreign keys off (SQLite's default for any connection that doesn't turn them on). Each check is a `.sql` file in [`sql/checks`](sql/checks) whose query returns the rows that break one rule.
@@ -350,6 +374,8 @@ The three `POST` routes that move money take an optional `Idempotency-Key` heade
 | `PORT` | `4100` | Port the API listens on (qa-practice-api uses 4000) |
 | `DATABASE_PATH` | none: in memory | A SQLite file to keep the ledger in across restarts; several servers can share one |
 | `SCREENING_DELAY_MS` | `0` | Makes the screening before each movement take this long, as a slow outside check would; the race tests use it |
+| `DATABASE_URL` | none: SQLite | A Postgres connection string: the ledger on Postgres instead of SQLite (`DATABASE_PATH` is then ignored) |
+| `DATABASE_SCHEMA` | `public` | The Postgres schema for the ledger's tables; made with its tables if it is missing. `npm run check` reads it too |
 
 ## CI integration
 
@@ -373,6 +399,12 @@ The wire tests have a job of their own too, `banking-api-proxy`, which pulls the
 - { package: banking-api, name: banking-api-proxy, browsers: false, proxy: true, command: npm run test:proxy }
 ```
 
+The ledger on Postgres has its own job, `banking-api-postgres`: the Node tests again with `DATABASE_URL` set, on a Postgres 17 that Testcontainers starts. CI pulls the image first through `retry.sh`, and a root test fails if the tag it pulls is not the one [`scripts/with-postgres.ts`](scripts/with-postgres.ts) starts.
+
+```yaml
+- { package: banking-api, name: banking-api-postgres, browsers: false, postgres: true, command: npm run test:postgres }
+```
+
 Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cypress binary (`CYPRESS_INSTALL_BINARY=0`) in every job, so the other jobs and the type-check don't download it; this job restores it from a cache keyed on the lockfile, or installs it. Each browser's run starts its own fresh `ui.db` and ends with the SQL checks on it. Screenshots of failing tests, and videos of failing specs only, go to `reports/cypress/` and are uploaded as the job's artifact. No retries: a flaky UI test should fail, not pass on a second try. The tests reach the server only over HTTP, so Day 49 can put Postgres behind it without changing them.
 
 ## Results
@@ -387,7 +419,7 @@ Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cy
 | [`api.test.ts`](test/api.test.ts) | 67 | Every endpoint and refusal over HTTP, including a database failure injected between the debit and the credit |
 | [`idempotency.test.ts`](test/idempotency.test.ts) | 22 | Keys over HTTP: format boundaries, replays of all three movements, mismatches, a request held in its screening to show `409`, refused and failed requests keeping no key, a failure injected into the key link, and expiry at exactly 24 hours on an injected clock |
 | [`concurrency.test.ts`](test/concurrency.test.ts) | 10 | Real races: overlapping requests in one process during a 20 ms screening, and two `node src/server.ts` processes on one SQLite file, with and without a slow screening. Checks the counts of `201` and `422`, that nothing is a `500`, a lock held from outside, `503` when it's held too long, and runs the SQL ledger checks on both files the races left |
-| [`checks.test.ts`](test/checks.test.ts) | 57 | The SQL ledger checks: the clean sample passes, 22 defects put in past the API each fire exactly the checks they should, the SQL is portable to Postgres (one test per file, and a test that the guard itself catches SQLite-only SQL), the runner reports a check that can't run, and the CLI's exit codes |
+| [`checks.test.ts`](test/checks.test.ts) | 58 | The SQL ledger checks: the clean sample passes, 22 defects put in past the API each fire exactly the checks they should, the SQL is portable to Postgres (one test per file, and a test that the guard itself catches SQLite-only SQL), `:name` parameters turned into `$1`, `$2` for Postgres, the runner reports a check that can't run, and the CLI's exit codes |
 | [`money.property.test.ts`](test/money.property.test.ts) | 7 | fast-check: any amount round-trips, no JSON number is accepted, any accepted text is plain digits, neighbours above 2^53 stay apart |
 | [`ledger.property.test.ts`](test/ledger.property.test.ts) | 1 | A model of the bank: 300 random sequences of up to 40 moves across six accounts in three currencies. After every move each balance matches the model; at the end, all 14 SQL ledger checks pass |
 | [`ui.test.ts`](test/ui.test.ts) | 17 | The UI files as served (types, the page policy, `405` and `404`), what a browser test can't see in the code (no inline script, no HTML strings, no amount turned into a number or added up, text fields for amounts), and `GET /accounts` |
@@ -395,14 +427,17 @@ Chrome and Firefox are already on GitHub's Ubuntu runners. `npm ci` skips the Cy
 | [`scheme.test.ts`](test/scheme.test.ts) | 40 | Payment scheme rules: the reference alphabet and length, each limit at minus one, exactly, and plus one in four currencies, the daily total across withdrawals and transfers, what does not count, the UTC midnight boundary, replays, and three payments at once |
 | [`aml.test.ts`](test/aml.test.ts) | 54 | Anti-money-laundering rules: each cash threshold at one unit below and exactly at it in four currencies, the 24-hour window at exactly 24 hours and a millisecond inside, deposits and withdrawals kept apart, eleven spellings of listed names blocked, near misses held, other names allowed, either side of a transfer, one reply for a block and a hold, the audit row, replays, the table's `CHECK`, an old ledger file, and a real server process |
 | [`entitlements.test.ts`](test/entitlements.test.ts) | 98 | Who may do what: the matrix file and its validation, all 24 role and action pairs through the API (nothing written when refused), every read route against `view`, the checks coming first (404, 400, 415, key, screening), odd role headers, the check on a server built from 10 wrong matrices, three stand-in servers, a real server process, and `npm run entitlements` (its own server, `--url`, `--matrix`) exits 0, 1 and 2 |
-| [`store.test.ts`](test/store.test.ts) | 5 | Every `Store` call is awaited, returned or chained, here and in the packages that run this ledger (the method names come from the interface), which files the scan reads, the scan's own test, and a refusal that can't be written as a reply is a `500` in JSON, never a request left open |
+| [`store.test.ts`](test/store.test.ts) | 8 | Every `Store` call is awaited, returned or chained, here and in the packages that run this ledger (the method names come from the interface), which files the scan reads, the scan's own test, no test file awaiting at the top level after its first `describe()` (and that check's own test), the server's log line never showing a password or failing on a connection string that isn't a URL, and a refusal that can't be written as a reply is a `500` in JSON, never a request left open |
+| [`postgres.test.ts`](test/postgres.test.ts) | 34 | On Postgres only (`npm run test:postgres`): the clean sample passes the 14 checks and has the same ids as on SQLite, the 22 defects fire the same checks, `npm run check` on a URL (0, 1, and a schema with no ledger, which it doesn't create), the schema's own constraints, a sum past 2^53 as `NUMERIC`, three servers opening one new schema at once, a row lock held from outside (waited for, and `503 busy` past the lock timeout), opposite transfers through two servers, deposits at the currency limit into five accounts, two first deposits in a currency, and the 24-hour rule through two servers |
 | [`spec.test.ts`](test/spec.test.ts) | 4 | Every rule in [SPEC.md](SPEC.md) has a test (Node or Cypress), every rule a test names exists, and the README and the guide state the rule and mistake counts the spec and the table hold |
 | [`test-proxy`](test-proxy) | 30 | Through mitmproxy in Docker (`npm run test:proxy`): 16 on the wire, 14 checks of the wire checks. See [network inspection](#network-inspection-with-a-proxy) |
 | [`cypress/e2e`](cypress/e2e) | 69 per browser | The UI in Chrome and Firefox: see [the banking UI](#the-banking-ui-tested-with-cypress) |
 
+Every test file in `test/` also runs on Postgres in the `banking-api-postgres` job: 491 pass there, and the 4 about SQLite itself are skipped.
+
 ### Deliberate breaks
 
-Each mistake was put into the code, the tests run, and the code restored. All 181 were caught. B171 to B181 break the async store and its guards, and each ran `npm test`; B174 and B175 passed every test until the source scan was added, and B180 and B181 until the code review widened it. B92 to B132 break the anti-money-laundering rules and each ran `test/aml.test.ts`; B133 to B170 break the role matrix and the check on it, and each ran `test/entitlements.test.ts` and `test/aml.test.ts` (the audit record now needs the auditor). B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
+Each mistake was put into the code, the tests run, and the code restored. All 197 were caught. B171 to B181 break the async store and its guards, and each ran `npm test`; B174 and B175 passed every test until the source scan was added, and B180 and B181 until the code review widened it. B182 to B197 break the Postgres store (B194 to B197 put back what the code review found), and each ran the suite on Postgres and on SQLite: none of them fails a test on SQLite, which is why the Postgres job exists. B92 to B132 break the anti-money-laundering rules and each ran `test/aml.test.ts`; B133 to B170 break the role matrix and the check on it, and each ran `test/entitlements.test.ts` and `test/aml.test.ts` (the audit record now needs the auditor). B57 to B78 break the UI (and the two server changes it needed); each ran the Cypress specs aimed at it in Chrome, and the Node tests where they apply, and the count adds both. The three that depend on timing between processes (B21 to B23) were run five times each and caught every time. B35 to B40 write bad rows; their counts include the defect tests, which fail because the sample ledger is built with the broken code. B41 to B56 break the checks, the runner and the CLI themselves.
 
 | # | Mistake | Caught by |
 |---|---|---:|
@@ -587,11 +622,33 @@ Each mistake was put into the code, the tests run, and the code restored. All 18
 | B179 | A method left out of the `Store` interface | 2 |
 | B180 | The proxy tests' teardown not awaiting the ledger's close | 1 (the source scan) |
 | B181 | visual-regression-demo calling the ledger as if it were synchronous | 1 (the source scan) |
+| B182 | No `FOR UPDATE` on the accounts (Postgres) | 8 |
+| B183 | The accounts locked one at a time, in the order the request names them: opposite transfers deadlock | 2 |
+| B184 | No lock on the currency for a deposit | 1 (after a test was added) |
+| B185 | The exclusive section takes no locks | 3 |
+| B186 | The rules run before the exclusive section, as they did on SQLite | 4 |
+| B187 | A refusal from the rules thrown inside the section: the audit row is rolled back | 20 |
+| B188 | The funding account made with `INSERT` first: the ids move away from SQLite's | 6 |
+| B189 | A new key claimed with a plain `INSERT`: two claims at once give a `500` | 14 |
+| B190 | `int8` and `numeric` read through a JavaScript number | 4 |
+| B191 | The defects put in with the foreign keys on | 4 |
+| B192 | Every check parameter numbered `$1` | 1 |
+| B193 | No lock while a server makes the tables: three servers at once collide | 1 |
+| B194 | No `lock_timeout` on the pool: a request waits as long as the lock is held | 1 (cancelled at the 60 s test limit) |
+| B195 | Postgres lock errors answered as `500`, not `503 busy` | 1 |
+| B196 | The exclusive section rolled back when its work fails: the audit row goes too | 1 |
+| B197 | No savepoint around a write inside the section: a failed write takes the audit row with it | 1 |
 
 ### What building it found
 
 - **On SQLite, a missing `await` is invisible.** Each `Ledger` method does its work before it hands back the promise, so B174 and B175 changed nothing any of 451 tests could see. On Postgres the same mistakes would give a key up, or write the audit row, after the reply. A source scan catches both, and runs on every `npm test`.
 - **Two breaks hung the run instead of failing it.** With the forecast check or `apply` not awaited, the code took the promise for a refusal and threw an error with no status. Sending that reply threw again inside the error handler, so the request never got an answer and each run stopped only at the five-minute limit. The handler now falls back to a `500`, and `npm test` has a 60 second per-test limit, so the same breaks fail in seconds with the test's name.
+- **The first run on Postgres found a race SQLite can't have.** 451 of 456 tests passed at once, and the one that failed was the 24-hour rule: two deposits of 6,000.00 sent together were both allowed. The rules read the day's cash total and then the movement was written, and on SQLite nothing can run in between. On Postgres each step is a round trip, so both requests read 0. Moving the rules inside the transaction that holds the account's lock fixed it (B186 puts the old order back), and a test now sends the two deposits through two server processes.
+- **The code review found two things no test had asked.** A row lock held by another tool made a request wait for as long as the lock lasted, where BK-R25 promises `503 busy` after 5 seconds: the pool now sets `lock_timeout` and a connect timeout, and Postgres lock errors are answered as busy (B194, B195). And when the movement's write failed after the rules had recorded their decision, the whole transaction rolled back and the audit row went with it, which SQLite never does: each write inside the section now runs in a savepoint, and the section commits what came before a failure (B196, B197). A test for each runs on both databases where it can.
+- **A refusal must leave the section as a value.** The first version threw the rules' refusal inside the transaction, as the API does everywhere else. That rolled the audit row back with the movement, and 20 tests on Postgres failed (B187), none on SQLite.
+- **One lock looked tested and wasn't.** Taking out the currency lock for deposits (B184) passed every test: each limit test deposited into one account, and that account's own lock already made the deposits take turns. Ten deposits into five accounts through two servers catch it.
+- **One break was not a mistake.** Reading `int8` as text changed nothing, because every amount goes through `BigInt()`, which takes text too. The break that matters is reading it as a JavaScript number (B190).
+- **A test fixture raced its own tests, and only Postgres showed it.** The entitlement tests count every table's rows before and after a forbidden request. A fixture transfer written by top-level code between two `describe()` blocks sometimes landed inside the first block's counts, because node:test starts a block's tests while the file's later code still runs: 1 run in 6 on Postgres, never on SQLite. The fixture now comes first, and a test fails if any test file awaits at the top level after its first block.
 - **The first scan looked in the wrong places.** It read only `src/` and only receivers named `ledger`, so the code review found two floating calls it passed: the proxy tests' teardown, and visual-regression-demo, which starts this ledger for its screenshots and still called it as if it were synchronous (the whole-repo type-check had flagged it, but only the two packages expected to change were read in its output). The scan now reads every package that runs the ledger (B180, B181). One guard is not proven by a break: the second fallback inside the error handler, for when even the `500` can't be written. No request can make the first `send` and then the second one throw, so taking it out fails no test; it stays as a guard against a crash.
 
 - **A new rule broke old tests in three places.** The model test sent huge withdrawals, so it needed the limits, and a fixed clock, or a run near midnight UTC would depend on the day. Four SQL-check tests and the demo defects inserted into `transfers` by position, with seven values, and failed the moment the table gained a column. They now name their columns.
@@ -659,11 +716,11 @@ Constraints guard the rows the database is told about, one row at a time: a `CHE
 
 ### Will the checks run on Postgres?
 
-They are written to, and a test fails if one uses SQL only SQLite accepts. The one parameter, `:stale_before`, becomes `$1` there. The history check orders entries by id, which matches the order they were written because each write holds the lock: the whole database in SQLite, and on Postgres the account rows taken `FOR UPDATE` before the entries get their ids. Day 49 runs them there.
+Yes, the same files, on every Postgres CI run: the clean sample passes all 14, and each of the 22 defects fires the same checks it fires on SQLite. A test still fails if a check uses SQL only SQLite accepts, and `:stale_before` becomes `$1` there. The history check orders entries by id, which matches the order they were written because each write holds the lock: the whole database in SQLite, and on Postgres the account rows taken `FOR UPDATE` before the entries get their ids. `npm run check -- --db postgres://...` checks a Postgres ledger, in a read-only session.
 
-### What changes on Postgres (Day 49)?
+### What changes on Postgres?
 
-`BEGIN IMMEDIATE` locks the whole SQLite database, so checking inside the transaction is enough. Postgres locks rows, and under `READ COMMITTED` two transactions can both sum the old entries. The same guarantee there needs `SELECT … FROM accounts WHERE id = $1 FOR UPDATE` before the sum, taken in a fixed order (lowest id first) so two opposite transfers can't deadlock. The race tests here are written against HTTP, so they can run unchanged against that version.
+`BEGIN IMMEDIATE` locks the whole SQLite database, so checking inside the transaction is enough. Postgres locks rows, and under `READ COMMITTED` two transactions can both sum the old entries, so each movement takes its accounts `FOR UPDATE`, lowest id first, and a deposit also takes its currency. The screening rules run inside the same locked transaction, which on Postgres also holds across server processes; on SQLite the rules run outside `BEGIN IMMEDIATE`, so two servers on one file could still both read the same 24-hour total. See [the ledger on Postgres](#the-ledger-on-postgres).
 
 ### Why does a key whose first request crashed stay `409`?
 
@@ -714,13 +771,17 @@ No sign-in. Since Day S10 a request can claim a role in an `X-Role` header and t
 | `npm run test:proxy` fails at once with `docker: ...` or `the proxy did not come up` | Docker isn't running, or the mitmproxy image can't be pulled | Start Docker Desktop and run `docker pull mitmproxy/mitmproxy:12.3.1`; the test logs show the container's own output |
 | `422 payment_limit` or `422 daily_limit` on a payment that should pass | One payment is over the currency's limit, or the account has already sent its day's total (UTC) | Split the payment, or send it after 00:00 UTC. The message says which limit and how much was already sent |
 | `400 invalid_reference` | The reference is longer than 35 characters, has a space at either end, or uses a character outside letters, digits, space and `/ - ? : ( ) . , ' +` | Shorten it or take the character out |
+| `npm run test:postgres` fails at once with `Could not find a working container runtime strategy` | Docker isn't running | Start Docker Desktop; the first run pulls `postgres:17-alpine` |
+| `npm run check -- --db postgres://...`: every check says `relation "transfers" does not exist` | The schema has no ledger in it (the check reads `DATABASE_SCHEMA`, default `public`, and never makes tables) | Set `DATABASE_SCHEMA` to the schema the server uses |
 | The Cypress binary is missing after `npm ci` | `CYPRESS_INSTALL_BINARY=0` was set, as CI does for jobs that don't need it | `npx cypress install` |
 
 ## Development
 
 ```bash
 npm ci
-npm test                          # 455 tests, about six seconds
+npm test                          # 461 tests, about six seconds
+npm run test:postgres             # the same on a Postgres in Docker, plus the Postgres-only tests (about 40 s)
+DATABASE_URL=postgres://... npm start   # the API and the UI with the ledger on your own Postgres
 npm run demo                      # the requests in the screenshot above
 npm run check -- --demo           # the SQL ledger checks on a ledger with defects put in
 npm run race -- raced.db          # race two servers on one file, then:
